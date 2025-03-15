@@ -1,0 +1,82 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mahoraga"
+version = "0.1.0"
+description = "Reverse proxy for Python mirrors"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+keywords = ["conda", "pypi", "mirror"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Framework :: FastAPI",
+    "Framework :: Pydantic :: 2",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Topic :: System :: Archiving :: Mirroring",
+    "Typing :: Typed",
+]
+dependencies = [
+    "fastapi >=0.115.10",
+    "filelock >=3.13.2",
+    "httptools >=0.6.3",
+    "httpx >=0.25.1",
+    "jinja2 >=3.1.5",
+    "kiss-headers >=2.4.0",
+    "msgpack >=1.0.7",
+    "pooch >=1.8.1",
+    "pyarrow >=14.0.0",
+    "pydantic-extra-types[semver] >=2.10.2",
+    "pydantic-settings >=2.7.0",
+    "py-rattler >=0.10.0",
+    "rich-argparse >=1.6.0",
+    "uvicorn >=0.32.1",
+    "uvloop >=0.18.0; sys_platform != 'win32' and sys_platform != 'cygwin' and platform_python_implementation != 'PyPy'",
+]
+
+[project.optional-dependencies]
+typing = [
+    "msgpack-types ==0.3.0",
+    "pyarrow-stubs >=17.10",
+]
+
+[[project.authors]]
+name = "hingebase"
+email = "zcliu@pku.edu.cn"
+
+[project.urls]
+Homepage = "https://github.com/hingebase/mahoraga"
+"Source Code" = "https://github.com/hingebase/mahoraga"
+"Issue Tracker" = "https://github.com/hingebase/mahoraga/issues"
+
+[project.scripts]
+mahoraga = "mahoraga._cli:main"
+
+[tool.basedpyright]
+strict = ["src"]
+typeCheckingMode = "off"
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+    ".python-version",
+]
+
+[tool.ruff]
+line-length = 79
+preview = true
+
+[tool.ruff.lint]
+select = ["ALL"]

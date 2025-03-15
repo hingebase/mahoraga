@@ -1,0 +1,146 @@
+# Mahoraga configuration
+# This file is not managed by the CLI and should be edited by hand.
+
+# Improve server performance by starting a task as soon as it is constructed.
+# For detail, see https://docs.python.org/3/library/asyncio-task.html#asyncio.eager_task_factory
+eager-task-execution = {{ eager_task_execution | lower }}
+
+# Version of Swagger UI used in API docs, overriding the default of FastAPI.
+# If specified, the JavaScript and CSS files of that version are fetched from
+# https://registry.npmmirror.com on startup and cached on disk.
+# If you have access to https://cdn.jsdelivr.net, you don't need this option.
+# swagger-ui-version = "5.20.1"
+
+# HTTP server configuration.
+# Not all options are available here (SSL for example),
+# since they can be set on the server in front of Mahoraga.
+[server]
+
+# The IPv4 address and TCP port to bind and listen to.
+# Since Mahoraga is designed to run behind another HTTP server,
+# there is no need to specify the host by IPv6 or domain name,
+# or specify multiple host/port pairs.
+host = "{{ server.host }}"
+port = {{ server.port }}
+
+# Time in seconds to wait before closing idle keep-alive connections.
+keep-alive = {{ server.keep_alive }}
+
+# Logging configuration.
+# The settings are applied to both the console and the log file.
+# To disable logging to the console, simply redirect stdout to a file,
+# for example:
+# $ mahoraga run > /dev/null
+[log]
+
+# Log level.
+# Available options: debug, info, warning, error, critical
+level = "{{ log.level }}"
+
+# Whether to emit a log on every incoming request.
+# The logs are at the info level, but will not be suppressed even if the
+# log level above is set to warning or higher.
+access = {{ log.access | lower }}
+
+# Conda sharded repodata configuration.
+# Keys should be channel names, and values should be lists of platform names.
+# Sharded repodata are generated every hour for all channel/platform pairs.
+# For detail, see https://conda.org/learn/ceps/cep-0016/
+[shard]
+conda-forge = [
+    # "linux-64",
+    # "noarch",
+    # "osx-arm64",
+    # "win-64",
+]
+
+# Upstream mirror servers.
+# The default settings are suit for China mainland.
+# Other users may want to change all the settings below.
+[upstream]
+
+# Mirrors for embedded Python on Windows.
+# The URLs MUST contain the placeholder {name},
+# and MAY contain the placeholder {version}.
+python = [
+    {%- for url in upstream.python %}
+    "{{ url }}",
+    {%- endfor %}
+]
+
+# Mirrors for https://github.com/astral-sh/python-build-standalone/
+# For detail, see https://docs.astral.sh/uv/reference/settings/#python-install-mirror
+# There is no need to use a file:// URL; just copy or link your files to the
+# `python-build-standalone` folder (create one if not exist) next to this file.
+python-build-standalone = [
+    {%- for url in upstream.python_build_standalone %}
+    "{{ url }}",
+    {%- endfor %}
+]
+
+# Mark a mirror as backup to decrease its priority.
+# Backup mirrors are used when all non-backup mirrors are unavailable or having
+# active connections.
+backup = [
+    {%- for host in upstream.backup %}
+    "{{ host }}",
+    {%- endfor %}
+]
+
+# Upstream conda mirror servers.
+# The default mirrors are assumed to have all channels and support labels.
+# Other mirrors should be configured per channel. If a channel in a mirror
+# support labels, it should be declared under [upstream.conda.with-label],
+# otherwise [upstream.conda.without-label].
+# Value under [upstream.conda.with-label] and [upstream.conda.without-label]
+# can be a list of URLs, or a channel name to copy the URLs for other channels
+# within the same section.
+[upstream.conda]
+default = [
+    {%- for url in upstream.conda.default %}
+    "{{ url }}",
+    {%- endfor %}
+]
+
+[upstream.conda.with-label]
+{%- for key, value in upstream.conda.with_label | dictsort %}
+{%- if value is string %}
+{{ key }} = "{{ value }}"
+{%- else %}
+{{ key }} = [
+    {%- for url in value %}
+    "{{ url }}",
+    {%- endfor %}
+]
+{%- endif %}
+{%- endfor %}
+
+[upstream.conda.without-label]
+{%- for key, value in upstream.conda.without_label | dictsort %}
+{%- if value is string %}
+{{ key }} = "{{ value }}"
+{%- else %}
+{{ key }} = [
+    {%- for url in value %}
+    "{{ url }}",
+    {%- endfor %}
+]
+{%- endif %}
+{%- endfor %}
+
+# Upstream PyPI mirror servers.
+# The PyPI index API have two variants: HTML and JSON.
+# Mirrors only support the HTML API should be listed in the html section,
+# and those with both HTML and JSON API should be listed in the json section.
+# For detail, see https://docs.pypi.org/api/index-api/
+[upstream.pypi]
+html = [
+    {%- for url in upstream.pypi.html %}
+    "{{ url }}",
+    {%- endfor %}
+]
+json = [
+    {%- for url in upstream.pypi.json_ %}
+    "{{ url }}",
+    {%- endfor %}
+]
