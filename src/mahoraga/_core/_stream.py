@@ -18,6 +18,8 @@ import asyncio
 import contextlib
 import hashlib
 import http
+import logging
+import os
 import pathlib
 import shutil
 from collections.abc import AsyncGenerator, Callable, Iterable, Mapping
@@ -144,7 +146,7 @@ async def stream(
     stack: contextlib.AsyncExitStack | None = None,
     cache_location: None = ...,
     sha256: None = ...,
-    size: None = ...,
+    size: int | None = ...,
 ) -> fastapi.Response: ...
 
 @overload
@@ -213,6 +215,20 @@ async def _entered(
             except httpx.HTTPStatusError:
                 _core.schedule_exit(stack)
                 continue
+            if content_length := response.headers.get("Content-Length"):
+                actual = int(content_length)
+                expect = kwargs.setdefault("size", actual)
+                if expect is None:
+                    kwargs["size"] = actual
+                elif expect != actual:
+                    _core.schedule_exit(stack)
+                    _logger.warning(
+                        "Content-Length mismatch: expect %d, got %d",
+                        expect,
+                        actual,
+                    )
+                    response = None
+                    continue
             new_stack = stack.pop_all()
             content = _stream(response, new_stack, **kwargs)
             try:
@@ -263,21 +279,37 @@ async def _stream(
         if cache_location and sha256:
             dir_ = pathlib.Path(cache_location).parent
             h = hashlib.sha256()
-            n = 0
+            if size:
+                def opener(path: str, flags: int) -> int:
+                    fd = os.open(path, flags)
+                    try:
+                        os.truncate(fd, size)
+                    except:
+                        os.close(fd)
+                        raise
+                    return fd
+                open_ = opener
+            else:
+                open_ = None
             pooch.utils.make_local_storage(dir_)  # pyright: ignore[reportUnknownMemberType]
             with pooch.utils.temporary_file(dir_) as tmp:  # pyright: ignore[reportUnknownMemberType]
-                async with await anyio.open_file(tmp, "wb") as f:
+                async with await anyio.open_file(tmp, "wb", opener=open_) as f:
                     async for chunk in response.aiter_bytes():
                         h.update(chunk)
-                        n += len(chunk)
                         task = asyncio.create_task(f.write(chunk))
                         yield chunk
                         await task
                     _core.schedule_exit(stack)
-                if h.digest() == sha256 and (size is None or n == size):
+                if h.digest() == sha256 and (
+                    size is None
+                    or response.num_bytes_downloaded == size
+                ):
                     shutil.move(tmp, cache_location)
         elif cache_location or sha256:
             _core.unreachable()
         else:
             async for chunk in response.aiter_bytes():
                 yield chunk
+
+
+_logger = logging.getLogger("mahoraga")
