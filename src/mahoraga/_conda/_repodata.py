@@ -27,7 +27,7 @@ from mahoraga import _core
 
 from . import _models, _utils
 
-router = fastapi.APIRouter()
+router = fastapi.APIRouter(route_class=_core.APIRoute)
 
 
 @router.head("/{channel}/{platform}/repodata.json.bz2")

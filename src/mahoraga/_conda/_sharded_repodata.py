@@ -32,7 +32,7 @@ from mahoraga import _core
 
 from . import _models, _utils
 
-router = fastapi.APIRouter()
+router = fastapi.APIRouter(route_class=_core.APIRoute)
 
 
 @router.get("/{channel}/{platform}/repodata_shards.msgpack.zst")

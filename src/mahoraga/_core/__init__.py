@@ -13,8 +13,8 @@
 # limitations under the License.
 
 __all__ = [
+    "APIRoute",
     "AsyncClient",
-    "AsyncExitStack",
     "Config",
     "Doc",
     "Predicate",
@@ -25,6 +25,7 @@ __all__ = [
     "WeakValueDictionary",
     "context",
     "get",
+    "schedule_exit",
     "stream",
     "unreachable",
 ]
@@ -34,12 +35,12 @@ from typing import NoReturn
 from ._config import Config, Doc, Predicate, Server
 from ._context import (
     AsyncClient,
-    AsyncExitStack,
     Context,
     Statistics,
     WeakValueDictionary,
+    schedule_exit,
 )
-from ._stream import Response, StreamingResponse, get, stream
+from ._stream import APIRoute, Response, StreamingResponse, get, stream
 
 context = Context("context")
 

@@ -16,8 +16,10 @@ __all__ = ["router"]
 
 import fastapi
 
+from mahoraga import _core
+
 from . import _packages, _simple
 
-router = fastapi.APIRouter()
+router = fastapi.APIRouter(route_class=_core.APIRoute)
 router.include_router(_packages.router, prefix="/packages")
 router.include_router(_simple.router, prefix="/simple")

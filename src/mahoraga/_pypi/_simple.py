@@ -24,7 +24,7 @@ import kiss_headers
 
 from mahoraga import _core
 
-router = fastapi.APIRouter()
+router = fastapi.APIRouter(route_class=_core.APIRoute)
 
 
 @router.get("/{project}/")

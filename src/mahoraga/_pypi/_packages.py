@@ -14,6 +14,7 @@
 
 __all__ = ["router"]
 
+import contextlib
 import http
 import mimetypes
 import posixpath
@@ -25,7 +26,7 @@ import httpx
 
 from mahoraga import _core
 
-router = fastapi.APIRouter()
+router = fastapi.APIRouter(route_class=_core.APIRoute)
 
 
 @router.head("/{tag}/{prefix}/{project}/{filename}")
@@ -64,7 +65,7 @@ async def get_pypi_package(
             f"https://files.pythonhosted.org/packages/{tag}/{prefix}/{project}/{filename}",
         )
     ctx = _core.context.get()
-    async with _core.AsyncExitStack() as stack:
+    async with contextlib.AsyncExitStack() as stack:
         match len(tag), len(prefix), len(project):
             case (2, 2, 60):
                 urls = [
@@ -86,12 +87,19 @@ async def get_pypi_package(
                         status_code=http.HTTPStatus.GATEWAY_TIMEOUT,
                     )
                 if not response.has_redirect_location:
+                    new_stack = stack.pop_all()
+                    content = _stream(response, new_stack)
+                    try:
+                        await anext(content)
+                    except:
+                        stack.push_async_exit(new_stack)
+                        raise
                     return _core.StreamingResponse(
-                        _stream(response, stack.pop_all()),
+                        content,
                         response.status_code,
                         response.headers,
                     )
-                stack.schedule_exit()
+                _core.schedule_exit(stack)
                 p = httpx.URL(response.headers["Location"]).path.lstrip("/")
                 urls = [
                     posixpath.join(str(url), p)
@@ -106,15 +114,16 @@ async def get_pypi_package(
         return await _core.stream(
             urls,
             media_type=media_type,
-            stack=stack.pop_all(),
+            stack=stack,
         )
     return _core.unreachable()
 
 
 async def _stream(
     response: httpx.Response,
-    stack: _core.AsyncExitStack,
+    stack: contextlib.AsyncExitStack,
 ) -> AsyncGenerator[bytes, None]:
     async with stack:
+        yield b""
         async for chunk in response.aiter_bytes():
             yield chunk
