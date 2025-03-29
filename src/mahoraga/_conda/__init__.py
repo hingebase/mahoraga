@@ -16,10 +16,12 @@ __all__ = ["router", "split_repo"]
 
 import fastapi
 
+from mahoraga import _core
+
 from . import _packages, _repodata, _sharded_repodata
 from ._sharded_repodata import split_repo
 
-router = fastapi.APIRouter()
+router = fastapi.APIRouter(route_class=_core.APIRoute)
 router.include_router(_repodata.router)
 router.include_router(_sharded_repodata.router)
 router.include_router(_packages.router)  # Must be the last included

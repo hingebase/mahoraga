@@ -14,10 +14,10 @@
 
 __all__ = [
     "AsyncClient",
-    "AsyncExitStack",
     "Context",
     "Statistics",
     "WeakValueDictionary",
+    "schedule_exit",
 ]
 
 import asyncio
@@ -54,7 +54,7 @@ class AsyncClient(httpx.AsyncClient):
         ctx = _core.context.get()
         concurrent_requests = ctx["statistics_concurrent_requests"]
         concurrent_requests[h] += 1
-        async with AsyncExitStack() as stack:
+        async with contextlib.AsyncExitStack() as stack:
             tic = time.monotonic()
             try:
                 yield await stack.enter_async_context(cm)
@@ -62,7 +62,7 @@ class AsyncClient(httpx.AsyncClient):
                 toc = time.monotonic()
                 if seconds := round(toc - tic):
                     concurrent_requests[h] -= 1
-                    stack.schedule_exit()
+                    schedule_exit(stack)
                     async with ctx["locks"]["statistics.json"]:
                         s = Statistics()
                         s.total_seconds[h] += seconds
@@ -72,10 +72,9 @@ class AsyncClient(httpx.AsyncClient):
                         )
 
 
-class AsyncExitStack(contextlib.AsyncExitStack):
-    def schedule_exit(self) -> None:
-        task = asyncio.create_task(self.pop_all().aclose())
-        self.push_async_callback(lambda: task)
+def schedule_exit(stack: contextlib.AsyncExitStack) -> None:
+    task = asyncio.create_task(stack.pop_all().aclose())
+    stack.push_async_callback(lambda: task)
 
 
 class Statistics(pydantic_settings.BaseSettings, json_file_encoding="utf-8"):

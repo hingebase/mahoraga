@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ["Response", "StreamingResponse", "get", "stream"]
+__all__ = ["APIRoute", "Response", "StreamingResponse", "get", "stream"]
 
 import asyncio
 import contextlib
@@ -20,19 +20,68 @@ import hashlib
 import http
 import pathlib
 import shutil
-from collections.abc import AsyncGenerator, Iterable, Mapping
-from typing import TYPE_CHECKING, TypedDict, Unpack, overload, override
+from collections.abc import AsyncGenerator, Callable, Iterable, Mapping
+from typing import TYPE_CHECKING, Any, TypedDict, Unpack, overload, override
 
 import anyio
-import fastapi
+import fastapi.routing
 import httpx
 import pooch  # pyright: ignore[reportMissingTypeStubs]
 import starlette.types
+from starlette._exception_handler import (
+    wrap_app_handling_exceptions,  # noqa: PLC2701
+)
 
 from mahoraga import _core
 
 if TYPE_CHECKING:
     from _typeshed import StrPath
+
+
+class APIRoute(fastapi.routing.APIRoute):
+    @override
+    def __init__(
+        self,
+        path: str,
+        endpoint: Callable[..., Any],
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(path, endpoint, **kwargs)
+        func = self.get_route_handler()
+
+        async def outer(
+            scope: starlette.types.Scope,
+            receive: starlette.types.Receive,
+            send: starlette.types.Send,
+        ) -> None:
+            req = fastapi.Request(scope, receive, send)
+
+            async def inner(
+                scope: starlette.types.Scope,
+                receive: starlette.types.Receive,
+                send: starlette.types.Send,
+            ) -> None:
+                resp = await func(req)
+                try:
+                    await resp(scope, receive, send)
+                except RuntimeError as e:  # https://github.com/encode/starlette/pull/2856
+                    if (
+                        isinstance(resp, fastapi.responses.FileResponse)
+                        and isinstance(e.__context__, FileNotFoundError)
+                    ):
+                        raise fastapi.HTTPException(404) from e.__context__
+                    raise
+                finally:
+                    if (
+                        isinstance(resp, fastapi.responses.StreamingResponse)
+                        and isinstance(resp.body_iterator, AsyncGenerator)
+                    ):
+                        await resp.body_iterator.aclose()  # pyright: ignore[reportUnknownMemberType]
+
+            middleware = wrap_app_handling_exceptions(inner, req)
+            await middleware(scope, receive, send)
+
+        self.app = outer
 
 
 class Response(fastapi.Response):
@@ -47,21 +96,13 @@ class Response(fastapi.Response):
 class StreamingResponse(fastapi.responses.StreamingResponse, Response):
     media_type = "application/octet-stream"
 
-    @override
-    async def stream_response(self, send: starlette.types.Send) -> None:
-        if isinstance(self.body_iterator, AsyncGenerator):
-            async with contextlib.aclosing(self.body_iterator):  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
-                await super().stream_response(send)
-        else:
-            await super().stream_response(send)
-
 
 async def get(urls: Iterable[str], **kwargs: object) -> bytes:
     ctx = _core.context.get()
     client = ctx["httpx_client"]
     response = None
     async with (
-        _core.AsyncExitStack() as stack,
+        contextlib.AsyncExitStack() as stack,
         contextlib.aclosing(_load_balance(urls)) as it,
     ):
         async for url in it:
@@ -74,12 +115,12 @@ async def get(urls: Iterable[str], **kwargs: object) -> bytes:
             try:
                 response.raise_for_status()
             except httpx.HTTPStatusError:
-                stack.schedule_exit()
+                _core.schedule_exit(stack)
                 continue
             try:
                 return await response.aread()
             except httpx.StreamError:
-                stack.schedule_exit()
+                _core.schedule_exit(stack)
     if not response:
         raise fastapi.HTTPException(http.HTTPStatus.GATEWAY_TIMEOUT)
     headers = response.headers
@@ -100,7 +141,7 @@ async def stream(
     *,
     headers: Mapping[str, str] | None = ...,
     media_type: str | None = ...,
-    stack: _core.AsyncExitStack | None = None,
+    stack: contextlib.AsyncExitStack | None = None,
     cache_location: None = ...,
     sha256: None = ...,
     size: None = ...,
@@ -112,7 +153,7 @@ async def stream(
     *,
     headers: Mapping[str, str] | None = ...,
     media_type: str | None = ...,
-    stack: _core.AsyncExitStack | None = None,
+    stack: contextlib.AsyncExitStack | None = None,
     cache_location: "StrPath",
     sha256: bytes,
     size: int | None = ...,
@@ -124,15 +165,40 @@ async def stream(
     *,
     headers: Mapping[str, str] | None = None,
     media_type: str | None = None,
-    stack: _core.AsyncExitStack | None = None,
+    stack: contextlib.AsyncExitStack | None = None,
+    **kwargs: Unpack[_CacheOptions],
+) -> fastapi.Response:
+    if stack:
+        return await _entered(
+            stack,
+            urls,
+            headers=headers,
+            media_type=media_type,
+            **kwargs,
+        )
+    async with contextlib.AsyncExitStack() as new_stack:
+        return await _entered(
+            new_stack,
+            urls,
+            headers=headers,
+            media_type=media_type,
+            **kwargs,
+        )
+    return _core.unreachable()
+
+
+async def _entered(
+    stack: contextlib.AsyncExitStack,
+    urls: Iterable[str],
+    *,
+    headers: Mapping[str, str] | None = None,
+    media_type: str | None = None,
     **kwargs: Unpack[_CacheOptions],
 ) -> fastapi.Response:
     ctx = _core.context.get()
     client = ctx["httpx_client"]
     response = None
-    if stack is None:
-        stack = _core.AsyncExitStack()
-    async with stack, contextlib.aclosing(_load_balance(urls)) as it:
+    async with contextlib.aclosing(_load_balance(urls)) as it:
         async for url in it:
             try:
                 response = await stack.enter_async_context(
@@ -145,9 +211,15 @@ async def stream(
             try:
                 response.raise_for_status()
             except httpx.HTTPStatusError:
-                stack.schedule_exit()
+                _core.schedule_exit(stack)
                 continue
-            content = _stream(response, stack.pop_all(), **kwargs)
+            new_stack = stack.pop_all()
+            content = _stream(response, new_stack, **kwargs)
+            try:
+                await anext(content)
+            except:
+                stack.push_async_exit(new_stack)
+                raise
             return StreamingResponse(
                 content,
                 response.status_code,
@@ -180,13 +252,14 @@ async def _load_balance(urls: Iterable[str]) -> AsyncGenerator[str, None]:
 
 async def _stream(
     response: httpx.Response,
-    stack: _core.AsyncExitStack,
+    stack: contextlib.AsyncExitStack,
     *,
     cache_location: "StrPath | None" = None,
     sha256: bytes | None = None,
     size: int | None = None,
 ) -> AsyncGenerator[bytes, None]:
     async with stack:
+        yield b""
         if cache_location and sha256:
             dir_ = pathlib.Path(cache_location).parent
             h = hashlib.sha256()
@@ -200,7 +273,7 @@ async def _stream(
                         task = asyncio.create_task(f.write(chunk))
                         yield chunk
                         await task
-                    stack.schedule_exit()
+                    _core.schedule_exit(stack)
                 if h.digest() == sha256 and (size is None or n == size):
                     shutil.move(tmp, cache_location)
         elif cache_location or sha256:

@@ -14,6 +14,7 @@
 
 __all__ = ["router"]
 
+import contextlib
 import mimetypes
 import pathlib
 import posixpath
@@ -25,7 +26,7 @@ import pydantic_extra_types.semantic_version
 
 from . import _core
 
-router = fastapi.APIRouter()
+router = fastapi.APIRouter(route_class=_core.APIRoute)
 
 
 @router.get("/python/{version}/{name}")
@@ -65,7 +66,7 @@ async def get_standalone_python(
     media_type, _ = mimetypes.guess_type(name)
     cache_location = pathlib.Path("python-build-standalone", tag, name)
     lock = ctx["locks"][str(cache_location)]
-    async with _core.AsyncExitStack() as stack:
+    async with contextlib.AsyncExitStack() as stack:
         await stack.enter_async_context(lock)
         if cache_location.is_file():
             return fastapi.responses.FileResponse(
@@ -84,7 +85,7 @@ async def get_standalone_python(
         return await _core.stream(
             urls,
             media_type=media_type,
-            stack=stack.pop_all(),
+            stack=stack,
             cache_location=cache_location,
             sha256=sha256,
         )

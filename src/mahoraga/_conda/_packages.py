@@ -14,6 +14,7 @@
 
 __all__ = ["router"]
 
+import contextlib
 import mimetypes
 import pathlib
 from typing import Annotated
@@ -26,7 +27,7 @@ from mahoraga import _core
 
 from . import _utils
 
-router = fastapi.APIRouter()
+router = fastapi.APIRouter(route_class=_core.APIRoute)
 
 
 @router.get("/{channel}/{platform}/{name}")
@@ -65,7 +66,7 @@ async def _proxy_cache(
         cache_location = pathlib.Path("channels", channel, platform, name)
     ctx = _core.context.get()
     lock = ctx["locks"][str(cache_location)]
-    async with _core.AsyncExitStack() as stack:
+    async with contextlib.AsyncExitStack() as stack:
         await stack.enter_async_context(lock)
         if cache_location.is_file():
             return fastapi.responses.FileResponse(
@@ -91,7 +92,7 @@ async def _proxy_cache(
             return await _core.stream(
                 urls,
                 media_type=media_type,
-                stack=stack.pop_all(),
+                stack=stack,
                 cache_location=cache_location,
                 sha256=record.sha256,
                 size=record.size,
@@ -99,6 +100,6 @@ async def _proxy_cache(
         return await _core.stream(
             urls,
             media_type=media_type,
-            stack=stack.pop_all(),
+            stack=stack,
         )
     return _core.unreachable()
