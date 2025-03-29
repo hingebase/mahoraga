@@ -77,13 +77,13 @@ def urls(
             for url in itertools.chain(
                 cfg.default,
                 _getitem(cfg.with_label, channel),
-                _getitem(cfg.without_label, channel),
             )
         ]
     return [
         posixpath.join(str(url), channel, platform, name)
         for url in itertools.chain(
             cfg.default,
+            _getitem(cfg.with_label, channel),
             _getitem(cfg.without_label, channel),
         )
     ]
