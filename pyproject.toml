@@ -39,6 +39,7 @@ dependencies = [
     "msgpack >=1.0.7",
     "pooch >=1.8.1",
     "pyarrow >=14.0.0",
+    "pyarrow <=17.0.0; sys_platform == 'darwin' and platform_machine == 'x86_64'",
     "pydantic-extra-types[semver] >=2.10.2",
     "pydantic-settings >=2.7.0",
     "py-rattler >=0.10.0",
