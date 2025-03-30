@@ -25,6 +25,7 @@ import logging.handlers
 import multiprocessing as mp
 import pathlib
 import sys
+import warnings
 from typing import Any, override
 
 import httpx
@@ -152,6 +153,8 @@ class _ServerConfig(uvicorn.Config):
         super().configure_logging()
         if self.access_log:
             logging.getLogger("uvicorn.access").setLevel(logging.INFO)
+        if self.log_level == logging.DEBUG:
+            warnings.simplefilter("always", ResourceWarning)
         logging.captureWarnings(capture=True)
         pooch.utils.LOGGER = logging.getLogger("pooch")
 
