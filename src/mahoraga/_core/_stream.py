@@ -199,11 +199,13 @@ async def _entered(
 ) -> fastapi.Response:
     ctx = _core.context.get()
     client = ctx["httpx_client"]
+    inner_stack = contextlib.AsyncExitStack()
+    await stack.enter_async_context(inner_stack)
     response = None
     async with contextlib.aclosing(_load_balance(urls)) as it:
         async for url in it:
             try:
-                response = await stack.enter_async_context(
+                response = await inner_stack.enter_async_context(
                     client.stream("GET", url, headers=headers),
                 )
             except httpx.HTTPError:
@@ -213,7 +215,7 @@ async def _entered(
             try:
                 response.raise_for_status()
             except httpx.HTTPStatusError:
-                _core.schedule_exit(stack)
+                _core.schedule_exit(inner_stack)
                 continue
             if content_length := response.headers.get("Content-Length"):
                 actual = int(content_length)
@@ -221,7 +223,7 @@ async def _entered(
                 if expect is None:
                     kwargs["size"] = actual
                 elif expect != actual:
-                    _core.schedule_exit(stack)
+                    _core.schedule_exit(inner_stack)
                     _logger.warning(
                         "Content-Length mismatch: expect %d, got %d",
                         expect,
@@ -299,7 +301,6 @@ async def _stream(
                         task = asyncio.create_task(f.write(chunk))
                         yield chunk
                         await task
-                    _core.schedule_exit(stack)
                 if h.digest() == sha256 and (
                     size is None
                     or response.num_bytes_downloaded == size
