@@ -196,6 +196,7 @@ class _Upstream(pydantic.BaseModel, **_model_config):
     conda: _Conda = _Conda()
     pypi: _PyPI = _PyPI()
     python: list[_HttpUrl] = _adapter.validate_python([
+        "https://cdn.npmmirror.com/binaries/python/{version}/{name}",
         "https://mirror.bjtu.edu.cn/python/{version}/{name}",
         "https://mirror.nju.edu.cn/python/{version}/{name}",
         "https://mirrors.aliyun.com/python-release/windows/{name}",
