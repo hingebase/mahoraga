@@ -9,5 +9,8 @@ wheels/
 # Virtual environments
 .venv
 
+# MkDocs build
+site
+
 # Exclude uv.lock which contains private addresses
 uv.lock

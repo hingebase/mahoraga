@@ -1,0 +1,43 @@
+[data-md-color-scheme=slate][data-md-color-primary=indigo] {
+    --md-typeset-a-color: #6b8e7b;
+}
+
+:root>* {
+    --md-accent-fg-color--transparent: #d6e8bb1a;
+    --md-accent-fg-color: #d6e8bb;
+    --md-code-hl-constant-color: #6b8e7b;
+    --md-code-hl-function-color: var(--md-code-fg-color);
+    --md-code-hl-keyword-color: #6b8e7b;
+    --md-code-hl-number-color: #6b8e7b;
+    --md-primary-fg-color: #6b8e7b;
+}
+
+.md-source__fact--forks,
+.md-source__fact--stars {
+    display: none;
+}
+
+.md-typeset .admonition.note,
+.md-typeset details.note {
+    border-color: #6b8e7b;
+}
+
+.md-typeset .admonition.note:focus-within,
+.md-typeset details.note:focus-within {
+    box-shadow: 0 0 0 .2rem #6b8e7b1a;
+}
+
+.md-typeset .note>.admonition-title,
+.md-typeset .note>summary {
+    background-color: #6b8e7b1a;
+}
+
+.md-typeset .note>.admonition-title:before,
+.md-typeset .note>summary:before {
+    background-color: #6b8e7b;
+}
+
+.md-typeset .note>.admonition-title:after,
+.md-typeset .note>summary:after {
+    color: #6b8e7b;
+}
