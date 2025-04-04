@@ -56,6 +56,16 @@ typing = [
     "pyarrow-stubs >=17.10; sys_platform != 'darwin' or platform_release >= '20'",
 ]
 
+[dependency-groups]
+dev = [
+    "mkdocs >=1.5.0",
+    "mkdocs-macros-plugin >=1.0.4",
+    "mkdocs-material >=9.0.0",
+    "mkdocs-minify-plugin >=0.7.0",
+    "pooch >=1.8.0",
+    "pydantic-settings >=2.3.0",
+]
+
 [[project.authors]]
 name = "hingebase"
 email = "zcliu@pku.edu.cn"
@@ -69,13 +79,15 @@ Homepage = "https://github.com/hingebase/mahoraga"
 mahoraga = "mahoraga._cli:main"
 
 [tool.basedpyright]
-strict = ["src"]
+strict = ["."]
 typeCheckingMode = "off"
 
 [tool.hatch.build.targets.sdist]
 exclude = [
     ".github",
     ".python-version",
+    "docs",
+    "mkdocs.yml",
 ]
 
 [tool.ruff]
@@ -83,4 +95,5 @@ line-length = 79
 preview = true
 
 [tool.ruff.lint]
+ignore = ["INP001"]
 select = ["ALL"]

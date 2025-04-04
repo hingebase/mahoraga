@@ -1,0 +1,65 @@
+site_name: Mahoraga
+repo_url: https://github.com/hingebase/mahoraga
+repo_name: hingebase/mahoraga
+edit_uri: blob/main/docs/
+
+nav:
+  - Introduction: index.md
+  - tutorial.md
+  - Advanced:
+      - advanced/pyapp.md
+
+exclude_docs: |
+  __pycache__
+  _macros.py
+
+theme:
+  name: material
+  features:
+    - content.action.edit
+    - content.action.view
+    - content.code.copy
+    - content.tabs.link
+    - navigation.top
+    - toc.follow
+  icon:
+    logo: material/temple-buddhist
+    repo: fontawesome/brands/github
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+extra_css:
+  - stylesheets/extra.css
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.keys
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+
+plugins:
+  - macros:
+      module_name: docs/_macros
+  - minify:
+      cache_safe: true
+      css_files:
+        - stylesheets/extra.css
+      htmlmin_opts:
+        reduce_boolean_attributes: true
+        remove_comments: true
+      minify_css: true
+      minify_html: true
+      minify_js: true
+  - offline
+  - search
