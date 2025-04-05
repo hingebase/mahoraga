@@ -20,7 +20,7 @@ it benefits clients within the same Intranet in several ways:
 - Lazy local cache (partially implemented)
 - Local-generated [sharded conda repodata][3]
 ## Usage
-See the [docs](docs/tutorial.md).
+See the [docs](https://hingebase.github.io/mahoraga/).
 ## License
 Mahoraga is distributed under [Apache-2.0][4] license.
 

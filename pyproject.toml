@@ -73,6 +73,7 @@ email = "zcliu@pku.edu.cn"
 [project.urls]
 Homepage = "https://github.com/hingebase/mahoraga"
 "Source Code" = "https://github.com/hingebase/mahoraga"
+Documentation = "https://hingebase.github.io/mahoraga/"
 "Issue Tracker" = "https://github.com/hingebase/mahoraga/issues"
 
 [project.scripts]
