@@ -11,10 +11,13 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
+      url: https://pypi.org/project/mahoraga
     permissions:
       id-token: write
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: false
       - run: uv build
       - run: uv publish --trusted-publishing always
