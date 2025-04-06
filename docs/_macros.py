@@ -15,7 +15,7 @@
 import os
 import pathlib
 import re
-import subprocess
+import subprocess  # noqa: S404
 import time
 
 import mkdocs_macros.plugin
@@ -49,9 +49,12 @@ def define_env(env: mkdocs_macros.plugin.MacrosPlugin) -> None:
 
 def on_post_build(env: mkdocs_macros.plugin.MacrosPlugin) -> None:
     if os.getenv("GH_TOKEN"):
-        site_dir = env.conf["site_dir"]
+        site_dir = env.conf.site_dir
         pathlib.Path(site_dir, ".nojekyll").touch()
-        subprocess.run(["chmod", "-R", "a=r,u+w,a+X", site_dir])
+        subprocess.run(  # noqa: S603
+            ["/usr/bin/chmod", "-R", "a=r,u+w,a+X", site_dir],
+            check=True,
+        )
 
 
 class _Asset(pydantic.BaseModel, extra="ignore"):
