@@ -2,7 +2,7 @@
 ## Installation
 It's recommended to install Mahoraga with [uv][1]:
 ``` sh
-uv tool install mahoraga
+uv tool install -U mahoraga
 ```
 ## Server Configuration
 Before starting Mahoraga, you need to initialize a directory (for example
@@ -122,22 +122,26 @@ Similar to uv, `pixi self-update` cannot utilize Mahoraga. Furthermore,
 it an alias if you update Pixi in this way. Alternatively,
 `pixi exec --force-reinstall pixi` works as of now.
 ### rattler-build
-Mirror configuration has not been implemented in rattler-build yet. It's
-required to pass the channel URL through the command line or Python bindings:
-=== "CLI"
+!!! note
+
+    Mirror configuration requires rattler-build version 0.41.0 or later.
+rattler-build accepts the same config file format as Pixi. Pass the Pixi config
+file [modified above][9] to rattler-build, unless there are options you would
+not like to share between Pixi and rattler-build.
+=== "Linux/macOS"
 
     ``` sh
-    rattler-build build -c http://127.0.0.1:3450/conda/conda-forge ...
+    rattler-build build \
+        --config-file "${PIXI_HOME:-"$HOME/.pixi"}/config.toml" \
+        ...
     ```
 
-=== "Python"
+=== "Windows"
 
-    ``` py
-    import rattler_build
-    rattler_build.build_recipes(
-        ...,
-        channel=["http://127.0.0.1:3450/conda/conda-forge"],
-    )
+    ``` powershell title="PowerShell 7"
+    rattler-build build `
+        --config-file "$($Env:PIXI_HOME ?? "$HOME/.pixi")/config.toml" `
+        ...
     ```
 
 [1]: https://docs.astral.sh/uv/
@@ -148,3 +152,4 @@ required to pass the channel URL through the command line or Python bindings:
 [6]: https://conda.org/learn/ceps/cep-0016/
 [7]: #server-configuration
 [8]: https://rattler.build/latest/
+[9]: #pixi
