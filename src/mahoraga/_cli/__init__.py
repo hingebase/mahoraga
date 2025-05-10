@@ -65,7 +65,7 @@ class _New(_core.Server, alias_generator=None):
 
     root: Annotated[
         pydantic_settings.CliPositionalArg[pydantic.NewPath],
-        _core.Doc("Root path of the new directory"),
+        pydantic.Field(description="Root path of the new directory"),
     ]
 
     def cli_cmd(self) -> None:
@@ -104,7 +104,8 @@ class _Run(pydantic.BaseModel, validate_default=True):
 
     root: Annotated[
         pydantic.DirectoryPath,
-        _core.Doc("Root path of a directory containing mahoraga.toml"),
+        pydantic.Field(description="Root path of a directory containing "
+                                   "mahoraga.toml"),
         _core.Predicate("(input_value / 'mahoraga.toml').is_file()"),
     ] = pathlib.Path()
 

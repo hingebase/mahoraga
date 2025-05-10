@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ["Config", "Doc", "Predicate", "Server"]
+__all__ = ["Config", "Predicate", "Server"]
 
 import asyncio
 import functools
@@ -33,12 +33,6 @@ try:
 except ImportError:
     uvloop = None
 
-if TYPE_CHECKING:
-    from typing_extensions import Doc
-else:
-    def Doc(documentation: str, /) -> pydantic.fields.FieldInfo:  # noqa: N802
-        return pydantic.Field(description=documentation)
-
 Predicate = functools.singledispatch(at.Predicate)
 
 
@@ -58,16 +52,17 @@ _model_config: pydantic.ConfigDict = {
 class Server(pydantic.BaseModel, **_model_config):
     host: Annotated[
         ipaddress.IPv4Address,
-        Doc("The host to serve on"),
+        pydantic.Field(description="The host to serve on"),
     ] = ipaddress.IPv4Address("127.0.0.1")
     port: Annotated[
         pydantic.PositiveInt,
-        Doc("The TCP port to serve on"),
+        pydantic.Field(description="The TCP port to serve on"),
         at.Le(65535),
     ] = 3450
     keep_alive: Annotated[
         pydantic.PositiveInt,
-        Doc("Time in seconds to wait before closing idle connections"),
+        pydantic.Field(description="Time in seconds to wait before closing "
+                                   "idle connections"),
     ] = 5
 
     def rattler_client(self) -> rattler.Client:

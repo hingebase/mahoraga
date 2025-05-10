@@ -16,7 +16,6 @@ __all__ = [
     "APIRoute",
     "AsyncClient",
     "Config",
-    "Doc",
     "Predicate",
     "Response",
     "Server",
@@ -32,7 +31,7 @@ __all__ = [
 
 from typing import NoReturn
 
-from ._config import Config, Doc, Predicate, Server
+from ._config import Config, Predicate, Server
 from ._context import (
     AsyncClient,
     Context,
