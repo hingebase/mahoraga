@@ -5,12 +5,6 @@
 # For detail, see https://docs.python.org/3/library/asyncio-task.html#asyncio.eager_task_factory
 eager-task-execution = {{ eager_task_execution | lower }}
 
-# Version of Swagger UI used in API docs, overriding the default of FastAPI.
-# If specified, the JavaScript and CSS files of that version are fetched from
-# https://registry.npmmirror.com on startup and cached on disk.
-# If you have access to https://cdn.jsdelivr.net, you don't need this option.
-# swagger-ui-version = "5.20.5"
-
 # HTTP server configuration.
 # Not all options are available here (SSL for example),
 # since they can be set on the server in front of Mahoraga.
@@ -58,6 +52,13 @@ conda-forge = [
 # The default settings are suit for China mainland.
 # Other users may want to change all the settings below.
 [upstream]
+
+# Mirrors for https://cdn.jsdelivr.net/
+pyodide = [
+    {%- for url in upstream.pyodide %}
+    "{{ url }}",
+    {%- endfor %}
+]
 
 # Mirrors for embedded Python on Windows.
 # The URLs MUST contain the placeholder {name},
