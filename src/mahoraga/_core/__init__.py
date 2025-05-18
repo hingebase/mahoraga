@@ -24,6 +24,7 @@ __all__ = [
     "WeakValueDictionary",
     "context",
     "get",
+    "load_balance",
     "schedule_exit",
     "stream",
     "unreachable",
@@ -39,7 +40,14 @@ from ._context import (
     WeakValueDictionary,
     schedule_exit,
 )
-from ._stream import APIRoute, Response, StreamingResponse, get, stream
+from ._stream import (
+    APIRoute,
+    Response,
+    StreamingResponse,
+    get,
+    load_balance,
+    stream,
+)
 
 context = Context("context")
 

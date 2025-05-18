@@ -23,7 +23,6 @@ from typing import TYPE_CHECKING, Annotated, Literal, override
 
 import annotated_types as at
 import pydantic
-import pydantic_extra_types.semantic_version
 import pydantic_settings
 import rattler.networking
 import rattler.platform
@@ -80,6 +79,16 @@ class _HttpUrl(pydantic.AnyUrl):
 class _Log(pydantic.BaseModel):
     level: Literal["debug", "info", "warning", "error", "critical"] = "info"
     access: bool = True
+
+
+class _CORS(pydantic.BaseModel, **_model_config):
+    allow_origins: list[str] = []
+    allow_methods: list[str] = ["GET"]
+    allow_headers: list[str] = []
+    allow_credentials: bool = False
+    allow_origin_regex: str | None = None
+    expose_headers: list[str] = []
+    max_age: pydantic.NonNegativeInt = 600
 
 
 _adapter = pydantic.TypeAdapter(list[_HttpUrl])
@@ -189,6 +198,14 @@ class _PyPI(pydantic.BaseModel):
 
 class _Upstream(pydantic.BaseModel, **_model_config):
     conda: _Conda = _Conda()
+    pyodide: list[_HttpUrl] = _adapter.validate_python([
+        "https://cdn.jsdelivr.net/",
+        "https://fastly.jsdelivr.net/",
+        "https://gcore.jsdelivr.net/",
+        "https://originfastly.jsdelivr.net/",
+        "https://quantil.jsdelivr.net/",
+        "https://testingcf.jsdelivr.net/",
+    ])
     pypi: _PyPI = _PyPI()
     python: list[_HttpUrl] = _adapter.validate_python([
         "https://cdn.npmmirror.com/binaries/python/{version}/{name}",
@@ -223,13 +240,9 @@ class Config(
     server: Server = Server()
     log: _Log = _Log()
     shard: dict[str, set[rattler.platform.PlatformLiteral]] = {}
+    cors: _CORS = _CORS()
     upstream: _Upstream = _Upstream()
     eager_task_execution: bool = False
-    swagger_ui_version: Annotated[
-        pydantic_extra_types.semantic_version.SemanticVersion,
-        Predicate("input_value.prerelease is None"),
-        Predicate("input_value.build is None"),
-    ] | None = None
 
     def loop_factory(self) -> asyncio.AbstractEventLoop:
         if uvloop and not TYPE_CHECKING:

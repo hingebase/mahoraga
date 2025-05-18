@@ -12,7 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ["APIRoute", "Response", "StreamingResponse", "get", "stream"]
+__all__ = [
+    "APIRoute",
+    "Response",
+    "StreamingResponse",
+    "get",
+    "load_balance",
+    "stream",
+]
 
 import asyncio
 import contextlib
@@ -31,7 +38,7 @@ import httpx
 import pooch  # pyright: ignore[reportMissingTypeStubs]
 import starlette.types
 from starlette._exception_handler import (
-    wrap_app_handling_exceptions,  # noqa: PLC2701
+    wrap_app_handling_exceptions,  # noqa: PLC2701  # pyright: ignore[reportPrivateImportUsage]
 )
 
 from mahoraga import _core
@@ -92,6 +99,8 @@ class Response(fastapi.Response):
         headers = httpx.Headers(headers)
         for key in "Content-Encoding", "Date", "Server":
             headers.pop(key, None)
+        if self.media_type != type(self).media_type:
+            headers.pop("Content-Type", None)
         super().init_headers(headers)
 
 
@@ -105,7 +114,7 @@ async def get(urls: Iterable[str], **kwargs: object) -> bytes:
     response = None
     async with (
         contextlib.AsyncExitStack() as stack,
-        contextlib.aclosing(_load_balance(urls)) as it,
+        contextlib.aclosing(load_balance(urls)) as it,
     ):
         async for url in it:
             try:
@@ -189,6 +198,10 @@ async def stream(
     return _core.unreachable()
 
 
+class _ContentLengthError(Exception):
+    pass
+
+
 async def _entered(
     stack: contextlib.AsyncExitStack,
     urls: Iterable[str],
@@ -202,7 +215,7 @@ async def _entered(
     inner_stack = contextlib.AsyncExitStack()
     await stack.enter_async_context(inner_stack)
     response = None
-    async with contextlib.aclosing(_load_balance(urls)) as it:
+    async with contextlib.aclosing(load_balance(urls)) as it:
         async for url in it:
             try:
                 response = await inner_stack.enter_async_context(
@@ -217,20 +230,12 @@ async def _entered(
             except httpx.HTTPStatusError:
                 _core.schedule_exit(inner_stack)
                 continue
-            if content_length := response.headers.get("Content-Length"):
-                actual = int(content_length)
-                expect = kwargs.setdefault("size", actual)
-                if expect is None:
-                    kwargs["size"] = actual
-                elif expect != actual:
-                    _core.schedule_exit(inner_stack)
-                    _logger.warning(
-                        "Content-Length mismatch: expect %d, got %d",
-                        expect,
-                        actual,
-                    )
-                    response = None
-                    continue
+            try:
+                headers = _unify_content_length(response.headers, kwargs)
+            except _ContentLengthError:
+                _core.schedule_exit(inner_stack)
+                response = None
+                continue
             new_stack = stack.pop_all()
             content = _stream(response, new_stack, **kwargs)
             try:
@@ -241,7 +246,7 @@ async def _entered(
             return StreamingResponse(
                 content,
                 response.status_code,
-                response.headers,
+                headers,
                 media_type,
             )
     if response:
@@ -252,7 +257,7 @@ async def _entered(
     return fastapi.Response(status_code=http.HTTPStatus.GATEWAY_TIMEOUT)
 
 
-async def _load_balance(urls: Iterable[str]) -> AsyncGenerator[str, None]:
+async def load_balance(urls: Iterable[str]) -> AsyncGenerator[str, None]:
     if isinstance(urls, str):
         urls = {urls}
     else:
@@ -301,16 +306,50 @@ async def _stream(
                         task = asyncio.create_task(f.write(chunk))
                         yield chunk
                         await task
-                if h.digest() == sha256 and (
-                    size is None
-                    or response.num_bytes_downloaded == size
-                ):
+                    ok = h.digest() == sha256 and (
+                        size is None
+                        or size == (
+                            await f.tell()
+                            if "Content-Encoding" in response.headers
+                            else response.num_bytes_downloaded
+                        )
+                    )
+                if ok:
                     shutil.move(tmp, cache_location)
         elif cache_location or sha256:
             _core.unreachable()
         else:
             async for chunk in response.aiter_bytes():
                 yield chunk
+
+
+def _unify_content_length(
+    headers: httpx.Headers,
+    kwargs: _CacheOptions,
+) -> httpx.Headers:
+    if "Content-Encoding" in headers:
+        # Content-Length refer to the encoded data, see
+        # https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Encoding
+        headers = headers.copy()
+        if size := kwargs.get("size"):
+            headers["Content-Length"] = str(size)
+        else:
+            headers.pop("Content-Length", None)
+        # Content-Encoding will be removed in Response.init_headers
+        return headers
+    if content_length := headers.get("Content-Length"):
+        actual = int(content_length)
+        expect = kwargs.setdefault("size", actual)
+        if expect is None:
+            kwargs["size"] = actual
+        elif expect != actual:
+            _logger.warning(
+                "Content-Length mismatch: expect %d, got %d",
+                expect,
+                actual,
+            )
+            raise _ContentLengthError
+    return headers
 
 
 _logger = logging.getLogger("mahoraga")

@@ -9,6 +9,7 @@
     --md-code-hl-function-color: var(--md-code-fg-color);
     --md-code-hl-keyword-color: #6b8e7b;
     --md-code-hl-number-color: #6b8e7b;
+    --md-code-hl-special-color: var(--md-code-hl-operator-color);
     --md-primary-fg-color: #6b8e7b;
 }
 

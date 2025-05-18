@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import io
 import os
 import pathlib
 import re
@@ -34,6 +35,10 @@ def define_env(env: mkdocs_macros.plugin.MacrosPlugin) -> None:
             break
     else:
         raise RuntimeError
+    with _open(pathlib.Path("docs", "requirements.txt")) as f:
+        for line in f:
+            k, v = line.split("==")
+            env.variables[f"{k}_version".replace("-", "_")] = v.rstrip()
     env.variables.update({  # pyright: ignore[reportUnknownMemberType]
         "mahoraga_version": _Project().version,
         "python_build_standalone_tag": release.tag_name,
@@ -118,3 +123,21 @@ class _Release(
                 ),
             ),
         )
+
+
+def _open(requirements: pathlib.Path) -> io.TextIOWrapper:
+    try:
+        return requirements.open(encoding="utf-8")
+    except OSError:
+        subprocess.run(  # noqa: S603
+            [  # noqa: S607
+                "uv", "pip", "compile",
+                "--no-annotate",
+                "--no-deps",
+                "--no-header",
+                "-o", requirements,
+                requirements.with_suffix(".in"),
+            ],
+            check=True,
+        )
+        return requirements.open(encoding="utf-8")
