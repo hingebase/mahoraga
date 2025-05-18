@@ -48,6 +48,33 @@ conda-forge = [
     # "win-64",
 ]
 
+# Cross-origin resource sharing (CORS) configuration.
+# For detail, see https://fastapi.tiangolo.com/tutorial/cors/
+[cors]
+allow-origins = [
+    {%- for origin in cors.allow_origins %}
+    "{{ origin }}",
+    {%- endfor %}
+]
+allow-methods = [
+    {%- for method in cors.allow_methods %}
+    "{{ method }}",
+    {%- endfor %}
+]
+allow-headers = [
+    {%- for header in cors.allow_headers %}
+    "{{ header }}",
+    {%- endfor %}
+]
+allow-credentials = {{ cors.allow_credentials | lower }}
+# allow-origin-regex = ""
+expose-headers = [
+    {%- for header in cors.expose_headers %}
+    "{{ header }}",
+    {%- endfor %}
+]
+max-age = {{ cors.max_age }}
+
 # Upstream mirror servers.
 # The default settings are suit for China mainland.
 # Other users may want to change all the settings below.

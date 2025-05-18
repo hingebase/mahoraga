@@ -12,7 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ["APIRoute", "Response", "StreamingResponse", "get", "stream"]
+__all__ = [
+    "APIRoute",
+    "Response",
+    "StreamingResponse",
+    "get",
+    "load_balance",
+    "stream",
+]
 
 import asyncio
 import contextlib
@@ -107,7 +114,7 @@ async def get(urls: Iterable[str], **kwargs: object) -> bytes:
     response = None
     async with (
         contextlib.AsyncExitStack() as stack,
-        contextlib.aclosing(_load_balance(urls)) as it,
+        contextlib.aclosing(load_balance(urls)) as it,
     ):
         async for url in it:
             try:
@@ -208,7 +215,7 @@ async def _entered(
     inner_stack = contextlib.AsyncExitStack()
     await stack.enter_async_context(inner_stack)
     response = None
-    async with contextlib.aclosing(_load_balance(urls)) as it:
+    async with contextlib.aclosing(load_balance(urls)) as it:
         async for url in it:
             try:
                 response = await inner_stack.enter_async_context(
@@ -250,7 +257,7 @@ async def _entered(
     return fastapi.Response(status_code=http.HTTPStatus.GATEWAY_TIMEOUT)
 
 
-async def _load_balance(urls: Iterable[str]) -> AsyncGenerator[str, None]:
+async def load_balance(urls: Iterable[str]) -> AsyncGenerator[str, None]:
     if isinstance(urls, str):
         urls = {urls}
     else:
@@ -319,13 +326,16 @@ async def _stream(
 def _unify_content_length(
     headers: httpx.Headers,
     kwargs: _CacheOptions,
-) -> Mapping[str, str]:
+) -> httpx.Headers:
     if "Content-Encoding" in headers:
         # Content-Length refer to the encoded data, see
         # https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Encoding
+        headers = headers.copy()
         if size := kwargs.get("size"):
-            # Content-Encoding will be removed in Response.init_headers
-            return {**headers, "Content-Length": str(size)}
+            headers["Content-Length"] = str(size)
+        else:
+            headers.pop("Content-Length", None)
+        # Content-Encoding will be removed in Response.init_headers
         return headers
     if content_length := headers.get("Content-Length"):
         actual = int(content_length)

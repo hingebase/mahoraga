@@ -20,6 +20,7 @@ from typing import cast
 import fastapi.openapi.docs
 import fastapi.templating
 import jinja2
+import starlette.middleware.cors
 
 from mahoraga import _conda, _core, _jsdelivr, _pypi, _python
 
@@ -49,6 +50,16 @@ def make_app() -> fastapi.FastAPI:
             "name": "License",
             "identifier": meta["License-Expression"],
         },
+    )
+    app.add_middleware(
+        starlette.middleware.cors.CORSMiddleware,
+        allow_origins=cfg.cors.allow_origins,
+        allow_methods=cfg.cors.allow_methods,
+        allow_headers=cfg.cors.allow_headers,
+        allow_credentials=cfg.cors.allow_credentials,
+        allow_origin_regex=cfg.cors.allow_origin_regex,
+        expose_headers=cfg.cors.expose_headers,
+        max_age=cfg.cors.max_age,
     )
     app.include_router(_conda.router, prefix="/conda", tags=["conda"])
     app.include_router(_jsdelivr.npm, prefix="/npm", tags=["pyodide"])

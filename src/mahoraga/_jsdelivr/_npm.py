@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ["router"]
+__all__ = ["Metadata", "router"]
 
-import base64
 import contextlib
 import logging
-import mimetypes
 import pathlib
 from typing import TYPE_CHECKING, Annotated, Literal, Self, TypedDict
 
@@ -37,6 +35,14 @@ router = fastapi.APIRouter(route_class=_core.APIRoute)
 
 
 @router.get("/@stlite/{package}/{path:path}")
+async def get_scoped_npm_file(
+    package: Annotated[str, fastapi.Path(pattern=r"^[^@]+@[^@]+$")],
+    path: Annotated[str, fastapi.Path(pattern=r"^[^/]")],
+    request: fastapi.Request,
+) -> fastapi.Response:
+    return await get_npm_file(package, path, request)
+
+
 @router.get("/{package}/{path:path}")
 async def get_npm_file(
     package: Annotated[str, fastapi.Path(pattern=r"^[^@]+@[^@]+$")],
@@ -85,26 +91,12 @@ async def get_npm_file(
                     "Cache-Control": "public, max-age=31536000, immutable",
                 },
             )
-        metadata = await _Metadata.fetch(
+        return await _utils.get_npm_file(
             resolved.links["self"],
-            "npm",
-            f"{package}.json",
-            params={"structure": "flat"},
-        )
-        for file in metadata.files:
-            if file["name"].lstrip("/") == path:
-                break
-        else:
-            return fastapi.Response(status_code=404)
-        urls = _utils.urls("npm", package, path)
-        media_type, _ = mimetypes.guess_type(path)
-        return await _core.stream(
-            urls,
-            media_type=media_type,
-            stack=stack,
-            cache_location=cache_location,
-            sha256=base64.b64decode(file["hash"]),
-            size=file["size"],
+            package,
+            path,
+            cache_location,
+            stack,
         )
     return _core.unreachable()
 
@@ -145,7 +137,7 @@ class _MetadataLinks(TypedDict):
     stats: str
 
 
-class _Metadata(_Base):
+class Metadata(_Base):
     default: str | None
     files: list[_File]
     links: _MetadataLinks

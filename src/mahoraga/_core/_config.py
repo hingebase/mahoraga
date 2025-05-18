@@ -81,6 +81,16 @@ class _Log(pydantic.BaseModel):
     access: bool = True
 
 
+class _CORS(pydantic.BaseModel, **_model_config):
+    allow_origins: list[str] = []
+    allow_methods: list[str] = ["GET"]
+    allow_headers: list[str] = []
+    allow_credentials: bool = False
+    allow_origin_regex: str | None = None
+    expose_headers: list[str] = []
+    max_age: pydantic.NonNegativeInt = 600
+
+
 _adapter = pydantic.TypeAdapter(list[_HttpUrl])
 
 
@@ -230,6 +240,7 @@ class Config(
     server: Server = Server()
     log: _Log = _Log()
     shard: dict[str, set[rattler.platform.PlatformLiteral]] = {}
+    cors: _CORS = _CORS()
     upstream: _Upstream = _Upstream()
     eager_task_execution: bool = False
 
