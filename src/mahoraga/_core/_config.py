@@ -108,6 +108,7 @@ class _Conda(pydantic.BaseModel, **_model_config):
             "https://mirror.nju.edu.cn/anaconda/cloud/",
             "https://mirror.nyist.edu.cn/anaconda/cloud/",
             "https://mirrors.cqupt.edu.cn/anaconda/cloud/",
+            "https://mirrors.hit.edu.cn/anaconda/cloud/",
             "https://mirrors.lzu.edu.cn/anaconda/cloud/",
             "https://mirrors.pku.edu.cn/anaconda/cloud/",
             "https://mirrors.shanghaitech.edu.cn/anaconda/cloud/",
@@ -120,6 +121,7 @@ class _Conda(pydantic.BaseModel, **_model_config):
             "https://mirror.nju.edu.cn/anaconda/cloud/",
             "https://mirror.nyist.edu.cn/anaconda/cloud/",
             "https://mirrors.cqupt.edu.cn/anaconda/cloud/",
+            "https://mirrors.hit.edu.cn/anaconda/cloud/",
             "https://mirrors.lzu.edu.cn/anaconda/cloud/",
             "https://mirrors.pku.edu.cn/anaconda/cloud/",
             "https://mirrors.shanghaitech.edu.cn/anaconda/cloud/",
@@ -178,14 +180,13 @@ class _PyPI(pydantic.BaseModel):
         "https://mirrors.aliyun.com/pypi/web/",
         "https://mirrors.cloud.tencent.com/pypi/",
         "https://mirrors.huaweicloud.com/repository/pypi/",
-        "https://mirrors.jlu.edu.cn/pypi/",
+        "https://mirrors.neusoft.edu.cn/pypi/web/",
         "https://mirrors.pku.edu.cn/pypi/web/",
         "https://mirrors.qlu.edu.cn/pypi/web/",
         "https://mirrors.sustech.edu.cn/pypi/web/",
     ])
     json_: Annotated[list[_HttpUrl], pydantic.Field(alias="json")] = (
         _adapter.validate_python([
-            "https://mirror.nyist.edu.cn/pypi/web/",
             "https://mirrors.bfsu.edu.cn/pypi/web/",
             "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/",
             "https://pypi.org/",
