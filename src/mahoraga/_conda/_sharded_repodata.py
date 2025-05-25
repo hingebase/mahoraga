@@ -20,7 +20,7 @@ import json
 import logging
 import pathlib
 import shutil
-from typing import Annotated
+from typing import Annotated, Any
 
 import fastapi
 import msgpack
@@ -93,18 +93,17 @@ async def split_repo() -> None:  # noqa: RUF029
                 executor.submit(_worker, cfg, channel, platform)
 
 
-def _sha256(
-    name: str,
+def _packages(
+    package_name: rattler.PackageName,
+    package_format_selection: rattler.PackageFormatSelection,
     repodata: rattler.SparseRepoData,
-    root: pathlib.Path,
-    run_exports: _models.RunExports,
-) -> bytes:
-    shard: _models.Shard = {
-        "packages": {},
-        "packages.conda": {},
-        "removed": [],
-    }
-    for record in repodata.load_records(rattler.PackageName(name)):
+    run_exports: dict[str, dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    shards: dict[str, dict[str, Any]] = {}
+    for record in repodata.load_records(
+        package_name,
+        package_format_selection,
+    ):
         old = _models.PackageRecord.model_validate_json(record.to_json())
         if new := old.__pydantic_extra__:
             if old.md5:
@@ -112,14 +111,34 @@ def _sha256(
             if old.sha256:
                 new["sha256"] = bytes.fromhex(old.sha256)
             filename = record.file_name
-            if filename.endswith(".conda"):
-                if entry := run_exports["packages.conda"].get(filename):
-                    new["run_exports"] = entry["run_exports"]
-                shard["packages.conda"][filename] = new
-            else:
-                if entry := run_exports["packages"].get(filename):
-                    new["run_exports"] = entry["run_exports"]
-                shard["packages"][filename] = new
+            if entry := run_exports.get(filename):
+                new["run_exports"] = entry["run_exports"]
+            shards[filename] = new
+    return shards
+
+
+def _sha256(
+    name: str,
+    repodata: rattler.SparseRepoData,
+    root: pathlib.Path,
+    run_exports: _models.RunExports,
+) -> bytes:
+    package_name = rattler.PackageName(name)
+    shard: _models.Shard = {
+        "packages": _packages(
+            package_name,
+            rattler.PackageFormatSelection.ONLY_TAR_BZ2,
+            repodata,
+            run_exports["packages"],
+        ),
+        "packages.conda": _packages(
+            package_name,
+            rattler.PackageFormatSelection.ONLY_CONDA,
+            repodata,
+            run_exports["packages.conda"],
+        ),
+        "removed": [],
+    }
     with pooch.utils.temporary_file(root) as tmp:  # pyright: ignore[reportUnknownMemberType]
         with pathlib.Path(tmp).open("w+b") as f:
             # Closing pa.CompressedOutputStream will close the

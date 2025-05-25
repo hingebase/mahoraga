@@ -57,8 +57,12 @@ async def _proxy_cache(
 ) -> fastapi.Response:
     if name.endswith(".conda"):
         media_type = "application/x-zip-compressed"
+        package_format_selection = rattler.PackageFormatSelection.ONLY_CONDA
+        suffix = ".conda"
     else:
         media_type, _ = mimetypes.guess_type(name)
+        package_format_selection = rattler.PackageFormatSelection.ONLY_TAR_BZ2
+        suffix = ".tar.bz2"
     if label:
         cache_location = pathlib.Path(
             "channels", channel, "label", label, platform, name)
@@ -76,14 +80,18 @@ async def _proxy_cache(
                 },
                 media_type=media_type,
             )
-        pkg_name, _, _ = name.rsplit("-", 2)
+        pkg_name, version, build = name.removesuffix(suffix).rsplit("-", 2)
+        spec = f"{pkg_name} =={version} {build}"
         try:
             with await _utils.fetch_repo_data(
                 channel,
                 platform,
                 label=label,
             ) as repodata:
-                records = repodata.load_records(rattler.PackageName(pkg_name))
+                records = repodata.load_matching_records(
+                    [rattler.MatchSpec(spec, strict=True)],
+                    package_format_selection,
+                )
         except rattler.exceptions.FetchRepoDataError:
             return fastapi.Response(status_code=404)
         for record in records:
