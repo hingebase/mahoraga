@@ -166,7 +166,7 @@ def _split_repo(
     else:
         with f:
             run_exports = json.load(f)
-    repodata = asyncio.run(
+    with asyncio.run(
         _utils.fetch_repo_data(
             channel,
             platform,
@@ -174,18 +174,18 @@ def _split_repo(
         ),
         debug=cfg.log.level == "debug",
         loop_factory=cfg.loop_factory,
-    )
-    sharded_repodata: _models.ShardedRepodata = {
-        "info": {
-            "base_url": ".",
-            "shards_base_url": "./shards/",
-            "subdir": platform,
-        },
-        "shards": {
-            name: _sha256(name, repodata, root, run_exports)
-            for name in repodata.package_names()
-        },
-    }
+    ) as repodata:
+        sharded_repodata: _models.ShardedRepodata = {
+            "info": {
+                "base_url": ".",
+                "shards_base_url": "./shards/",
+                "subdir": platform,
+            },
+            "shards": {
+                name: _sha256(name, repodata, root, run_exports)
+                for name in repodata.package_names()
+            },
+        }
     dst = root.with_name("repodata_shards.msgpack.zst")
     with pooch.utils.temporary_file(root.parent) as tmp:  # pyright: ignore[reportUnknownMemberType]
         with pa.CompressedOutputStream(tmp, "zstd") as f:

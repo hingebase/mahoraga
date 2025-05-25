@@ -76,13 +76,17 @@ async def _proxy_cache(
                 },
                 media_type=media_type,
             )
+        pkg_name, _, _ = name.rsplit("-", 2)
         try:
-            repodata = await _utils.fetch_repo_data(
-                channel, platform, label=label)
+            with await _utils.fetch_repo_data(
+                channel,
+                platform,
+                label=label,
+            ) as repodata:
+                records = repodata.load_records(rattler.PackageName(pkg_name))
         except rattler.exceptions.FetchRepoDataError:
             return fastapi.Response(status_code=404)
-        pkg_name, _, _ = name.rsplit("-", 2)
-        for record in repodata.load_records(rattler.PackageName(pkg_name)):
+        for record in records:
             if record.file_name == name:
                 break
         else:

@@ -45,7 +45,7 @@ dependencies = [
     "pydantic-extra-types[semver] >=2.10.2",
     "pydantic-settings >=2.7.0",
     "pyodide-lock >=0.1.0a8",
-    "py-rattler >=0.10.0",
+    "py-rattler >=0.13.0",
     "rich-argparse >=1.6.0",
     "uvicorn >=0.32.1",
     "uvloop >=0.18.0; sys_platform != 'win32' and sys_platform != 'cygwin' and platform_python_implementation != 'PyPy'",
