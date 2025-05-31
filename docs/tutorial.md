@@ -38,13 +38,12 @@ fetching some packages from Mahoraga. Then if everything goes well, press
 
 === "Windows"
 
-    ``` powershell
-    uvx mahoraga run >nul 2>&1
+    ```
+    uvw tool run mahoraga run
     ```
     !!! note
 
-        `uvx` is a console application which must run with a console window.
-        To hide the window completely, call the Windows API [ShowWindow][4].
+        Command `uvw` requires uv version 0.7.9 or later.
 
 For better performance, you can set up another server (for example Nginx) in
 front of Mahoraga. Packages cached on disk can be served within that server,
