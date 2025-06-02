@@ -63,6 +63,48 @@ async def fetch_repo_data(
     return repodata
 
 
+async def fetch_repo_data_and_load_matching_records(
+    channel: str,
+    platform: rattler.platform.PlatformLiteral,
+    spec: str,
+    package_format_selection: rattler.PackageFormatSelection,
+    *,
+    label: str | None = None,
+) -> list[rattler.RepoDataRecord]:
+    if label:
+        channel = f"{channel}/label/{label}"
+    channels = [rattler.Channel(channel)]
+    platforms = [rattler.Platform(platform)]
+    specs = [rattler.MatchSpec(spec, strict=True)]
+    try:
+        [repodata] = await rattler.fetch_repo_data(
+            channels=channels,
+            platforms=platforms,
+            cache_path="repodata-cache",
+            callback=None,
+            fetch_options=_fetch_options,
+        )
+    except rattler.exceptions.FetchRepoDataError:
+        pass
+    else:
+        with repodata:
+            if records := repodata.load_matching_records(
+                specs,
+                package_format_selection,
+            ):
+                return records
+    ctx = _core.context.get()
+    [repodata] = await _fetch_repo_data(
+        channels=channels,
+        platforms=platforms,
+        cache_path="repodata-cache",
+        callback=None,
+        client=ctx["config"].server.rattler_client(),
+    )
+    with repodata:
+        return repodata.load_matching_records(specs, package_format_selection)
+
+
 def urls(
     channel: str,
     platform: rattler.platform.PlatformLiteral,

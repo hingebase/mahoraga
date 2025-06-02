@@ -83,15 +83,13 @@ async def _proxy_cache(
         pkg_name, version, build = name.removesuffix(suffix).rsplit("-", 2)
         spec = f"{pkg_name} =={version} {build}"
         try:
-            with await _utils.fetch_repo_data(
+            records = await _utils.fetch_repo_data_and_load_matching_records(
                 channel,
                 platform,
+                spec,
+                package_format_selection,
                 label=label,
-            ) as repodata:
-                records = repodata.load_matching_records(
-                    [rattler.MatchSpec(spec, strict=True)],
-                    package_format_selection,
-                )
+            )
         except rattler.exceptions.FetchRepoDataError:
             return fastapi.Response(status_code=404)
         for record in records:
