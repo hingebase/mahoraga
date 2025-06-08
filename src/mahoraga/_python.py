@@ -18,15 +18,38 @@ import contextlib
 import mimetypes
 import pathlib
 import posixpath
+import re
 import urllib.parse
 from typing import Annotated
 
 import fastapi
+import packaging.version
 import pydantic_extra_types.semantic_version
 
 from . import _core
 
 router = fastapi.APIRouter(route_class=_core.APIRoute)
+
+
+@router.get("/python/pymanager/{name}")
+async def get_python_install_manager_for_windows(
+    name: Annotated[
+        str,
+        fastapi.Path(pattern=r"^python-manager-.+\.msix?$"),
+    ],
+) -> fastapi.Response:
+    if not re.fullmatch(
+        packaging.version.VERSION_PATTERN,
+        name[15 : name.endswith(".msi") - 5],
+        re.VERBOSE | re.IGNORECASE,
+    ):
+        return fastapi.Response(status_code=404)
+    ctx = _core.context.get()
+    urls = [
+        urllib.parse.unquote(str(url)).format(version="pymanager", name=name)
+        for url in ctx["config"].upstream.python
+    ]
+    return await _core.stream(urls)
 
 
 @router.get("/python/{version}/{name}")
