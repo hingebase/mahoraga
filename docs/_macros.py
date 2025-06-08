@@ -18,6 +18,7 @@ import pathlib
 import re
 import subprocess  # noqa: S404
 import time
+from typing import Any, cast
 
 import mkdocs_macros.plugin
 import pooch  # pyright: ignore[reportMissingTypeStubs]
@@ -41,6 +42,7 @@ def define_env(env: mkdocs_macros.plugin.MacrosPlugin) -> None:
             env.variables[f"{k}_version".replace("-", "_")] = v.rstrip()
     env.variables.update({  # pyright: ignore[reportUnknownMemberType]
         "mahoraga_version": _Project().version,
+        "pymanager_version": _Tag().name,
         "python_build_standalone_tag": release.tag_name,
         "python_version": python_version,
         "python_version_short": "".join(python_version.split(".")[:2]),
@@ -64,6 +66,13 @@ def on_post_build(env: mkdocs_macros.plugin.MacrosPlugin) -> None:
 
 class _Asset(pydantic.BaseModel, extra="ignore"):
     name: str
+
+
+class _JsonConfigSettingsSource(pydantic_settings.JsonConfigSettingsSource):
+    @override
+    def _read_file(self, file_path: pathlib.Path) -> dict[str, Any]:
+        [obj] = cast("list[dict[str, Any]]", super()._read_file(file_path))
+        return obj
 
 
 class _Project(
@@ -106,23 +115,34 @@ class _Release(
         dotenv_settings: pydantic_settings.PydanticBaseSettingsSource,
         file_secret_settings: pydantic_settings.PydanticBaseSettingsSource,
     ) -> tuple[pydantic_settings.PydanticBaseSettingsSource, ...]:
-        headers = {
-            "Accept": "application/vnd.github+json",
-            "X-GitHub-Api-Version": "2022-11-28",
-        }
-        if gh_token := os.getenv("GH_TOKEN"):
-            headers["Authorization"] = f"Bearer {gh_token}"
-        return (
-            pydantic_settings.JsonConfigSettingsSource(
-                settings_cls,
-                pooch.retrieve(  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
-                    "https://api.github.com/repos/astral-sh/python-build-standalone/releases/latest",
-                    known_hash=None,
-                    path=pooch.os_cache("pooch") / time.strftime("%Y.%m.%d"),  # pyright: ignore[reportUnknownMemberType]
-                    downloader=pooch.HTTPDownloader(headers=headers),
-                ),
-            ),
+        j = _retrieve(
+            "https://api.github.com/repos/astral-sh/python-build-standalone/releases/latest",
         )
+        return (pydantic_settings.JsonConfigSettingsSource(settings_cls, j),)
+
+
+class _Tag(
+    pydantic_settings.BaseSettings,
+    extra="ignore",
+    json_file_encoding="utf-8",
+):
+    name: str = ""
+
+    @override
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[pydantic_settings.BaseSettings],
+        init_settings: pydantic_settings.PydanticBaseSettingsSource,
+        env_settings: pydantic_settings.PydanticBaseSettingsSource,
+        dotenv_settings: pydantic_settings.PydanticBaseSettingsSource,
+        file_secret_settings: pydantic_settings.PydanticBaseSettingsSource,
+    ) -> tuple[pydantic_settings.PydanticBaseSettingsSource, ...]:
+        j = _retrieve(
+            "https://api.github.com/repos/python/pymanager/tags",
+            params={"per_page": "1"},
+        )
+        return (_JsonConfigSettingsSource(settings_cls, j),)
 
 
 def _open(requirements: pathlib.Path) -> io.TextIOWrapper:
@@ -141,3 +161,18 @@ def _open(requirements: pathlib.Path) -> io.TextIOWrapper:
             check=True,
         )
         return requirements.open(encoding="utf-8")
+
+
+def _retrieve(url: str, params: object = None) -> str:
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+    if gh_token := os.getenv("GH_TOKEN"):
+        headers["Authorization"] = f"Bearer {gh_token}"
+    return pooch.retrieve(  # pyright: ignore[reportUnknownMemberType]
+        url,
+        known_hash=None,
+        path=pooch.os_cache("pooch") / time.strftime("%Y.%m.%d"),  # pyright: ignore[reportUnknownMemberType]
+        downloader=pooch.HTTPDownloader(headers=headers, params=params),
+    )

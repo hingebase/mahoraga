@@ -157,10 +157,30 @@ not like to share between Pixi and rattler-build.
         ...
     ```
 
+### pymanager
+The next generation of the official Python installer for Windows,
+[pymanager][4], can be downloaded from Mahoraga:
+=== "Windows 10 21H2 (Windows Server 2022) or later"
+
+    ``` powershell
+    curl -O http://127.0.0.1:3450/python/pymanager/python-manager-{{ pymanager_version }}.msix
+    ```
+
+=== "Legacy versions"
+
+    ``` powershell
+    curl -O http://127.0.0.1:3450/python/pymanager/python-manager-{{ pymanager_version }}.msi
+    ```
+
+!!! note
+
+    Support for the command `pymanager install` hasn't been implemented in
+    Mahoraga yet.
+
 [1]: https://docs.astral.sh/uv/
 [2]: https://docs.astral.sh/uv/guides/tools/
 [3]: #client-configuration
-[4]: https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-showwindow
+[4]: https://docs.python.org/dev/using/windows.html#python-install-manager
 [5]: https://pixi.sh/latest/
 [6]: https://conda.org/learn/ceps/cep-0016/
 [7]: #server-configuration
