@@ -30,7 +30,7 @@ def define_env(env: mkdocs_macros.plugin.MacrosPlugin) -> None:
     release = _Release()
     for asset in release.assets:
         name = asset.name
-        if name.startswith("cpython-3.12."):
+        if name.startswith("cpython-3.13."):
             python_version = name[8 : name.index("+")]
             break
     else:
