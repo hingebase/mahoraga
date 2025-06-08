@@ -62,6 +62,11 @@ def make_app() -> fastapi.FastAPI:
         max_age=cfg.cors.max_age,
     )
     app.include_router(_conda.router, prefix="/conda", tags=["conda"])
+    app.include_router(
+        _conda.parselmouth,
+        prefix="/parselmouth",
+        tags=["conda"],
+    )
     app.include_router(_jsdelivr.npm, prefix="/npm", tags=["pyodide"])
     app.include_router(_jsdelivr.pyodide, prefix="/pyodide", tags=["pyodide"])
     app.include_router(_pypi.router, prefix="/pypi", tags=["pypi"])
