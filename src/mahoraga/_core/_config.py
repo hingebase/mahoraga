@@ -214,7 +214,6 @@ class _Upstream(pydantic.BaseModel, **_model_config):
         "https://mirror.nju.edu.cn/python/{version}/{name}",
         "https://mirrors.aliyun.com/python-release/windows/{name}",
         "https://mirrors.huaweicloud.com/python/{version}/{name}",
-        "https://mirrors.jcut.edu.cn/python/{version}/{name}",
         "https://mirrors.sdu.edu.cn/python-release/{version}/{name}",
         "https://mirrors.ustc.edu.cn/python/{version}/{name}",
         "https://www.python.org/ftp/python/{version}/{name}",
