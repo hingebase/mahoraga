@@ -12,17 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ["parselmouth", "router", "split_repo"]
+__all__ = ["router"]
+
+from typing import Annotated
 
 import fastapi
 
 from mahoraga import _core
 
-from . import _packages, _repodata, _sharded_repodata
-from ._parselmouth import router as parselmouth
-from ._sharded_repodata import split_repo
-
 router = fastapi.APIRouter(route_class=_core.APIRoute)
-router.include_router(_repodata.router)
-router.include_router(_sharded_repodata.router)
-router.include_router(_packages.router)  # Must be the last included
+
+
+@router.get("/compressed_mapping.json")
+async def get_compressed_mapping() -> fastapi.Response:
+    return await _core.stream(
+        "https://api.github.com/repos/prefix-dev/parselmouth/contents/files/compressed_mapping.json",
+        headers={
+            "Accept": "application/vnd.github.raw+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        },
+    )
+
+
+@router.get("/hash-v0/{sha256}")
+async def get_hash_mapping(
+    sha256: Annotated[str, fastapi.Path(pattern=r"^[0-9a-f]{64}$")],
+) -> fastapi.Response:
+    return fastapi.Response(status_code=404)

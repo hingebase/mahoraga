@@ -108,12 +108,26 @@ either `uv tool install -U uv` or [Pixi][5].
 
     Mirror configuration requires Pixi version 0.43.1 or later.
 Pixi mirror configuration can be done in a single command:
-``` sh
-pixi config set -g mirrors '{
-    "https://conda.anaconda.org/": ["http://127.0.0.1:3450/conda/"],
-    "https://pypi.org/simple/": ["http://127.0.0.1:3450/pypi/simple/"]
-}'
-```
+=== "Packages only"
+
+    ``` sh
+    pixi config set -g mirrors '{
+        "https://conda.anaconda.org/": ["http://127.0.0.1:3450/conda/"],
+        "https://pypi.org/simple/": ["http://127.0.0.1:3450/pypi/simple/"]
+    }'
+    ```
+
+=== "Packages and PyPI mappings (Experimental)"
+
+    ``` sh
+    pixi config set -g mirrors '{
+        "https://conda.anaconda.org/": ["http://127.0.0.1:3450/conda/"],
+        "https://pypi.org/simple/": ["http://127.0.0.1:3450/pypi/simple/"],
+        "https://raw.githubusercontent.com/prefix-dev/parselmouth/main/files/": ["http://127.0.0.1:3450/parselmouth/"],
+        "https://conda-mapping.prefix.dev/": ["http://127.0.0.1:3450/parselmouth/"]
+    }'
+    ```
+
 It's recommended to enable [sharded repodata][6] in [Mahoraga configuration][7]
 if you use Pixi or [rattler-build][8].  
 Similar to uv, `pixi self-update` cannot utilize Mahoraga. Furthermore,
