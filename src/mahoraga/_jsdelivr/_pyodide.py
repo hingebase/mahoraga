@@ -18,6 +18,7 @@ import asyncio
 import base64
 import contextlib
 import http
+import logging
 import mimetypes
 import os
 import pathlib
@@ -25,7 +26,9 @@ import posixpath
 from typing import Annotated, Literal
 
 import fastapi
+import packaging.version
 import pooch  # pyright: ignore[reportMissingTypeStubs]
+import pydantic
 import pyodide_lock
 
 from mahoraga import _core, _jsdelivr
@@ -33,6 +36,57 @@ from mahoraga import _core, _jsdelivr
 from . import _utils
 
 router = fastapi.APIRouter(route_class=_core.APIRoute)
+
+
+@router.get("/{name}")
+async def get_pyodide_package(
+    name: Annotated[
+        str,
+        fastapi.Path(
+            pattern=r"^(pyodide|pyodide-core|static-libraries|xbuildenv)-.+\.tar\.bz2$",
+        ),
+    ],
+) -> fastapi.Response:
+    version = name[:-8].rsplit("-", 1)[1]
+    try:
+        packaging.version.parse(version)
+    except packaging.version.InvalidVersion:
+        return fastapi.Response(status_code=404)
+    cache_location = pathlib.Path("pyodide", name)
+    ctx = _core.context.get()
+    lock = ctx["locks"][str(cache_location)]
+    async with contextlib.AsyncExitStack() as stack:
+        await stack.enter_async_context(lock)
+        if cache_location.is_file():
+            return fastapi.responses.FileResponse(
+                cache_location,
+                headers={
+                    "Cache-Control": "public, max-age=31536000, immutable",
+                },
+            )
+        release = await asyncio.get_running_loop().run_in_executor(
+            None, _retrieve, version)
+        for asset in _Release.model_validate_json(release).assets:
+            if asset.name == name:
+                break
+        else:
+            return fastapi.Response(status_code=404)
+        headers = {
+            "Accept": "application/octet-stream",
+            "X-GitHub-Api-Version": "2022-11-28",
+        }
+        if digest := asset.digest:
+            if digest.startswith("sha256:"):
+                return await _core.stream(
+                    asset.url,
+                    headers=headers,
+                    stack=stack,
+                    cache_location=cache_location,
+                    sha256=bytes.fromhex(digest[7:]),
+                )
+            _logger.warning("GitHub returning non-SHA256 digest: %r", digest)
+        return await _core.stream(asset.url, headers=headers, stack=stack)
+    return _core.unreachable()
 
 
 @router.get("/dev/{build}/{path:path}")
@@ -68,6 +122,34 @@ async def get_pyodide_core_file(
     return await _get_npm_file(version, posixpath.basename(request.url.path))
 
 
+@router.get("/{version}/full/python_cli_entry.mjs")
+@router.get("/{version}/debug/python_cli_entry.mjs")
+async def get_python_cli_entry(
+    version: Annotated[str, fastapi.Path(pattern=r"^v")],
+) -> fastapi.Response:
+    member = "python_cli_entry.mjs"
+    cache_location = pathlib.Path("pyodide", version, "full", member)
+    ctx = _core.context.get()
+    async with ctx["locks"][str(cache_location)]:
+        if cache_location.is_file():
+            return fastapi.responses.FileResponse(
+                cache_location,
+                headers={
+                    "Cache-Control": "public, max-age=31536000, immutable",
+                },
+            )
+        for name in "xbuildenv", "pyodide":
+            tarball = pathlib.Path("pyodide", f"{name}-{version[1:]}.tar.bz2")
+            if response := await _utils.extract_from_tarball(
+                tarball,
+                member,
+                cache_location,
+            ):
+                return response
+    urls = _utils.urls("pyodide", version, "full", member)
+    return await _core.stream(urls, media_type="text/javascript")
+
+
 @router.get("/{version}/{build}/{path:path}")
 async def get_pyodide_file(
     version: Annotated[str, fastapi.Path(pattern=r"^v")],
@@ -93,6 +175,13 @@ async def get_pyodide_file(
                 },
             )
         version = version.lstrip("v")
+        tarball = pathlib.Path("pyodide", f"pyodide-{version}.tar.bz2")
+        if response := await _utils.extract_from_tarball(
+            tarball,
+            path,
+            cache_location,
+        ):
+            return response
         package = f"pyodide@{version}"
         json_file = pathlib.Path("npm", package, "pyodide-lock.json")
         await _get_pyodide_lock(json_file, package)
@@ -147,6 +236,17 @@ async def _get_pyodide_lock(
     ctx = _core.context.get()
     async with ctx["locks"][str(cache_location)]:
         if not cache_location.is_file():
+            for name in "pyodide-core", "xbuildenv":
+                tarball = pathlib.Path(
+                    "pyodide",
+                    f"{name}-{package[8:]}.tar.bz2",
+                )
+                if await _utils.extract_from_tarball(
+                    tarball,
+                    "pyodide-lock.json",
+                    cache_location,
+                ):
+                    return
             metadata = await _jsdelivr.Metadata.fetch(
                 f"https://data.jsdelivr.com/v1/packages/npm/{package}",
                 "npm",
@@ -177,3 +277,32 @@ async def _get_pyodide_lock(
                 else:
                     status_code = http.HTTPStatus.GATEWAY_TIMEOUT
                     raise fastapi.HTTPException(status_code)
+
+
+class _ReleaseAsset(pydantic.BaseModel, extra="ignore"):
+    url: str
+    name: str
+    size: int
+    digest: str | None
+
+
+class _Release(pydantic.BaseModel, extra="ignore"):
+    assets: list[_ReleaseAsset]
+
+
+def _retrieve(version: str) -> str:
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+    p = pooch.retrieve(  # pyright: ignore[reportUnknownMemberType]
+        f"https://api.github.com/repos/pyodide/pyodide/releases/tags/{version}",
+        known_hash=None,
+        fname=f"{version}.json",
+        path="pyodide",
+        downloader=pooch.HTTPDownloader(headers=headers),
+    )
+    return pathlib.Path(p).read_text(encoding="utf-8")
+
+
+_logger = logging.getLogger("mahoraga")
