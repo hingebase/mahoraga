@@ -122,6 +122,34 @@ async def get_pyodide_core_file(
     return await _get_npm_file(version, posixpath.basename(request.url.path))
 
 
+@router.get("/{version}/full/python_cli_entry.mjs")
+@router.get("/{version}/debug/python_cli_entry.mjs")
+async def get_python_cli_entry(
+    version: Annotated[str, fastapi.Path(pattern=r"^v")],
+) -> fastapi.Response:
+    member = "python_cli_entry.mjs"
+    cache_location = pathlib.Path("pyodide", version, "full", member)
+    ctx = _core.context.get()
+    async with ctx["locks"][str(cache_location)]:
+        if cache_location.is_file():
+            return fastapi.responses.FileResponse(
+                cache_location,
+                headers={
+                    "Cache-Control": "public, max-age=31536000, immutable",
+                },
+            )
+        for name in "xbuildenv", "pyodide":
+            tarball = pathlib.Path("pyodide", f"{name}-{version[1:]}.tar.bz2")
+            if response := await _utils.extract_from_tarball(
+                tarball,
+                member,
+                cache_location,
+            ):
+                return response
+    urls = _utils.urls("pyodide", version, "full", member)
+    return await _core.stream(urls, media_type="text/javascript")
+
+
 @router.get("/{version}/{build}/{path:path}")
 async def get_pyodide_file(
     version: Annotated[str, fastapi.Path(pattern=r"^v")],

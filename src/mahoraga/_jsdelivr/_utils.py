@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ["get_npm_file", "urls"]
+__all__ = ["extract_from_tarball", "get_npm_file", "urls"]
 
 import asyncio
 import base64
@@ -30,6 +30,40 @@ import fastapi
 from mahoraga import _core, _jsdelivr
 
 
+async def extract_from_tarball(
+    tarball: pathlib.Path,
+    member: str,
+    cache_location: pathlib.Path,
+) -> fastapi.Response | None:
+    ctx = _core.context.get()
+    loop = asyncio.get_running_loop()
+    async with ctx["locks"][str(tarball)]:
+        try:
+            f = await loop.run_in_executor(
+                None,
+                tarfile.TarFile.bz2open,
+                tarball,
+            )
+        except OSError:
+            return None
+    try:
+        member = (
+            "xbuildenv/pyodide-root/dist/"
+            if tarball.name.startswith("xbuildenv")
+            else "pyodide/"
+        ) + member
+        return await loop.run_in_executor(
+            None,
+            _extract_from_tarball,
+            tarball,
+            member,
+            cache_location,
+            f,
+        )
+    finally:
+        await loop.run_in_executor(None, f.close)
+
+
 async def get_npm_file(
     url: str,
     package: str,
@@ -38,37 +72,14 @@ async def get_npm_file(
     stack: contextlib.AsyncExitStack,
 ) -> fastapi.Response:
     if package.startswith("pyodide@"):
-        ctx = _core.context.get()
-        locks = ctx["locks"]
-        loop = asyncio.get_running_loop()
         for name in _pyodide_packages(path):
             tarball = pathlib.Path("pyodide", f"{name}-{package[8:]}.tar.bz2")
-            async with locks[str(tarball)]:
-                try:
-                    f = await loop.run_in_executor(
-                        None,
-                        tarfile.TarFile.bz2open,
-                        tarball,
-                    )
-                except OSError:
-                    continue
-            try:
-                member = (
-                    "xbuildenv/pyodide-root/dist/"
-                    if name == "xbuildenv"
-                    else "pyodide/"
-                ) + path
-                if response := await loop.run_in_executor(
-                    None,
-                    _get_npm_file,
-                    cache_location,
-                    tarball,
-                    f,
-                    member,
-                ):
-                    return response
-            finally:
-                await loop.run_in_executor(None, f.close)
+            if response := await extract_from_tarball(
+                tarball,
+                path,
+                cache_location,
+            ):
+                return response
     metadata = await _jsdelivr.Metadata.fetch(
         url,
         "npm",
@@ -98,11 +109,11 @@ def urls(*paths: str) -> list[str]:
     ]
 
 
-def _get_npm_file(
-    cache_location: pathlib.Path,
+def _extract_from_tarball(
     tarball: pathlib.Path,
-    f: tarfile.TarFile,
     member: str,
+    cache_location: pathlib.Path,
+    f: tarfile.TarFile,
 ) -> fastapi.Response | None:
     try:
         info = f.getmember(member)
