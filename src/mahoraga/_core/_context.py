@@ -48,7 +48,12 @@ class AsyncClient(httpx.AsyncClient):
     ) -> AsyncGenerator[httpx.Response, None]:
         url = httpx.URL(url)
         h = url.host
-        if h.endswith(("github.com", "prefix.dev", "pypi.org")):
+        if h.endswith((
+            "anaconda.org",
+            "github.com",
+            "prefix.dev",
+            "pypi.org",
+        )):
             kwargs["follow_redirects"] = True
         cm = super().stream(method, url, **kwargs)
         ctx = _core.context.get()
