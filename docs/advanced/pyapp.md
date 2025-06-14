@@ -70,7 +70,7 @@ up Python development environment efficiently.
         !!! note
 
             Pixi exposes `uv` as a [trampoline][5]. Use `uv run which uv` to
-            retrieve the actual path on Unix.
+            retrieve the actual path.
 
 - Xcode/MSVC toolchain if you are using macOS/Windows. If you don't need the
   Xcode/VS IDE, just install [Xcode Command Line Tools][6] or
@@ -112,7 +112,7 @@ to manually link the uv executable to PyApp cache directory:
     mkdir -ErrorAction Ignore `
         -Path $Env:LOCALAPPDATA\pyapp\cache\uv\$Env:PYAPP_UV_VERSION
     New-Item -Type SymbolicLink `
-        -Value $(Get-Command uv.exe).Source `
+        -Value $("import shutil; print(shutil.which('uv'))" | uv.exe run -) `
         -Path $Env:LOCALAPPDATA\pyapp\cache\uv\$Env:PYAPP_UV_VERSION\uv.exe
     ```
 
