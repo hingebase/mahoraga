@@ -1,3 +1,3 @@
 blinker >=1.5.0,<2
-pyodide-py >=0.27.2
+pyodide-py >=0.27.6
 tenacity >=8.1.0,<10
