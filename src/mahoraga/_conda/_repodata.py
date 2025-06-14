@@ -86,7 +86,7 @@ async def get_differential_repodata(
     headers: Annotated[_models.JLAPHeaders, fastapi.Header()],
 ) -> fastapi.Response:
     return await _core.stream(
-        f"https://conda.anaconda.org/{channel}/{platform}/repodata.jlap",
+        f"https://{_utils.prefix(channel)}/{platform}/repodata.jlap",
         headers=_to_dict(headers),
     )
 
@@ -114,7 +114,8 @@ async def _check_repodata_availability(
     name = posixpath.basename(request.url.path)
     try:
         response = await client.head(
-            f"https://conda.anaconda.org/{channel}/{platform}/{name}",
+            f"https://{_utils.prefix(channel)}/{platform}/{name}",
+            follow_redirects=True,
         )
     except httpx.HTTPError:
         return fastapi.Response()

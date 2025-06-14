@@ -12,7 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ["fetch_repo_data", "urls"]
+__all__ = [
+    "fetch_repo_data",
+    "fetch_repo_data_and_load_matching_records",
+    "prefix",
+    "urls",
+]
 
 import itertools
 import posixpath
@@ -103,6 +108,12 @@ async def fetch_repo_data_and_load_matching_records(
     )
     with repodata:
         return repodata.load_matching_records(specs, package_format_selection)
+
+
+def prefix(channel: str) -> str:
+    if channel == "emscripten-forge-dev":
+        return "prefix.dev/emscripten-forge-dev"
+    return f"conda.anaconda.org/{channel}"
 
 
 def urls(

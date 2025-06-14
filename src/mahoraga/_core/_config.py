@@ -135,6 +135,7 @@ class _Conda(pydantic.BaseModel, **_model_config):
         "conda-forge": "bioconda",
         "deepmodeling": "auto",
         "dglteam": "auto",
+        "emscripten-forge-dev": "nvidia",
         "fastai": "auto",
         "fermi": "auto",
         "idaholab": "auto",
