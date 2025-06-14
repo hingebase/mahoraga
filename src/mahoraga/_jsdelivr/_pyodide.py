@@ -175,6 +175,13 @@ async def get_pyodide_file(
                 },
             )
         version = version.lstrip("v")
+        tarball = pathlib.Path("pyodide", f"pyodide-{version}.tar.bz2")
+        if response := await _utils.extract_from_tarball(
+            tarball,
+            path,
+            cache_location,
+        ):
+            return response
         package = f"pyodide@{version}"
         json_file = pathlib.Path("npm", package, "pyodide-lock.json")
         await _get_pyodide_lock(json_file, package)
@@ -229,6 +236,17 @@ async def _get_pyodide_lock(
     ctx = _core.context.get()
     async with ctx["locks"][str(cache_location)]:
         if not cache_location.is_file():
+            for name in "pyodide-core", "xbuildenv":
+                tarball = pathlib.Path(
+                    "pyodide",
+                    f"{name}-{package[8:]}.tar.bz2",
+                )
+                if await _utils.extract_from_tarball(
+                    tarball,
+                    "pyodide-lock.json",
+                    cache_location,
+                ):
+                    return
             metadata = await _jsdelivr.Metadata.fetch(
                 f"https://data.jsdelivr.com/v1/packages/npm/{package}",
                 "npm",
