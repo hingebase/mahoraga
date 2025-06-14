@@ -42,3 +42,10 @@
 .md-typeset .note>summary:after {
     color: #6b8e7b;
 }
+
+/* https://github.com/squidfunk/mkdocs-material/blob/9.4.4/src/templates/assets/stylesheets/_config.scss */
+@media screen and (max-width:59.984375em) {
+    .md-nav__source {
+        background-color: #6b8e7b;
+    }
+}
