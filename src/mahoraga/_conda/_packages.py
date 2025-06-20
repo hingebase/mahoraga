@@ -81,7 +81,7 @@ async def _proxy_cache(
                 media_type=media_type,
             )
         pkg_name, version, build = name.removesuffix(suffix).rsplit("-", 2)
-        spec = f"{pkg_name} =={version} {build}"
+        spec = f"{pkg_name} =={version}[{build=}]"
         try:
             records = await _utils.fetch_repo_data_and_load_matching_records(
                 channel,
