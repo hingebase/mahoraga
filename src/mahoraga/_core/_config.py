@@ -220,8 +220,6 @@ class _Upstream(pydantic.BaseModel, **_model_config):
         "https://www.python.org/ftp/python/{version}/{name}",
     ])
     python_build_standalone: list[_HttpUrl] = _adapter.validate_python([
-        "https://mirror.nju.edu.cn/github-release/indygreg/python-build-standalone",
-        "https://mirrors.lzu.edu.cn/github-release/indygreg/python-build-standalone",
         "https://github.com/astral-sh/python-build-standalone/releases/download",
     ])
     backup: set[str] = {
