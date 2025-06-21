@@ -10,6 +10,7 @@ wheels/
 .venv
 
 # MkDocs build
+.cache
 site
 docs/requirements.txt
 

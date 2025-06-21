@@ -18,13 +18,20 @@ import pathlib
 import re
 import subprocess  # noqa: S404
 import time
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
+import csscompressor  # pyright: ignore[reportMissingTypeStubs]
+import jsmin  # pyright: ignore[reportMissingTypeStubs]
 import mkdocs_macros.plugin
 import pooch  # pyright: ignore[reportMissingTypeStubs]
 import pydantic
 import pydantic_settings
 from typing_extensions import override  # noqa: UP035
+
+if TYPE_CHECKING:
+    from material.plugins.privacy.plugin import (  # pyright: ignore[reportMissingTypeStubs]
+        PrivacyPlugin,
+    )
 
 
 def define_env(env: mkdocs_macros.plugin.MacrosPlugin) -> None:
@@ -52,12 +59,26 @@ def define_env(env: mkdocs_macros.plugin.MacrosPlugin) -> None:
             pathlib.Path("README.md").read_text("utf-8"),
         ),
     })
+    if not os.getenv("GH_TOKEN"):
+        privacy = cast("PrivacyPlugin", env.conf.plugins["material/privacy"])
+        privacy.config.assets = True
 
 
 def on_post_build(env: mkdocs_macros.plugin.MacrosPlugin) -> None:
+    site_dir = pathlib.Path(env.conf.site_dir)
+    for css in site_dir.glob("assets/external/fonts.googleapis.com/*.css"):
+        with css.open("r+", encoding="utf-8") as f:
+            s = csscompressor.compress(f.read())  # pyright: ignore[reportUnknownMemberType]
+            f.seek(0)
+            f.write(s)
+            f.truncate()
+    for js in site_dir.glob("assets/javascripts/lunr/*.js"):
+        with js.open("r+", encoding="utf-8") as f, io.StringIO(f.read()) as g:
+            f.seek(0)
+            jsmin.JavascriptMinify(g, f).minify()  # pyright: ignore[reportUnknownMemberType]
+            f.truncate()
     if os.getenv("GH_TOKEN"):
-        site_dir = env.conf.site_dir
-        pathlib.Path(site_dir, ".nojekyll").touch()
+        (site_dir / ".nojekyll").touch()
         subprocess.run(  # noqa: S603
             ["/usr/bin/chmod", "-R", "a=r,u+w,a+X", site_dir],
             check=True,
