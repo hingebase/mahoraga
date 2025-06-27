@@ -5,6 +5,8 @@ on:
     tags:
       - v*
 
+permissions: read-all
+
 jobs:
   gh-pages:
     name: Publish to GitHub Pages
