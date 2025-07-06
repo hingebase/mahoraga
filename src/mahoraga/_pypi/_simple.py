@@ -36,9 +36,14 @@ async def get_pypi_project(
             description="See [PEP 691](https://peps.python.org/pep-0691/)",
         ),
     ] = None,
+    *,
+    micropip: Annotated[bool, fastapi.Query()] = False,
 ) -> fastapi.Response:
     ctx = _core.context.get()
-    media_type = _decide_content_type(accept)
+    if micropip:
+        media_type = "application/vnd.pypi.simple.v1+html"
+    else:
+        media_type = _decide_content_type(accept)
     if media_type == "application/vnd.pypi.simple.v1+json":
         urls = [
             posixpath.join(str(url), "simple", project) + "/"

@@ -34,6 +34,9 @@ if TYPE_CHECKING:
 router = fastapi.APIRouter(route_class=_core.APIRoute)
 
 
+@router.get("/@bokeh/{package}/{path:path}")
+@router.get("/@holoviz/{package}/{path:path}")
+@router.get("/@pyscript/{package}/{path:path}")
 @router.get("/@stlite/{package}/{path:path}")
 async def get_scoped_npm_file(
     package: Annotated[str, fastapi.Path(pattern=r"^[^@]+@[^@]+$")],
@@ -63,8 +66,8 @@ async def get_npm_file(
                 },
             )
         prefix = request.url.path.removeprefix("/npm")
-        if prefix.startswith("/@stlite"):
-            scope = "stlite"
+        if prefix.startswith("/@"):
+            scope, _ = prefix[2:].split("/", 1)
         elif package.startswith(("pyodide@", "swagger-ui-dist@")):
             scope = None
         else:
