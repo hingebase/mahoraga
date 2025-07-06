@@ -9,7 +9,6 @@ nav:
   - tutorial.md
   - Advanced:
       - advanced/pyapp.md
-      - advanced/stlite.md
 
 exclude_docs: |
   __pycache__

@@ -157,6 +157,112 @@ not like to share between Pixi and rattler-build.
         ...
     ```
 
+### Pyodide
+!!! note
+
+    Mirror configuration requires Pyodide version 0.28.0 or later.
+[Pyodide][10] Python distribution, wheels and JavaScript/WebAssembly runtime are
+all available in Mahoraga. To enable them, add the following line to your
+`mahoraga.toml`:
+``` toml title="mahoraga.toml" hl_lines="3"
+[cors]
+allow-origins = [
+    "*",
+]
+```
+The frontend configuration depends on the library you directly use:
+=== "Pyodide"
+
+    ``` html hl_lines="6 13-22 24"
+    <!doctype html>
+    <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1.0">
+        <script type="text/javascript" src="http://127.0.0.1:3450/pyodide/v0.28.0/full/pyodide.js"></script>
+      </head>
+      <body>
+        <script type="text/javascript">
+          async function main() {
+            let pyodide = await loadPyodide();
+            await pyodide.loadPackage("micropip");
+            // Prefer Pyodide-maintained wheels over PyPI ones
+            // If this is not desired, remove the following lines
+            pyodide.runPython(`
+                import micropip
+                class _Transaction(micropip.transaction.Transaction):
+                    def __post_init__(self):
+                        super().__post_init__()
+                        self.search_pyodide_lock_first = True
+                micropip.package_manager.Transaction = _Transaction
+            `);
+            const micropip = pyodide.pyimport("micropip");
+            micropip.set_index_urls("http://127.0.0.1:3450/pypi/simple/{package_name}/?micropip=1");
+            await micropip.install(["your_package"]);
+            pyodide.runPython(`# Your Python code here`);
+          }
+          main();
+        </script>
+      </body>
+    </html>
+    ```
+
+=== "PyScript"
+
+    ``` html hl_lines="6 7 11 12"
+    <!doctype html>
+    <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script type="module" src="http://127.0.0.1:3450/npm/@pyscript/core@0/dist/core.js"></script>
+        <link rel="stylesheet" href="http://127.0.0.1:3450/npm/@pyscript/core@0/dist/core.css">
+      </head>
+      <body>
+        <script type="py" config='{
+          "index_urls": ["http://127.0.0.1:3450/pypi/simple/{package_name}/?micropip=1"],
+          "interpreter": "http://127.0.0.1:3450/pyodide/v0.28.0/full/pyodide.mjs",
+          "packages": ["your_package"]
+        }'># Your Python code here</script>
+      </body>
+    </html>
+    ```
+
+=== "Stlite"
+
+    ``` html hl_lines="6 11 14 16-19"
+    <!doctype html>
+    <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+        <link rel="stylesheet" href="http://127.0.0.1:3450/npm/@stlite/browser@0/build/stlite.css">
+      </head>
+      <body>
+        <div id="root"></div>
+        <script type="module">
+          import { mount } from "http://127.0.0.1:3450/npm/@stlite/browser@0/build/stlite.js";
+          mount(
+            {
+              pyodideUrl: "http://127.0.0.1:3450/pyodide/v{{ pyodide_py_version }}/full/pyodide.js",
+              requirements: [
+                // Stlite doesn't expose the `index_urls` option,
+                // hence the absolute wheel urls here
+                "http://127.0.0.1:3450/pypi/packages/py3/b/blinker/blinker-{{ blinker_version }}-py3-none-any.whl",
+                "http://127.0.0.1:3450/pypi/packages/py3/t/tenacity/tenacity-{{ tenacity_version }}-py3-none-any.whl",
+              ],
+              entrypoint: "your_app.py",
+              files: {
+                "your_app.py": `# Your Python code here`,
+              },
+            },
+            document.getElementById("root"),
+          );
+        </script>
+      </body>
+    </html>
+    ```
+
 ### pymanager
 The next generation of the official Python installer for Windows,
 [pymanager][4], can be downloaded from Mahoraga:
@@ -186,3 +292,4 @@ The next generation of the official Python installer for Windows,
 [7]: #server-configuration
 [8]: https://rattler.build/latest/
 [9]: #pixi
+[10]: https://pyodide.org/en/stable/
