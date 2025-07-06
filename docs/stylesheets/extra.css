@@ -5,6 +5,8 @@
 :root>* {
     --md-accent-fg-color--transparent: #d6e8bb1a;
     --md-accent-fg-color: #d6e8bb;
+    --md-code-hl-color: #6b8e7b;
+    --md-code-hl-color--light: #6b8e7b1a;
     --md-code-hl-constant-color: #6b8e7b;
     --md-code-hl-function-color: var(--md-code-fg-color);
     --md-code-hl-keyword-color: #6b8e7b;
