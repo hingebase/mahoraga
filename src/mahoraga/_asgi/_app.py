@@ -24,7 +24,7 @@ import starlette.middleware.cors
 
 from mahoraga import _conda, _core, _jsdelivr, _pypi, _python
 
-_URL_FOR = "{{ url_for('get_npm_file', package='swagger-ui-dist@5', path=%r) }}"
+URL_FOR = "{{ url_for('get_npm_file', package='swagger-ui-dist@5', path=%r) }}"
 
 
 def make_app() -> fastapi.FastAPI:
@@ -75,10 +75,10 @@ def make_app() -> fastapi.FastAPI:
     res = fastapi.openapi.docs.get_swagger_ui_html(
         openapi_url="{{ url_for('openapi') }}",
         title=app.title + " - Swagger UI",
-        swagger_js_url=_URL_FOR % "swagger-ui-bundle.js",
-        swagger_css_url=_URL_FOR % "swagger-ui.css",
-        swagger_favicon_url=_URL_FOR % "favicon-32x32.png",
-        oauth2_redirect_url=_URL_FOR % "oauth2-redirect.html",
+        swagger_js_url=URL_FOR % "swagger-ui-bundle.js",
+        swagger_css_url=URL_FOR % "swagger-ui.css",
+        swagger_favicon_url=URL_FOR % "favicon-32x32.png",
+        oauth2_redirect_url=URL_FOR % "oauth2-redirect.html",
         init_oauth=app.swagger_ui_init_oauth,
         swagger_ui_parameters=app.swagger_ui_parameters,
     )
