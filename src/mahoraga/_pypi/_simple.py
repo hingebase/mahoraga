@@ -40,19 +40,20 @@ async def get_pypi_project(
     micropip: Annotated[bool, fastapi.Query()] = False,
 ) -> fastapi.Response:
     ctx = _core.context.get()
-    if micropip:
+    upstreams = ctx["config"].upstream.pypi
+    if micropip or not upstreams.json_:
         media_type = "application/vnd.pypi.simple.v1+html"
     else:
         media_type = _decide_content_type(accept)
     if media_type == "application/vnd.pypi.simple.v1+json":
         urls = [
             posixpath.join(str(url), "simple", project) + "/"
-            for url in ctx["config"].upstream.pypi.json_
+            for url in upstreams.json_
         ]
     else:
         urls = [
             posixpath.join(str(url), "simple", project) + "/"
-            for url in ctx["config"].upstream.pypi.all()
+            for url in upstreams.all()
         ]
     return await _core.stream(
         urls,
