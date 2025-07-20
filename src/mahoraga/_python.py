@@ -14,8 +14,11 @@
 
 __all__ = ["router"]
 
+import asyncio
 import contextlib
+import http
 import mimetypes
+import os
 import pathlib
 import posixpath
 import re
@@ -24,6 +27,7 @@ from typing import Annotated
 
 import fastapi
 import packaging.version
+import pooch  # pyright: ignore[reportMissingTypeStubs]
 import pydantic_extra_types.semantic_version
 
 from . import _core
@@ -103,8 +107,7 @@ async def get_standalone_python(
             posixpath.join(str(url), tag, name)
             for url in ctx["config"].upstream.python_build_standalone
         ]
-        content = await _core.get([url + ".sha256" for url in urls])
-        sha256 = bytes.fromhex(str(content, "ascii"))
+        sha256 = await _get_standalone_python_sha256(tag, name)
         return await _core.stream(
             urls,
             media_type=media_type,
@@ -113,3 +116,48 @@ async def get_standalone_python(
             sha256=sha256,
         )
     return _core.unreachable()
+
+
+async def _get_standalone_python_sha256(tag: str, name: str) -> bytes:
+    cache_location = pathlib.Path("python-build-standalone", tag, "SHA256SUMS")
+    ctx = _core.context.get()
+    loop = asyncio.get_running_loop()
+    async with ctx["locks"][str(cache_location)]:
+        if not cache_location.is_file():
+            dir_, fname = os.path.split(cache_location)
+            urls = [
+                posixpath.join(str(url), tag, "SHA256SUMS")
+                for url in ctx["config"].upstream.python_build_standalone
+            ]
+            async with contextlib.aclosing(_core.load_balance(urls)) as it:
+                async for url in it:
+                    with contextlib.suppress(Exception):
+                        await loop.run_in_executor(
+                            None,
+                            pooch.retrieve,  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
+                            url,
+                            None,
+                            fname,
+                            dir_,
+                        )
+                        break
+                else:
+                    status_code = http.HTTPStatus.GATEWAY_TIMEOUT
+                    raise fastapi.HTTPException(status_code)
+    return await loop.run_in_executor(
+        None,
+        _parse_standalone_python_sha256,
+        cache_location,
+        f"  {name}\n",
+    )
+
+
+def _parse_standalone_python_sha256(
+    cache_location: pathlib.Path,
+    name: str,
+) -> bytes:
+    with cache_location.open(encoding="ascii") as f:
+        for line in f:
+            if line.endswith(name):
+                return bytes.fromhex(line[:64])
+    raise fastapi.HTTPException(404)
