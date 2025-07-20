@@ -15,7 +15,6 @@
 import io
 import os
 import pathlib
-import re
 import subprocess  # noqa: S404
 import time
 from typing import TYPE_CHECKING, Any, cast
@@ -53,11 +52,9 @@ def define_env(env: mkdocs_macros.plugin.MacrosPlugin) -> None:
         "python_build_standalone_tag": release.tag_name,
         "python_version": python_version,
         "python_version_short": "".join(python_version.split(".")[:2]),
-        "readme": re.sub(
-            r"## Usage[^#]+",
-            "",
-            pathlib.Path("README.md").read_text("utf-8"),
-        ),
+        "readme": pathlib.Path("README.md")
+                         .read_text("utf-8")
+                         .partition(" [Docs >>>]")[0],
     })
     if not os.getenv("GH_TOKEN"):
         privacy = cast("PrivacyPlugin", env.conf.plugins["material/privacy"])

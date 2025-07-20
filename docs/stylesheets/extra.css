@@ -30,6 +30,10 @@
     box-shadow: 0 0 0 .2rem #6b8e7b1a;
 }
 
+.md-typeset img {
+    vertical-align: middle;
+}
+
 .md-typeset .note>.admonition-title,
 .md-typeset .note>summary {
     background-color: #6b8e7b1a;
