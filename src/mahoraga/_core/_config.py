@@ -181,7 +181,6 @@ class _PyPI(pydantic.BaseModel):
         "https://mirrors.aliyun.com/pypi/web/",
         "https://mirrors.cloud.tencent.com/pypi/",
         "https://mirrors.huaweicloud.com/repository/pypi/",
-        "https://mirrors.neusoft.edu.cn/pypi/web/",
         "https://mirrors.pku.edu.cn/pypi/web/",
         "https://mirrors.qlu.edu.cn/pypi/web/",
         "https://mirrors.sustech.edu.cn/pypi/web/",
@@ -220,7 +219,9 @@ class _Upstream(pydantic.BaseModel, **_model_config):
         "https://www.python.org/ftp/python/{version}/{name}",
     ])
     python_build_standalone: list[_HttpUrl] = _adapter.validate_python([
-        "https://github.com/astral-sh/python-build-standalone/releases/download",
+        "https://pycdn-2025-03-02.oss-cn-shanghai.aliyuncs.com/mirror/astral-sh/python-build-standalone/",
+        "https://cdn.npmmirror.com/binaries/python-build-standalone/",
+        "https://github.com/astral-sh/python-build-standalone/releases/download/",
     ])
     backup: set[str] = {
         "conda.anaconda.org",

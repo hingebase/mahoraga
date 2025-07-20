@@ -103,8 +103,9 @@ async def get_standalone_python(
                 },
                 media_type=media_type,
             )
+        escaped = name.replace("+", "%2B")  # Required by aliyun mirrors
         urls = [
-            posixpath.join(str(url), tag, name)
+            posixpath.join(str(url), tag, escaped)
             for url in ctx["config"].upstream.python_build_standalone
         ]
         sha256 = await _get_standalone_python_sha256(tag, name)
