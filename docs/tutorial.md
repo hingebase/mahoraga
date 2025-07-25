@@ -55,6 +55,9 @@ so that subsequent requests won't go to Mahoraga again. In a future version,
     Mahoraga serves on `http://127.0.0.1:3450` by default. Replace it with the
     actual URL exposed to your clients.
 ### uv
+!!! note
+
+    Mirror configuration requires uv version 0.8.1 or later.
 [uv][1] can be configured to grab PyPI packages and Python itself from Mahoraga,
 via either environment variables or a config file:
 === ".profile"
@@ -64,6 +67,9 @@ via either environment variables or a config file:
     export UV_DEFAULT_INDEX=http://127.0.0.1:3450/pypi/simple
     export UV_HTTP_TIMEOUT=60
     ```
+    !!! note
+
+        Cache-Control override can only be set via config file.
 
 === "profile.ps1"
 
@@ -72,6 +78,9 @@ via either environment variables or a config file:
     $Env:UV_DEFAULT_INDEX = "http://127.0.0.1:3450/pypi/simple"
     $Env:UV_HTTP_TIMEOUT = "60"
     ```
+    !!! note
+
+        Cache-Control override can only be set via config file.
 
 === "uv.toml"
 
@@ -81,6 +90,10 @@ via either environment variables or a config file:
     [[index]]
     url = "http://127.0.0.1:3450/pypi/simple"
     default = true
+
+    # Mahoraga inherits upstream response headers.
+    # Override them in case an upstream mirror doesn't implement cache control.
+    cache-control = { api = "max-age=600", files = "max-age=365000000, immutable" }
     ```
     !!! note
 
@@ -95,6 +108,10 @@ via either environment variables or a config file:
     [[tool.uv.index]]
     url = "http://127.0.0.1:3450/pypi/simple"
     default = true
+
+    # Mahoraga inherits upstream response headers.
+    # Override them in case an upstream mirror doesn't implement cache control.
+    cache-control = { api = "max-age=600", files = "max-age=365000000, immutable" }
     ```
     !!! note
 
