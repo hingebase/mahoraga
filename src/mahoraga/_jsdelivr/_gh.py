@@ -26,6 +26,19 @@ from . import _utils
 router = fastapi.APIRouter(route_class=_core.APIRoute)
 
 
+@router.get("/squidfunk/{version}/material/templates/.icons/material/{name}")
+async def material_icons(version: str, name: str) -> fastapi.Response:
+    if not version.startswith("mkdocs-material@"):
+        return fastapi.Response(status_code=404)
+    urls = _utils.urls(
+        "gh/squidfunk",
+        version,
+        "material/templates/.icons/material",
+        name,
+    )
+    return await _core.stream(urls, media_type="image/svg+xml")
+
+
 @router.get("/pyodide/{version}/docs/_static/img/pyodide-logo-readme.png")
 async def pyodide_logo(version: str) -> fastapi.Response:
     if not version.startswith("pyodide@"):
