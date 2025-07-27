@@ -25,6 +25,7 @@ import mkdocs_macros.plugin
 import pooch  # pyright: ignore[reportMissingTypeStubs]
 import pydantic
 import pydantic_settings
+import requests
 from typing_extensions import override  # noqa: UP035
 
 if TYPE_CHECKING:
@@ -59,6 +60,7 @@ def define_env(env: mkdocs_macros.plugin.MacrosPlugin) -> None:
     if not os.getenv("GH_TOKEN"):
         privacy = cast("PrivacyPlugin", env.conf.plugins["material/privacy"])
         privacy.config.assets = True
+        requests.get = _get
 
 
 def on_post_build(env: mkdocs_macros.plugin.MacrosPlugin) -> None:
@@ -161,6 +163,28 @@ class _Tag(
             params={"per_page": "1"},
         )
         return (_JsonConfigSettingsSource(settings_cls, j),)
+
+
+def _get(
+    url: str | bytes,
+    params: "requests.sessions._Params | None" = None,  # pyright: ignore[reportPrivateUsage]
+    **kwargs: Any,  # noqa: ANN401
+) -> requests.Response:
+    req = requests.PreparedRequest()
+    req.prepare_url(url, params)  # pyright: ignore[reportUnknownMemberType]
+    new_url = req.url
+    if not new_url:
+        raise AssertionError
+    if base_url := os.getenv("MAHORAGA_BASE_URL"):
+        req.prepare_url(base_url, None)  # pyright: ignore[reportUnknownMemberType]
+        if base_url := req.url:
+            base_url = base_url.rstrip("/")
+            if new_url.startswith("https://cdn.jsdelivr.net/gh/"):
+                new_url = f"{base_url}/{new_url[24:]}"
+            elif new_url.startswith("https://cdnjs.cloudflare.com/ajax/libs/emojione/"):
+                new_url = f"{base_url}/cdnjs{new_url[28:]}"
+    with requests.Session() as session:
+        return session.get(new_url, **kwargs)
 
 
 def _open(requirements: pathlib.Path) -> io.TextIOWrapper:

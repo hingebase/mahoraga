@@ -16,7 +16,7 @@
     *Not only Python.* Install toolchains for [various programming languages][3]
     and take full control of your workflow. [Docs >>>](tutorial.md#pixi)
 
-- [![Pyodide](https://raw.githubusercontent.com/pyodide/pyodide/main/docs/_static/img/pyodide-logo-readme.png){ width="70" }][4] __Pyodide__
+- [![Pyodide](https://cdn.jsdelivr.net/gh/pyodide/pyodide@{{ pyodide_py_version }}/docs/_static/img/pyodide-logo-readme.png){ width="70" }][4] __Pyodide__
 
     ---
 

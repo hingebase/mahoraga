@@ -22,7 +22,7 @@ import fastapi.templating
 import jinja2
 import starlette.middleware.cors
 
-from mahoraga import _conda, _core, _jsdelivr, _pypi, _python
+from mahoraga import _cdnjs, _conda, _core, _jsdelivr, _pypi, _python
 
 URL_FOR = "{{ url_for('get_npm_file', package='swagger-ui-dist@5', path=%r) }}"
 
@@ -71,6 +71,10 @@ def make_app() -> fastapi.FastAPI:
     app.include_router(_jsdelivr.pyodide, prefix="/pyodide", tags=["pyodide"])
     app.include_router(_pypi.router, prefix="/pypi", tags=["pypi"])
     app.include_router(_python.router, tags=["python"])
+
+    # Private, only for building docs
+    app.include_router(_cdnjs.router, prefix="/cdnjs", include_in_schema=False)
+    app.include_router(_jsdelivr.gh, prefix="/gh", include_in_schema=False)
 
     res = fastapi.openapi.docs.get_swagger_ui_html(
         openapi_url="{{ url_for('openapi') }}",
