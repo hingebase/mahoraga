@@ -2,26 +2,29 @@
 ## What we support
 <div class="grid cards" markdown>
 
-- [![uv](https://astral.sh/static/SVG/UV.svg){ width="32" }][1]　__uv__
+- [![uv](https://astral.sh/static/SVG/UV.svg){ .middle width="32" }][1]　__uv__
 
     ---
 
     *The answer to Python package and project management.* Set up Python itself
-    and PyPI packages, all in one place. [Docs >>>](tutorial.md#uv)
+    and PyPI packages, all in one place.
+    [:octicons-arrow-right-24: Docs](tutorial.md#uv)
 
-- [![Pixi](https://pixi.sh/latest/assets/pixi.png){ width="36" }][2]　__Pixi__
+- [![Pixi](https://pixi.sh/latest/assets/pixi.png){ .middle width="36" }][2]　__Pixi__
 
     ---
 
     *Not only Python.* Install toolchains for [various programming languages][3]
-    and take full control of your workflow. [Docs >>>](tutorial.md#pixi)
+    and take full control of your workflow.
+    [:octicons-arrow-right-24: Docs](tutorial.md#pixi)
 
-- [![Pyodide](https://cdn.jsdelivr.net/gh/pyodide/pyodide@{{ pyodide_py_version }}/docs/_static/img/pyodide-logo-readme.png){ width="70" }][4] __Pyodide__
+- [![Pyodide](https://cdn.jsdelivr.net/gh/pyodide/pyodide@{{ pyodide_py_version }}/docs/_static/img/pyodide-logo-readme.png){ .middle width="70" }][4] __Pyodide__
 
     ---
 
     *From the backend to the frontend.* Share your masterpiece with your
-    fellows via our CORS-ready mirror. [Docs >>>](tutorial.md#pyodide)
+    fellows via our CORS-ready mirror.
+    [:octicons-arrow-right-24: Docs](tutorial.md#pyodide)
 
     *[CORS]: Cross-origin resource sharing
 
@@ -36,18 +39,37 @@
 </div>
 
 ## Features
-<div class="grid" markdown>
+<div class="grid cards" markdown>
 
-__Proxy load balancing__
-{ .card }
+- :material-scale-balance:{ .lg .middle }　__Proxy load balancing__
 
-__Lazy local cache__
-{ .card }
+    ---
 
-__[CEP 16][10] sharded conda repodata__
-{ .card }
+    Client requests are passed to the upstream server with the least total
+    response time and least number of active connections.
 
-> __Conda-PyPI mapping__ (work in progress)
+- :octicons-cache-16:{ .lg .middle }　__Lazy local cache__ :material-information-outline:{ style="color: #6b8e7b" title="Not implemented for PyPI yet" }
+
+    ---
+
+    Files with known SHA-256 checksums are validated and cached upon the first
+    request. No configuration required.
+
+    *[SHA-256]: Secure Hash Algorithm 256-bit
+
+- :simple-condaforge:{ .lg .middle }　__[CEP 16][10] sharded conda repodata__
+
+    ---
+
+    Receive latest conda package updates with minimal network traffic.
+    Automatically updated every hour.
+    [:octicons-arrow-right-24: Configuration][11]
+
+> :simple-anaconda:{ .lg .middle }　__Conda-PyPI mapping__
+>
+> ---
+>
+> Coming soon ...
 
 </div>
 
@@ -61,3 +83,4 @@ __[CEP 16][10] sharded conda repodata__
 [8]: https://docs.conda.io/projects/conda/en/stable/
 [9]: https://mamba.readthedocs.io/en/latest/
 [10]: https://conda.org/learn/ceps/cep-0016/
+[11]: https://github.com/hingebase/mahoraga/blob/v{{ mahoraga_version }}/src/mahoraga/_cli/mahoraga.toml.jinja#L39-L49
