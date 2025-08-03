@@ -168,6 +168,7 @@ Make an empty directory, `cd` to it, and then build the online version of PyApp:
     $Env:PYAPP_FULL_ISOLATION = "1"
     $Env:PYAPP_UV_ENABLED = "1"
     $Env:PYAPP_UV_VERSION = $(uv -V).Substring(3)
+    $Env:PYAPP_PIP_EXTRA_ARGS = "-p temp\python.exe"
     pixi exec -s rust cargo install --no-track --root . pyapp
     $Env:PYAPP_INSTALL_DIR_MAHORAGA = "temp"
     bin/pyapp
@@ -203,7 +204,8 @@ with maximum compression rate:
 
     ``` powershell title="PowerShell"
     rm temp/python{{ python_version_short }}._pth
-    pixi exec -s zstd tar -cf temp.tar.zst -C temp -I "zstd --ultra -22" .
+    pixi exec -s zstd tar -cf temp.tar.zst -C temp `
+        --use-compress-program "zstd --ultra -22" .
     ```
 
 Pass the tarball to PyApp again, and we will finally get the desired offline
