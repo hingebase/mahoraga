@@ -114,7 +114,6 @@ class _Conda(pydantic.BaseModel, **_model_config):
             "https://mirrors.shanghaitech.edu.cn/anaconda/cloud/",
             "https://mirrors.sustech.edu.cn/anaconda/cloud/",
             "https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/",
-            "https://mirrors.zju.edu.cn/anaconda/cloud/",
         ]),
         "biobakery": "auto",
         "bioconda": _adapter.validate_python([
@@ -127,7 +126,6 @@ class _Conda(pydantic.BaseModel, **_model_config):
             "https://mirrors.shanghaitech.edu.cn/anaconda/cloud/",
             "https://mirrors.sustech.edu.cn/anaconda/cloud/",
             "https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/",
-            "https://mirrors.zju.edu.cn/anaconda/cloud/",
             "https://prefix.dev/",
         ]),
         "c4aarch64": "auto",
@@ -177,10 +175,10 @@ class _Conda(pydantic.BaseModel, **_model_config):
 class _PyPI(pydantic.BaseModel):
     html: list[_HttpUrl] = _adapter.validate_python([
         "https://mirror.nju.edu.cn/pypi/web/",
-        "https://mirrors.163.com/pypi/",
         "https://mirrors.aliyun.com/pypi/web/",
         "https://mirrors.cloud.tencent.com/pypi/",
         "https://mirrors.huaweicloud.com/repository/pypi/",
+        "https://mirrors.neusoft.edu.cn/pypi/web/",
         "https://mirrors.pku.edu.cn/pypi/web/",
         "https://mirrors.qlu.edu.cn/pypi/web/",
         "https://mirrors.sustech.edu.cn/pypi/web/",
@@ -214,19 +212,21 @@ class _Upstream(pydantic.BaseModel, **_model_config):
         "https://mirror.nju.edu.cn/python/{version}/{name}",
         "https://mirrors.aliyun.com/python-release/windows/{name}",
         "https://mirrors.huaweicloud.com/python/{version}/{name}",
-        "https://mirrors.sdu.edu.cn/python-release/{version}/{name}",
         "https://mirrors.ustc.edu.cn/python/{version}/{name}",
         "https://www.python.org/ftp/python/{version}/{name}",
     ])
     python_build_standalone: list[_HttpUrl] = _adapter.validate_python([
-        "https://pycdn-2025-03-02.oss-cn-shanghai.aliyuncs.com/mirror/astral-sh/python-build-standalone/",
+        "https://mirror.nju.edu.cn/github-release/astral-sh/python-build-standalone/",
+        "https://mirrors.lzu.edu.cn/github-release/astral-sh/python-build-standalone/",
         "https://cdn.npmmirror.com/binaries/python-build-standalone/",
+        "https://pycdn-2025-03-02.oss-cn-shanghai.aliyuncs.com/mirror/astral-sh/python-build-standalone/",
         "https://github.com/astral-sh/python-build-standalone/releases/download/",
     ])
     backup: set[str] = {
         "conda.anaconda.org",
         "github.com",
         "prefix.dev",
+        "pycdn-2025-03-02.oss-cn-shanghai.aliyuncs.com",
         "pypi.org",
         "www.python.org",
     }
