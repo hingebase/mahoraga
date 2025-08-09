@@ -66,8 +66,8 @@ class AsyncClient(httpx_aiohttp.HttpxAiohttpClient):
                 yield await stack.enter_async_context(cm)
             finally:
                 toc = time.monotonic()
+                concurrent_requests[h] -= 1
                 if seconds := round(toc - tic):
-                    concurrent_requests[h] -= 1
                     schedule_exit(stack)
                     async with ctx["locks"]["statistics.json"]:
                         s = Statistics()
