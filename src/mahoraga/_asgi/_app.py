@@ -22,7 +22,7 @@ import fastapi.templating
 import jinja2
 import starlette.middleware.cors
 
-from mahoraga import _cdnjs, _conda, _core, _jsdelivr, _pypi, _python
+from mahoraga import _conda, _core, _jsdelivr, _pypi, _python
 
 URL_FOR = "{{ url_for('get_npm_file', package='swagger-ui-dist@5', path=%r) }}"
 
@@ -73,15 +73,19 @@ def make_app() -> fastapi.FastAPI:
     app.include_router(_python.router, tags=["python"])
 
     # Private, only for building docs
-    app.include_router(_cdnjs.router, prefix="/cdnjs", include_in_schema=False)
+    app.add_api_route(
+        "/favicon.ico",
+        _favicon,
+        response_class=fastapi.responses.RedirectResponse,
+    )
     app.include_router(_jsdelivr.gh, prefix="/gh", include_in_schema=False)
 
     res = fastapi.openapi.docs.get_swagger_ui_html(
         openapi_url="{{ url_for('openapi') }}",
-        title=app.title + " - Swagger UI",
+        title=app.title,
         swagger_js_url=URL_FOR % "swagger-ui-bundle.js",
         swagger_css_url=URL_FOR % "swagger-ui.css",
-        swagger_favicon_url=URL_FOR % "favicon-32x32.png",
+        swagger_favicon_url="{{ url_for('_favicon') }}",
         oauth2_redirect_url=URL_FOR % "oauth2-redirect.html",
         init_oauth=app.swagger_ui_init_oauth,
         swagger_ui_parameters=app.swagger_ui_parameters,
@@ -103,3 +107,12 @@ def make_app() -> fastapi.FastAPI:
 
 class _JSONResponse(fastapi.responses.JSONResponse):
     media_type = None
+
+
+async def _favicon(request: fastapi.Request) -> str:  # noqa: RUF029
+    url = request.url_for(
+        "get_scoped_npm_file",
+        package="svg@0",
+        path="filled/temple_buddhist.svg",
+    )
+    return str(url)

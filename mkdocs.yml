@@ -17,6 +17,7 @@ exclude_docs: |
 
 theme:
   name: material
+  favicon: https://cdn.jsdelivr.net/npm/@material-design-icons/svg@0/filled/temple_buddhist.svg
   features:
     - content.action.edit
     - content.action.view

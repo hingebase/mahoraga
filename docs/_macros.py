@@ -17,17 +17,21 @@ import os
 import pathlib
 import subprocess  # noqa: S404
 import time
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import csscompressor  # pyright: ignore[reportMissingTypeStubs]
 import jsmin  # pyright: ignore[reportMissingTypeStubs]
-import material.plugins.privacy.plugin  # pyright: ignore[reportMissingTypeStubs]
 import mkdocs_macros.plugin
 import pooch  # pyright: ignore[reportMissingTypeStubs]
 import pydantic
 import pydantic_settings
 import requests
 from typing_extensions import override  # noqa: UP035
+
+if TYPE_CHECKING:
+    from material.plugins.privacy.plugin import (  # pyright: ignore[reportMissingTypeStubs]
+        PrivacyPlugin,
+    )
 
 
 def define_env(env: mkdocs_macros.plugin.MacrosPlugin) -> None:
@@ -53,12 +57,8 @@ def define_env(env: mkdocs_macros.plugin.MacrosPlugin) -> None:
                          .read_text("utf-8")
                          .partition(" [Docs]")[0],
     })
-    env.conf.theme["favicon"] = f"https://cdn.jsdelivr.net/gh/squidfunk/mkdocs-material@{material.__version__}/material/templates/.icons/material/temple-buddhist.svg"
     if not os.getenv("GH_TOKEN"):
-        privacy = cast(
-            "material.plugins.privacy.plugin.PrivacyPlugin",
-            env.conf.plugins["material/privacy"],
-        )
+        privacy = cast("PrivacyPlugin", env.conf.plugins["material/privacy"])
         privacy.config.assets = True
         requests.get = _get
 
@@ -172,19 +172,16 @@ def _get(
 ) -> requests.Response:
     req = requests.PreparedRequest()
     req.prepare_url(url, params)  # pyright: ignore[reportUnknownMemberType]
-    new_url = req.url
-    if not new_url:
-        raise AssertionError
-    if base_url := os.getenv("MAHORAGA_BASE_URL"):
+    if (
+        (prepared := req.url)
+        and prepared.startswith("https://cdn.jsdelivr.net/")
+        and (base_url := os.getenv("MAHORAGA_BASE_URL"))
+    ):
         req.prepare_url(base_url, None)  # pyright: ignore[reportUnknownMemberType]
-        if base_url := req.url:
-            base_url = base_url.rstrip("/")
-            if new_url.startswith("https://cdn.jsdelivr.net/gh/"):
-                new_url = f"{base_url}{new_url[24:]}"
-            elif new_url.startswith("https://cdnjs.cloudflare.com/ajax/libs/emojione/"):
-                new_url = f"{base_url}/cdnjs{new_url[28:]}"
+        if prepared_base_url := req.url:
+            url = f"{prepared_base_url.rstrip("/")}{prepared[24:]}"
     with requests.Session() as session:
-        return session.get(new_url, **kwargs)
+        return session.get(url, **kwargs)
 
 
 def _open(requirements: pathlib.Path) -> io.TextIOWrapper:
