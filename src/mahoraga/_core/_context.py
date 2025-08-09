@@ -32,12 +32,13 @@ from typing import Any, TypedDict, override
 
 import anyio
 import httpx
+import httpx_aiohttp
 import pydantic_settings
 
 from mahoraga import _core
 
 
-class AsyncClient(httpx.AsyncClient):
+class AsyncClient(httpx_aiohttp.HttpxAiohttpClient):
     @override
     @contextlib.asynccontextmanager
     async def stream(
