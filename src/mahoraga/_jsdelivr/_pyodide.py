@@ -138,7 +138,7 @@ async def get_python_cli_entry(
                     "Cache-Control": "public, max-age=31536000, immutable",
                 },
             )
-        for name in "xbuildenv", "pyodide":
+        for name in "pyodide-core", "xbuildenv", "pyodide":
             tarball = pathlib.Path("pyodide", f"{name}-{version[1:]}.tar.bz2")
             if response := await _utils.extract_from_tarball(
                 tarball,

@@ -196,7 +196,7 @@ The frontend configuration depends on the library you directly use:
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width,initial-scale=1.0">
-        <script type="text/javascript" src="http://127.0.0.1:3450/pyodide/v0.28.0/full/pyodide.js"></script>
+        <script type="text/javascript" src="http://127.0.0.1:3450/pyodide/v0.28.1/full/pyodide.js"></script>
       </head>
       <body>
         <script type="text/javascript">
@@ -238,7 +238,7 @@ The frontend configuration depends on the library you directly use:
       <body>
         <script type="py" config='{
           "index_urls": ["http://127.0.0.1:3450/pypi/simple/{package_name}/?micropip=1"],
-          "interpreter": "http://127.0.0.1:3450/pyodide/v0.28.0/full/pyodide.mjs",
+          "interpreter": "http://127.0.0.1:3450/pyodide/v0.28.1/full/pyodide.mjs",
           "packages": ["your_package"]
         }'># Your Python code here</script>
       </body>
