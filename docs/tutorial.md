@@ -57,7 +57,7 @@ so that subsequent requests won't go to Mahoraga again. In a future version,
 ### uv
 !!! note
 
-    Mirror configuration requires uv version 0.8.1 or later.
+    Mirror configuration requires uv version 0.8.5 or later.
 [uv][1] can be configured to grab PyPI packages and Python itself from Mahoraga,
 via either environment variables or a config file:
 === ".profile"

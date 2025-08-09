@@ -168,7 +168,6 @@ Make an empty directory, `cd` to it, and then build the online version of PyApp:
     $Env:PYAPP_FULL_ISOLATION = "1"
     $Env:PYAPP_UV_ENABLED = "1"
     $Env:PYAPP_UV_VERSION = $(uv -V).Substring(3)
-    $Env:PYAPP_PIP_EXTRA_ARGS = "-p temp\python.exe"
     pixi exec -s rust cargo install --no-track --root . pyapp
     $Env:PYAPP_INSTALL_DIR_MAHORAGA = "temp"
     bin/pyapp
