@@ -14,17 +14,23 @@
 
 __all__ = ["router"]
 
+import asyncio
+import binascii
 import contextlib
 import http
 import mimetypes
+import pathlib
 import posixpath
 from collections.abc import AsyncGenerator
 from typing import Annotated
 
 import fastapi
 import httpx
+import packaging.utils
 
 from mahoraga import _core
+
+from . import _models
 
 router = fastapi.APIRouter(route_class=_core.APIRoute)
 
@@ -64,8 +70,25 @@ async def get_pypi_package(
         return await _core.stream(
             f"https://files.pythonhosted.org/packages/{tag}/{prefix}/{project}/{filename}",
         )
+    if filename.endswith(".whl"):
+        normalized_name = packaging.utils.parse_wheel_filename(filename)[0]
+        media_type = "application/x-zip-compressed"
+    else:
+        normalized_name, _ = packaging.utils.parse_sdist_filename(filename)
+        media_type, _ = mimetypes.guess_type(filename)
+    cache_location = pathlib.Path("packages", tag, prefix, project, filename)
     ctx = _core.context.get()
     async with contextlib.AsyncExitStack() as stack:
+        lock = ctx["locks"][str(cache_location)]
+        await stack.enter_async_context(lock)
+        if cache_location.is_file():
+            return fastapi.responses.FileResponse(
+                cache_location,
+                headers={
+                    "Cache-Control": "public, max-age=31536000, immutable",
+                },
+                media_type=media_type,
+            )
         match len(tag), len(prefix), len(project):
             case (2, 2, 60):
                 urls = [
@@ -82,10 +105,10 @@ async def get_pypi_package(
                             f"https://files.pythonhosted.org/packages/{tag}/{prefix}/{project}/{filename}",
                         ),
                     )
-                except httpx.HTTPError:
-                    return fastapi.Response(
-                        status_code=http.HTTPStatus.GATEWAY_TIMEOUT,
-                    )
+                except httpx.HTTPError as e:
+                    raise fastapi.HTTPException(
+                        http.HTTPStatus.GATEWAY_TIMEOUT,
+                    ) from e
                 if not response.has_redirect_location:
                     new_stack = stack.pop_all()
                     content = _stream(response, new_stack)
@@ -106,17 +129,99 @@ async def get_pypi_package(
                     for url in ctx["config"].upstream.pypi.all()
                 ]
             case _:
-                return fastapi.Response(status_code=404)
-        if filename.endswith(".whl"):
-            media_type = "application/x-zip-compressed"
-        else:
-            media_type, _ = mimetypes.guess_type(filename)
+                raise fastapi.HTTPException(404)
+        if sha256 := await _sha256(filename, normalized_name):
+            return await _core.stream(
+                urls,
+                media_type=media_type,
+                stack=stack,
+                cache_location=cache_location,
+                sha256=sha256,
+            )
         return await _core.stream(
             urls,
             media_type=media_type,
             stack=stack,
         )
     return _core.unreachable()
+
+
+async def _sha256(filename: str, project: str) -> bytes:
+    loop = asyncio.get_event_loop()
+    ctx = _core.context.get()
+    upstreams = ctx["config"].upstream.pypi
+    urls = [
+        posixpath.join(str(url), "simple", project) + "/"
+        for url in upstreams.json_
+    ]
+    with _core.cache_action.set("force-cache-only"):
+        try:
+            raw = await _core.get(
+                urls,
+                headers={"Accept": "application/vnd.pypi.simple.v1+html"},
+            )
+        except (NotImplementedError, fastapi.HTTPException):
+            pass
+        else:
+            return await loop.run_in_executor(
+                None,
+                _sha256_from_html,
+                raw,
+                filename,
+            )
+    with _core.cache_action.set("cache-or-fetch"):
+        try:
+            raw = await _core.get(
+                urls,
+                headers={"Accept": "application/vnd.pypi.simple.v1+json"},
+            )
+        except fastapi.HTTPException:
+            pass
+        else:
+            return await loop.run_in_executor(
+                None,
+                _sha256_from_json,
+                raw,
+                project,
+                filename,
+            )
+        urls += [
+            posixpath.join(str(url), "simple", project) + "/"
+            for url in upstreams.html
+        ]
+        try:
+            raw = await _core.get(
+                urls,
+                headers={"Accept": "application/vnd.pypi.simple.v1+html"},
+            )
+        except fastapi.HTTPException:
+            return b""
+        return await loop.run_in_executor(
+            None,
+            _sha256_from_html,
+            raw,
+            filename,
+        )
+
+
+def _sha256_from_html(raw: bytes, filename: str) -> bytes:
+    pattern = b"/%b#sha256=" % filename.encode("ascii")
+    try:
+        i = raw.index(pattern)
+    except ValueError:
+        return b""
+    i += len(pattern)
+    return binascii.unhexlify(raw[i : i+64])  # noqa: E226
+
+
+def _sha256_from_json(raw: bytes, project: str, filename: str) -> bytes:
+    simple = _models.Simple.model_validate_json(raw)
+    if simple.name != project:
+        _core.unreachable()
+    for entry in simple.files:
+        if entry.filename == filename:
+            return bytes.fromhex(entry.hashes.sha256)
+    return b""
 
 
 async def _stream(

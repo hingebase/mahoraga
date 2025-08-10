@@ -17,6 +17,7 @@ __all__ = [
     "Context",
     "Statistics",
     "WeakValueDictionary",
+    "cache_action",
     "schedule_exit",
 ]
 
@@ -25,20 +26,38 @@ import collections
 import concurrent.futures
 import contextlib
 import contextvars
+import dataclasses
+import sys
 import time
 import weakref
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Iterator
 from typing import Any, TypedDict, override
 
 import anyio
+import hishel
 import httpx
 import httpx_aiohttp
 import pydantic_settings
+from rattler.networking.fetch_repo_data import CacheAction
 
 from mahoraga import _core
 
 
-class AsyncClient(httpx_aiohttp.HttpxAiohttpClient):
+class AsyncClient(hishel.AsyncCacheClient, httpx_aiohttp.HttpxAiohttpClient):
+    @override
+    def _transport_for_url(self, url: httpx.URL) -> httpx.AsyncBaseTransport:
+        t = super()._transport_for_url(url)
+        if isinstance(t, hishel.AsyncCacheTransport):
+            match _cache_action.get():
+                case "no-cache":
+                    return t._transport  # noqa: SLF001  # pyright: ignore[reportPrivateUsage]
+                case "force-cache-only" | "use-cache-only":
+                    return hishel.AsyncCacheTransport(
+                        _not_implemented, t._storage, t._controller)  # noqa: SLF001  # pyright: ignore[reportPrivateUsage]
+                case "cache-or-fetch":
+                    pass
+        return t
+
     @override
     @contextlib.asynccontextmanager
     async def stream(
@@ -135,5 +154,32 @@ class _Context(TypedDict):
 
 
 Context = contextvars.ContextVar[_Context]
+_cache_action = contextvars.ContextVar[CacheAction](
+    "_cache_action",
+    default="no-cache",
+)
 _exclude = {"backup_servers", "concurrent_requests"}
 _json = anyio.Path("statistics.json")
+_not_implemented = httpx.AsyncBaseTransport()
+
+if sys.version_info >= (3, 14):
+    cache_action = _cache_action
+else:
+    @dataclasses.dataclass
+    class _ContextVarWrapper[T]:
+        wrapped: contextvars.ContextVar[T]
+
+        def set(
+            self,
+            value: T,
+        ) -> contextlib.AbstractContextManager[contextvars.Token[T]]:
+            return _token_wrapper(self.wrapped.set(value))
+
+    @contextlib.contextmanager
+    def _token_wrapper[T: contextvars.Token[Any]](token: T) -> Iterator[T]:
+        try:
+            yield token
+        finally:
+            token.var.reset(token)
+
+    cache_action = _ContextVarWrapper(_cache_action)

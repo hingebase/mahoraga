@@ -28,6 +28,9 @@ import sys
 import warnings
 from typing import Any, override
 
+import hishel._controller
+import hishel._utils
+import httpcore
 import httpx
 import pooch  # pyright: ignore[reportMissingTypeStubs]
 import rich.logging
@@ -120,6 +123,11 @@ async def _main(
                     follow_redirects=False,
                     limits=httpx.Limits(keepalive_expiry=cfg.server.keep_alive),
                     event_hooks=event_hooks,
+                    storage=hishel.AsyncInMemoryStorage(capacity=1024),
+                    controller=hishel.Controller(
+                        allow_heuristics=True,
+                        key_generator=_key_generator,
+                    ),
                 ),
             ),
             "locks": _core.WeakValueDictionary(),
@@ -151,6 +159,7 @@ class _ServerConfig(uvicorn.Config):
     @override
     def configure_logging(self) -> None:
         super().configure_logging()
+        logging.getLogger("hishel.controller").setLevel(logging.DEBUG)
         if self.access_log:
             logging.getLogger("uvicorn.access").setLevel(logging.INFO)
         if self.log_level == logging.DEBUG:
@@ -194,4 +203,16 @@ class _ServerConfig(uvicorn.Config):
         atexit.register(listen.stop)
 
 
+def _key_generator(request: httpcore.Request, body: bytes | None = b"") -> str:
+    for k, v in request.headers:
+        if (
+            k.lower() == b"accept"
+            and v.startswith(b"application/vnd.pypi.simple.v1+")
+        ):
+            project = request.url.target.rsplit(b"/", 2)[1]
+            return (b"%b|%b" % (project, v)).decode("ascii")
+    return hishel._utils.generate_key(request, body or b"")  # noqa: SLF001
+
+
+hishel._controller.get_heuristic_freshness = lambda response, clock: 600  # noqa: ARG005, SLF001
 _logger = logging.getLogger("mahoraga")
