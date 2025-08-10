@@ -76,6 +76,7 @@ def make_app() -> fastapi.FastAPI:
     app.add_api_route(
         "/favicon.ico",
         _favicon,
+        include_in_schema=False,
         response_class=fastapi.responses.RedirectResponse,
     )
     app.include_router(_jsdelivr.gh, prefix="/gh", include_in_schema=False)
