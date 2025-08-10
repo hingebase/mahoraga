@@ -38,6 +38,7 @@ dependencies = [
     "jinja2 >=3.1.5",
     "kiss-headers >=2.4.0",
     "msgpack >=1.0.7",
+    "packaging >=20.9.0",
     "pooch >=1.8.1",
     "pyarrow >=14.0.0",
     "pyarrow <=14.0.2; sys_platform == 'darwin' and platform_release < '19'",
