@@ -24,12 +24,14 @@ import kiss_headers
 
 from mahoraga import _core
 
+from . import _models
+
 router = fastapi.APIRouter(route_class=_core.APIRoute)
 
 
 @router.get("/{project}/")
 async def get_pypi_project(
-    project: str,
+    project: _models.NormalizedName,
     accept: Annotated[
         str | None,
         fastapi.Header(
@@ -55,6 +57,7 @@ async def get_pypi_project(
             posixpath.join(str(url), "simple", project) + "/"
             for url in upstreams.all()
         ]
+    _core.cache_action.set("cache-or-fetch")
     return await _core.stream(
         urls,
         headers={"Accept": media_type},

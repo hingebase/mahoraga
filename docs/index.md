@@ -48,7 +48,7 @@
     Client requests are passed to the upstream server with the least total
     response time and least number of active connections.
 
-- :octicons-cache-16:{ .lg .middle }　__Lazy local cache__ :material-information-outline:{ style="color: #6b8e7b" title="Not implemented for PyPI yet" }
+- :octicons-cache-16:{ .lg .middle }　__Lazy local cache__
 
     ---
 

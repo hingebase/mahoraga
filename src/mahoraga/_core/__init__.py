@@ -22,6 +22,7 @@ __all__ = [
     "Statistics",
     "StreamingResponse",
     "WeakValueDictionary",
+    "cache_action",
     "context",
     "get",
     "load_balance",
@@ -38,6 +39,7 @@ from ._context import (
     Context,
     Statistics,
     WeakValueDictionary,
+    cache_action,
     schedule_exit,
 )
 from ._stream import (
