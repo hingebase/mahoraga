@@ -265,6 +265,7 @@ The frontend configuration depends on the library you directly use:
               requirements: [
                 // Stlite doesn't expose the `index_urls` option,
                 // hence the absolute wheel urls here
+                "http://127.0.0.1:3000/pypi/packages/py3/a/altair/altair-{{ altair_version }}-py3-none-any.whl",
                 "http://127.0.0.1:3450/pypi/packages/py3/b/blinker/blinker-{{ blinker_version }}-py3-none-any.whl",
                 "http://127.0.0.1:3450/pypi/packages/py3/t/tenacity/tenacity-{{ tenacity_version }}-py3-none-any.whl",
               ],
