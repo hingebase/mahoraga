@@ -129,7 +129,8 @@ Make an empty directory, `cd` to it, and then build the online version of PyApp:
     export PYAPP_FULL_ISOLATION=1
     export PYAPP_UV_ENABLED=1
     export PYAPP_UV_VERSION="$(uv -V | awk '{ print $2 }')"
-    pixi exec -s gcc_linux-64 -s rust cargo install --no-track --root . pyapp
+    pixi exec -s gcc_linux-64 -s rust \
+        cargo install --locked --no-track --root . pyapp
     PYAPP_INSTALL_DIR_MAHORAGA=temp UV_PYTHON=temp/python/bin/python3 bin/pyapp
     ```
 
@@ -142,7 +143,7 @@ Make an empty directory, `cd` to it, and then build the online version of PyApp:
     export PYAPP_FULL_ISOLATION=1
     export PYAPP_UV_ENABLED=1
     export PYAPP_UV_VERSION="$(uv -V | awk '{ print $2 }')"
-    pixi exec -s rust cargo install --no-track --root . pyapp
+    pixi exec -s rust cargo install --locked --no-track --root . pyapp
     PYAPP_INSTALL_DIR_MAHORAGA=temp UV_PYTHON=temp/python/bin/python3 bin/pyapp
     ```
 
@@ -155,7 +156,7 @@ Make an empty directory, `cd` to it, and then build the online version of PyApp:
     export PYAPP_FULL_ISOLATION=1
     export PYAPP_UV_ENABLED=1
     export PYAPP_UV_VERSION="$(uv -V | awk '{ print $2 }')"
-    pixi exec -s rust cargo install --no-track --root . pyapp
+    pixi exec -s rust cargo install --locked --no-track --root . pyapp
     PYAPP_INSTALL_DIR_MAHORAGA=temp UV_PYTHON=temp/python/bin/python3 bin/pyapp
     ```
 
@@ -168,7 +169,7 @@ Make an empty directory, `cd` to it, and then build the online version of PyApp:
     $Env:PYAPP_FULL_ISOLATION = "1"
     $Env:PYAPP_UV_ENABLED = "1"
     $Env:PYAPP_UV_VERSION = $(uv -V).Substring(3)
-    pixi exec -s rust cargo install --no-track --root . pyapp
+    pixi exec -s rust cargo install --locked --no-track --root . pyapp
     $Env:PYAPP_INSTALL_DIR_MAHORAGA = "temp"
     bin/pyapp
     ```
@@ -182,29 +183,29 @@ with maximum compression rate:
 
     ``` sh
     pixi exec -s tar -s zstd tar -cf temp.tar.zst -C temp/python \
-        --use-compress-program "zstd --ultra -22" .
+        --use-compress-program "zstd -T0 --ultra -22" .
     ```
 
 === "macOS (Apple Silicon)"
 
     ``` sh
     pixi exec -s zstd tar -cf temp.tar.zst -C temp/python \
-        --use-compress-program "zstd --ultra -22" .
+        --use-compress-program "zstd -T0 --ultra -22" .
     ```
 
 === "macOS (Intel)"
 
     ``` sh
     pixi exec -s zstd tar -cf temp.tar.zst -C temp/python \
-        --use-compress-program "zstd --ultra -22" .
+        --use-compress-program "zstd -T0 --ultra -22" .
     ```
 
 === "Windows (x64)"
 
     ``` powershell title="PowerShell"
     rm temp/python{{ python_version_short }}._pth
-    pixi exec -s zstd tar -cf temp.tar.zst -C temp `
-        --use-compress-program "zstd --ultra -22" .
+    pixi exec -s m2-tar -s m2-zstd tar -cf temp.tar.zst -C temp `
+        --use-compress-program "zstd -T0 --ultra -22" .
     ```
 
 Pass the tarball to PyApp again, and we will finally get the desired offline
@@ -220,7 +221,8 @@ executable:
     export PYAPP_DISTRIBUTION_PATH=~+/temp.tar.zst
     export PYAPP_FULL_ISOLATION=1
     export PYAPP_SKIP_INSTALL=1
-    pixi exec -s gcc_linux-64 -s rust cargo install --no-track --root offline pyapp
+    pixi exec -s gcc_linux-64 -s rust \
+        cargo install --frozen --no-track --root offline pyapp
     mv offline/bin/pyapp mahoraga
     ```
 
@@ -234,7 +236,7 @@ executable:
     export PYAPP_DISTRIBUTION_PATH=~+/temp.tar.zst
     export PYAPP_FULL_ISOLATION=1
     export PYAPP_SKIP_INSTALL=1
-    pixi exec -s rust cargo install --no-track --root offline pyapp
+    pixi exec -s rust cargo install --frozen --no-track --root offline pyapp
     mv offline/bin/pyapp mahoraga
     ```
 
@@ -248,7 +250,7 @@ executable:
     export PYAPP_DISTRIBUTION_PATH=~+/temp.tar.zst
     export PYAPP_FULL_ISOLATION=1
     export PYAPP_SKIP_INSTALL=1
-    pixi exec -s rust cargo install --no-track --root offline pyapp
+    pixi exec -s rust cargo install --frozen --no-track --root offline pyapp
     mv offline/bin/pyapp mahoraga
     ```
 
@@ -262,7 +264,7 @@ executable:
     $Env:PYAPP_DISTRIBUTION_PATH = Convert-Path temp.tar.zst
     $Env:PYAPP_FULL_ISOLATION = "1"
     $Env:PYAPP_SKIP_INSTALL = "1"
-    pixi exec -s rust cargo install --no-track --root offline pyapp
+    pixi exec -s rust cargo install --frozen --no-track --root offline pyapp
     mv offline/bin/pyapp.exe mahoraga.exe
     ```
 
