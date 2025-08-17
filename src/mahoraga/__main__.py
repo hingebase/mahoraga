@@ -24,6 +24,7 @@ if "emscripten-32" in rattler.platform.PlatformLiteral.__args__:
         "linux-aarch64",
         "linux-armv6l",
         "linux-armv7l",
+        "linux-loong64",
         "linux-ppc64le",
         "linux-ppc64",
         "linux-ppc",
