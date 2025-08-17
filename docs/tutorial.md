@@ -195,7 +195,7 @@ The frontend configuration depends on the library you directly use:
     <html>
       <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width,initial-scale=1.0">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <script type="text/javascript" src="http://127.0.0.1:3450/pyodide/v0.28.1/full/pyodide.js"></script>
       </head>
       <body>
@@ -252,7 +252,7 @@ The frontend configuration depends on the library you directly use:
     <html>
       <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
         <link rel="stylesheet" href="http://127.0.0.1:3450/npm/@stlite/browser@0/build/stlite.css">
       </head>
       <body>
@@ -265,7 +265,7 @@ The frontend configuration depends on the library you directly use:
               requirements: [
                 // Stlite doesn't expose the `index_urls` option,
                 // hence the absolute wheel urls here
-                "http://127.0.0.1:3000/pypi/packages/py3/a/altair/altair-{{ altair_version }}-py3-none-any.whl",
+                "http://127.0.0.1:3450/pypi/packages/py3/a/altair/altair-{{ altair_version }}-py3-none-any.whl",
                 "http://127.0.0.1:3450/pypi/packages/py3/b/blinker/blinker-{{ blinker_version }}-py3-none-any.whl",
                 "http://127.0.0.1:3450/pypi/packages/py3/t/tenacity/tenacity-{{ tenacity_version }}-py3-none-any.whl",
               ],
