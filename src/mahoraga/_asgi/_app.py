@@ -21,6 +21,7 @@ import fastapi.openapi.docs
 import fastapi.templating
 import jinja2
 import starlette.middleware.cors
+import starlette.staticfiles
 
 from mahoraga import _conda, _core, _jsdelivr, _pypi, _python
 
@@ -71,6 +72,11 @@ def make_app() -> fastapi.FastAPI:
     app.include_router(_jsdelivr.pyodide, prefix="/pyodide", tags=["pyodide"])
     app.include_router(_pypi.router, prefix="/pypi", tags=["pypi"])
     app.include_router(_python.router, tags=["python"])
+    app.mount(
+        "/static",
+        starlette.staticfiles.StaticFiles(packages=[("mahoraga", "_static")]),
+        name="static",
+    )
 
     # Private, only for building docs
     app.add_api_route(
