@@ -33,9 +33,10 @@ from collections.abc import AsyncGenerator, Callable, Iterable, Mapping
 from typing import TYPE_CHECKING, Any, TypedDict, Unpack, overload, override
 
 import anyio
+import fastapi.responses
 import fastapi.routing
 import httpx
-import pooch  # pyright: ignore[reportMissingTypeStubs]
+import pooch.utils  # pyright: ignore[reportMissingTypeStubs]
 import starlette.types
 from starlette._exception_handler import (
     wrap_app_handling_exceptions,  # noqa: PLC2701  # pyright: ignore[reportPrivateImportUsage]

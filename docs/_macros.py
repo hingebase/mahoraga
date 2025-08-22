@@ -25,7 +25,7 @@ import mkdocs_macros.plugin
 import pooch  # pyright: ignore[reportMissingTypeStubs]
 import pydantic
 import pydantic_settings
-import requests
+import requests.sessions
 from typing_extensions import override  # noqa: UP035
 
 if TYPE_CHECKING:
@@ -60,7 +60,7 @@ def define_env(env: mkdocs_macros.plugin.MacrosPlugin) -> None:
     if not os.getenv("GH_TOKEN"):
         privacy = cast("PrivacyPlugin", env.conf.plugins["material/privacy"])
         privacy.config.assets = True
-        requests.get = _get
+        requests.get = _get  # ty: ignore[invalid-assignment]
 
 
 def on_post_build(env: mkdocs_macros.plugin.MacrosPlugin) -> None:

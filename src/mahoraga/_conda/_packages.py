@@ -19,7 +19,7 @@ import mimetypes
 import pathlib
 from typing import Annotated
 
-import fastapi
+import fastapi.responses
 import rattler.exceptions
 import rattler.platform
 

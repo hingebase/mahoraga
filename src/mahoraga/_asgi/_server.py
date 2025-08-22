@@ -32,7 +32,8 @@ import hishel._controller
 import hishel._utils
 import httpcore
 import httpx
-import pooch  # pyright: ignore[reportMissingTypeStubs]
+import pooch.utils  # pyright: ignore[reportMissingTypeStubs]
+import rich.console
 import rich.logging
 import uvicorn.config
 
@@ -214,5 +215,5 @@ def _key_generator(request: httpcore.Request, body: bytes | None = b"") -> str:
     return hishel._utils.generate_key(request, body or b"")  # noqa: SLF001
 
 
-hishel._controller.get_heuristic_freshness = lambda response, clock: 600  # noqa: ARG005, SLF001
+hishel._controller.get_heuristic_freshness = lambda response, clock: 600  # noqa: ARG005, SLF001  # ty: ignore[invalid-assignment]
 _logger = logging.getLogger("mahoraga")

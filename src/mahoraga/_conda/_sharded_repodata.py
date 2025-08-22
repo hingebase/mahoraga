@@ -22,9 +22,9 @@ import pathlib
 import shutil
 from typing import Annotated, Any
 
-import fastapi
+import fastapi.responses
 import msgpack
-import pooch  # pyright: ignore[reportMissingTypeStubs]
+import pooch.utils  # pyright: ignore[reportMissingTypeStubs]
 import pyarrow as pa
 import rattler.platform
 

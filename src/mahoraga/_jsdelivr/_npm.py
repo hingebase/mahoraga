@@ -20,8 +20,8 @@ import pathlib
 from typing import TYPE_CHECKING, Annotated, Literal, Self, TypedDict
 
 import anyio
-import fastapi
-import pooch  # pyright: ignore[reportMissingTypeStubs]
+import fastapi.responses
+import pooch.utils  # pyright: ignore[reportMissingTypeStubs]
 import pydantic
 
 from mahoraga import _core
