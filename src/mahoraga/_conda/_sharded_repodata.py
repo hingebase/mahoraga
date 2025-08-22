@@ -174,7 +174,7 @@ def _split_repo(
         pass
     else:
         json_file.unlink(missing_ok=True)
-        shutil.move(new, json_file)  # pyright: ignore[reportUnknownArgumentType]
+        shutil.move(new, json_file)
     try:
         f = pa.CompressedInputStream(json_file, "zstd")
     except OSError:

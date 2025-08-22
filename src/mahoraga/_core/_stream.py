@@ -39,7 +39,7 @@ import httpx
 import pooch.utils  # pyright: ignore[reportMissingTypeStubs]
 import starlette.types
 from starlette._exception_handler import (
-    wrap_app_handling_exceptions,  # noqa: PLC2701  # pyright: ignore[reportPrivateImportUsage]
+    wrap_app_handling_exceptions,  # noqa: PLC2701
 )
 
 from mahoraga import _core
