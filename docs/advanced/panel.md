@@ -28,7 +28,7 @@ URLs in Panel with a runtime configurable prefix, i.e. the Mahoraga URL.
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <script type="text/javascript" src="http://127.0.0.1:3450/pyodide/v0.28.1/full/pyodide.js"></script>
+        <script type="text/javascript" src="http://127.0.0.1:3450/pyodide/v0.28.2/full/pyodide.js"></script>
         <script type="text/javascript" src="http://127.0.0.1:3450/npm/@bokeh/bokehjs@3.6.3/build/js/bokeh.min.js"></script>
         <script type="text/javascript" src="http://127.0.0.1:3450/npm/@bokeh/bokehjs@3.6.3/build/js/bokeh-widgets.min.js"></script>
         <script type="text/javascript" src="http://127.0.0.1:3450/npm/@bokeh/bokehjs@3.6.3/build/js/bokeh-tables.min.js"></script>
@@ -92,7 +92,7 @@ URLs in Panel with a runtime configurable prefix, i.e. the Mahoraga URL.
       <body>
         <div id="simple_app"></div>
         <script type="py" config='{
-          "interpreter": "http://127.0.0.1:3450/pyodide/v0.28.1/full/pyodide.mjs",
+          "interpreter": "http://127.0.0.1:3450/pyodide/v0.28.2/full/pyodide.mjs",
           "packages": ["bokeh"]
         }'>
             import micropip

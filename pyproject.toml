@@ -1,5 +1,5 @@
 [build-system]
-requires = ["uv-build >=0.7.19"]
+requires = ["uv-build >=0.8.13"]  # https://github.com/astral-sh/uv/issues/15398
 build-backend = "uv_build"
 
 [project]
