@@ -25,7 +25,7 @@ import re
 import urllib.parse
 from typing import Annotated
 
-import fastapi
+import fastapi.responses
 import packaging.version
 import pooch  # pyright: ignore[reportMissingTypeStubs]
 import pydantic_extra_types.semantic_version

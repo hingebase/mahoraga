@@ -28,7 +28,7 @@ import rattler.networking
 import rattler.platform
 
 try:
-    import uvloop  # pyright: ignore[reportMissingImports]
+    import uvloop  # pyright: ignore[reportMissingImports]  # ty: ignore[unresolved-import]
 except ImportError:
     uvloop = None
 

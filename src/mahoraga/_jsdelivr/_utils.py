@@ -25,7 +25,7 @@ import shutil
 import tarfile
 from typing import Literal
 
-import fastapi
+import fastapi.responses
 
 from mahoraga import _core, _jsdelivr
 

@@ -24,7 +24,7 @@ import posixpath
 from collections.abc import AsyncGenerator
 from typing import Annotated
 
-import fastapi
+import fastapi.responses
 import httpx
 import packaging.utils
 

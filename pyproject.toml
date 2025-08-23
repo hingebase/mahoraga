@@ -57,6 +57,7 @@ dependencies = [
 typing = [
     "msgpack-types ==0.3.0",
     "pyarrow-stubs >=17.10; sys_platform != 'darwin' or platform_release >= '20'",
+    "types-requests >=2.25.0",
 ]
 
 [dependency-groups]
@@ -93,3 +94,8 @@ preview = true
 [tool.ruff.lint]
 ignore = ["INP001"]
 select = ["ALL"]
+
+[tool.ty.rules]
+division-by-zero = "warn"
+possibly-unresolved-reference = "warn"
+unused-ignore-comment = "warn"

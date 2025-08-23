@@ -36,7 +36,7 @@ def main() -> None:
         cli_args=["--help"] if len(sys.argv) <= 1 else None,
         cli_settings_source=(
             None if rich.console.detect_legacy_windows()
-            else pydantic_settings.CliSettingsSource(  # pyright: ignore[reportUnknownArgumentType]
+            else pydantic_settings.CliSettingsSource(
                 _Main,
                 formatter_class=rich_argparse.RawDescriptionRichHelpFormatter,
             )

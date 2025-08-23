@@ -22,9 +22,9 @@ import pathlib
 import shutil
 from typing import Annotated, Any
 
-import fastapi
+import fastapi.responses
 import msgpack
-import pooch  # pyright: ignore[reportMissingTypeStubs]
+import pooch.utils  # pyright: ignore[reportMissingTypeStubs]
 import pyarrow as pa
 import rattler.platform
 
@@ -174,7 +174,7 @@ def _split_repo(
         pass
     else:
         json_file.unlink(missing_ok=True)
-        shutil.move(new, json_file)  # pyright: ignore[reportUnknownArgumentType]
+        shutil.move(new, json_file)
     try:
         f = pa.CompressedInputStream(json_file, "zstd")
     except OSError:

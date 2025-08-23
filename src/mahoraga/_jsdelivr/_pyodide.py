@@ -25,7 +25,7 @@ import pathlib
 import posixpath
 from typing import Annotated, Literal
 
-import fastapi
+import fastapi.responses
 import packaging.version
 import pooch  # pyright: ignore[reportMissingTypeStubs]
 import pydantic

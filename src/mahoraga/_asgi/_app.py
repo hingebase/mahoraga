@@ -18,6 +18,7 @@ import importlib.metadata
 from typing import cast
 
 import fastapi.openapi.docs
+import fastapi.responses
 import fastapi.templating
 import jinja2
 import starlette.middleware.cors
