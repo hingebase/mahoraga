@@ -25,6 +25,7 @@ import mkdocs_macros.plugin
 import pooch  # pyright: ignore[reportMissingTypeStubs]
 import pydantic
 import pydantic_settings
+import pyodide_lock
 import requests.sessions
 from typing_extensions import override  # noqa: UP035
 
@@ -61,6 +62,12 @@ def define_env(env: mkdocs_macros.plugin.MacrosPlugin) -> None:
         privacy = cast("PrivacyPlugin", env.conf.plugins["material/privacy"])
         privacy.config.assets = True
         requests.get = _get  # ty: ignore[invalid-assignment]
+    lock_file = pooch.retrieve(  # pyright: ignore[reportUnknownMemberType]
+        f"https://cdn.jsdelivr.net/pyodide/v{env.variables['pyodide_py_version']}/full/pyodide-lock.json",
+        known_hash=None,
+    )
+    lock_spec = pyodide_lock.PyodideLockSpec.from_json(pathlib.Path(lock_file))
+    env.variables["bokeh_version"] = lock_spec.packages["bokeh"].version
 
 
 def on_post_build(env: mkdocs_macros.plugin.MacrosPlugin) -> None:
@@ -194,6 +201,7 @@ def _open(requirements: pathlib.Path) -> io.TextIOWrapper:
                 "--no-annotate",
                 "--no-deps",
                 "--no-header",
+                "--python-version", "3.13",
                 "-o", requirements,
                 requirements.with_suffix(".in"),
             ],

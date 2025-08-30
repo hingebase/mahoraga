@@ -68,6 +68,7 @@ dev = [
     "mkdocs-minify-plugin >=0.7.0",
     "pooch >=1.8.0",
     "pydantic-settings >=2.3.0",
+    "pyodide-lock >=0.1.0",
 ]
 
 [[project.authors]]

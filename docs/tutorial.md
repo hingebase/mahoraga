@@ -196,7 +196,7 @@ The frontend configuration depends on the library you directly use:
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <script type="text/javascript" src="http://127.0.0.1:3450/pyodide/v0.28.2/full/pyodide.js"></script>
+        <script type="text/javascript" src="http://127.0.0.1:3450/pyodide/v{{ pyodide_py_version }}/full/pyodide.js"></script>
       </head>
       <body>
         <script type="text/javascript">
@@ -238,7 +238,7 @@ The frontend configuration depends on the library you directly use:
       <body>
         <script type="py" config='{
           "index_urls": ["http://127.0.0.1:3450/pypi/simple/{package_name}/?micropip=1"],
-          "interpreter": "http://127.0.0.1:3450/pyodide/v0.28.2/full/pyodide.mjs",
+          "interpreter": "http://127.0.0.1:3450/pyodide/v{{ pyodide_py_version }}/full/pyodide.mjs",
           "packages": ["your_package"]
         }'># Your Python code here</script>
       </body>
@@ -247,7 +247,7 @@ The frontend configuration depends on the library you directly use:
 
 === "Stlite"
 
-    ``` html hl_lines="6 11 14 16-19"
+    ``` html hl_lines="6 11 14 16-17"
     <!doctype html>
     <html>
       <head>
@@ -263,9 +263,6 @@ The frontend configuration depends on the library you directly use:
             {
               pyodideUrl: "http://127.0.0.1:3450/pyodide/v{{ pyodide_py_version }}/full/pyodide.js",
               requirements: [
-                // Stlite doesn't expose the `index_urls` option,
-                // hence the absolute wheel urls here
-                "http://127.0.0.1:3450/pypi/packages/py3/a/altair/altair-{{ altair_version }}-py3-none-any.whl",
                 "http://127.0.0.1:3450/pypi/packages/py3/b/blinker/blinker-{{ blinker_version }}-py3-none-any.whl",
                 "http://127.0.0.1:3450/pypi/packages/py3/t/tenacity/tenacity-{{ tenacity_version }}-py3-none-any.whl",
               ],
