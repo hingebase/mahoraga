@@ -133,6 +133,10 @@ Make an empty directory, `cd` to it, and then build the online version of PyApp:
         cargo install --locked --no-track --root . pyapp
     PYAPP_INSTALL_DIR_MAHORAGA=temp UV_PYTHON=temp/python/bin/python3 bin/pyapp
     ```
+    !!! note
+
+        You may want to replace the `v3` in `PYAPP_DISTRIBUTION_SOURCE` with
+        `v2` or `v4` if the CPU of the target machine is already known.
 
 === "macOS (Apple Silicon)"
 
