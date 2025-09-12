@@ -111,7 +111,6 @@ class _Conda(pydantic.BaseModel, **_model_config):
             "https://mirrors.hit.edu.cn/anaconda/cloud/",
             "https://mirrors.lzu.edu.cn/anaconda/cloud/",
             "https://mirrors.pku.edu.cn/anaconda/cloud/",
-            "https://mirrors.shanghaitech.edu.cn/anaconda/cloud/",
             "https://mirrors.sustech.edu.cn/anaconda/cloud/",
             "https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/",
         ]),
@@ -123,7 +122,6 @@ class _Conda(pydantic.BaseModel, **_model_config):
             "https://mirrors.hit.edu.cn/anaconda/cloud/",
             "https://mirrors.lzu.edu.cn/anaconda/cloud/",
             "https://mirrors.pku.edu.cn/anaconda/cloud/",
-            "https://mirrors.shanghaitech.edu.cn/anaconda/cloud/",
             "https://mirrors.sustech.edu.cn/anaconda/cloud/",
             "https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/",
             "https://prefix.dev/",
@@ -178,7 +176,6 @@ class _PyPI(pydantic.BaseModel):
         "https://mirrors.aliyun.com/pypi/web/",
         "https://mirrors.cloud.tencent.com/pypi/",
         "https://mirrors.huaweicloud.com/repository/pypi/",
-        "https://mirrors.neusoft.edu.cn/pypi/web/",
         "https://mirrors.pku.edu.cn/pypi/web/",
         "https://mirrors.qlu.edu.cn/pypi/web/",
         "https://mirrors.sustech.edu.cn/pypi/web/",
@@ -208,7 +205,6 @@ class _Upstream(pydantic.BaseModel, **_model_config):
     pypi: _PyPI = _PyPI()
     python: list[_HttpUrl] = _adapter.validate_python([
         "https://cdn.npmmirror.com/binaries/python/{version}/{name}",
-        "https://mirror.bjtu.edu.cn/python/{version}/{name}",
         "https://mirror.nju.edu.cn/python/{version}/{name}",
         "https://mirrors.aliyun.com/python-release/windows/{name}",
         "https://mirrors.huaweicloud.com/python/{version}/{name}",
