@@ -21,7 +21,6 @@ from typing import TYPE_CHECKING, Annotated, Literal, Self, TypedDict
 
 import anyio
 import fastapi.responses
-import pooch.utils  # pyright: ignore[reportMissingTypeStubs]
 import pydantic
 
 from mahoraga import _core
@@ -124,7 +123,8 @@ class _Base(pydantic.BaseModel):
                 raw = await _core.get(url, **kwargs)
                 self = cls.model_validate_json(raw)
                 try:
-                    pooch.utils.make_local_storage(cache_location.parent)  # pyright: ignore[reportUnknownMemberType]
+                    await cache_location.parent.mkdir(parents=True,
+                                                      exist_ok=True)
                     await cache_location.write_bytes(raw)
                 except OSError:
                     _logger.warning("Failed to cache %s", url, exc_info=True)

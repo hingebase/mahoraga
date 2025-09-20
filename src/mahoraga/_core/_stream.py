@@ -27,7 +27,6 @@ import hashlib
 import http
 import logging
 import os
-import pathlib
 import shutil
 from collections.abc import AsyncGenerator, Callable, Iterable, Mapping
 from typing import TYPE_CHECKING, Any, TypedDict, Unpack, overload, override
@@ -285,7 +284,7 @@ async def _stream(
     async with stack:
         yield b""
         if cache_location and sha256:
-            dir_ = pathlib.Path(cache_location).parent
+            dir_ = anyio.Path(cache_location).parent
             h = hashlib.sha256()
             if size:
                 def opener(path: str, flags: int) -> int:
@@ -299,7 +298,7 @@ async def _stream(
                 open_ = opener
             else:
                 open_ = None
-            pooch.utils.make_local_storage(dir_)  # pyright: ignore[reportUnknownMemberType]
+            await dir_.mkdir(parents=True, exist_ok=True)
             with pooch.utils.temporary_file(dir_) as tmp:  # pyright: ignore[reportUnknownMemberType]
                 async with await anyio.open_file(tmp, "wb", opener=open_) as f:
                     async for chunk in response.aiter_bytes():
