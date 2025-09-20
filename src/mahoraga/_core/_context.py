@@ -26,11 +26,9 @@ import collections
 import concurrent.futures
 import contextlib
 import contextvars
-import dataclasses
-import sys
 import time
 import weakref
-from collections.abc import AsyncGenerator, Iterator
+from collections.abc import AsyncGenerator
 from typing import Any, TypedDict, override
 
 import anyio
@@ -48,7 +46,7 @@ class AsyncClient(hishel.AsyncCacheClient, httpx_aiohttp.HttpxAiohttpClient):
     def _transport_for_url(self, url: httpx.URL) -> httpx.AsyncBaseTransport:
         t = super()._transport_for_url(url)
         if isinstance(t, hishel.AsyncCacheTransport):
-            match _cache_action.get():
+            match cache_action.get():
                 case "no-cache":
                     return t._transport  # noqa: SLF001  # pyright: ignore[reportPrivateUsage]
                 case "force-cache-only" | "use-cache-only":
@@ -154,32 +152,10 @@ class _Context(TypedDict):
 
 
 Context = contextvars.ContextVar[_Context]
-_cache_action = contextvars.ContextVar[CacheAction](
-    "_cache_action",
+cache_action = contextvars.ContextVar[CacheAction](
+    "cache_action",
     default="no-cache",
 )
 _exclude = {"backup_servers", "concurrent_requests"}
 _json = anyio.Path("statistics.json")
 _not_implemented = httpx.AsyncBaseTransport()
-
-if sys.version_info >= (3, 14):
-    cache_action = _cache_action
-else:
-    @dataclasses.dataclass
-    class _ContextVarWrapper[T]:
-        wrapped: contextvars.ContextVar[T]
-
-        def set(
-            self,
-            value: T,
-        ) -> contextlib.AbstractContextManager[contextvars.Token[T]]:
-            return _token_wrapper(self.wrapped.set(value))
-
-    @contextlib.contextmanager
-    def _token_wrapper[T: contextvars.Token[Any]](token: T) -> Iterator[T]:
-        try:
-            yield token
-        finally:
-            token.var.reset(token)
-
-    cache_action = _ContextVarWrapper(_cache_action)

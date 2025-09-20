@@ -17,6 +17,7 @@ __all__ = ["router"]
 import asyncio
 import binascii
 import contextlib
+import contextvars
 import http
 import mimetypes
 import pathlib
@@ -147,61 +148,70 @@ async def get_pypi_package(
 
 
 async def _sha256(filename: str, project: str) -> bytes:
-    loop = asyncio.get_event_loop()
-    ctx = _core.context.get()
-    upstreams = ctx["config"].upstream.pypi
+    loop = asyncio.get_running_loop()
+    upstreams = _core.context.get()["config"].upstream.pypi
     urls = [
         posixpath.join(str(url), "simple", project) + "/"
         for url in upstreams.json_
     ]
-    with _core.cache_action.set("force-cache-only"):
-        try:
-            raw = await _core.get(
+    ctx = contextvars.copy_context()
+    ctx.run(_core.cache_action.set, "force-cache-only")
+    try:
+        raw = await loop.create_task(
+            _core.get(
                 urls,
                 headers={"Accept": "application/vnd.pypi.simple.v1+html"},
-            )
-        except (NotImplementedError, fastapi.HTTPException):
-            pass
-        else:
-            return await loop.run_in_executor(
-                None,
-                _sha256_from_html,
-                raw,
-                filename,
-            )
-    with _core.cache_action.set("cache-or-fetch"):
-        try:
-            raw = await _core.get(
-                urls,
-                headers={"Accept": "application/vnd.pypi.simple.v1+json"},
-            )
-        except fastapi.HTTPException:
-            pass
-        else:
-            return await loop.run_in_executor(
-                None,
-                _sha256_from_json,
-                raw,
-                project,
-                filename,
-            )
-        urls += [
-            posixpath.join(str(url), "simple", project) + "/"
-            for url in upstreams.html
-        ]
-        try:
-            raw = await _core.get(
-                urls,
-                headers={"Accept": "application/vnd.pypi.simple.v1+html"},
-            )
-        except fastapi.HTTPException:
-            return b""
+            ),
+            context=ctx,
+        )
+    except (NotImplementedError, fastapi.HTTPException):
+        pass
+    else:
         return await loop.run_in_executor(
             None,
             _sha256_from_html,
             raw,
             filename,
         )
+    ctx.run(_core.cache_action.set, "cache-or-fetch")
+    try:
+        raw = await loop.create_task(
+            _core.get(
+                urls,
+                headers={"Accept": "application/vnd.pypi.simple.v1+json"},
+            ),
+            context=ctx,
+        )
+    except fastapi.HTTPException:
+        pass
+    else:
+        return await loop.run_in_executor(
+            None,
+            _sha256_from_json,
+            raw,
+            project,
+            filename,
+        )
+    urls += [
+        posixpath.join(str(url), "simple", project) + "/"
+        for url in upstreams.html
+    ]
+    try:
+        raw = await loop.create_task(
+            _core.get(
+                urls,
+                headers={"Accept": "application/vnd.pypi.simple.v1+html"},
+            ),
+            context=ctx,
+        )
+    except fastapi.HTTPException:
+        return b""
+    return await loop.run_in_executor(
+        None,
+        _sha256_from_html,
+        raw,
+        filename,
+    )
 
 
 def _sha256_from_html(raw: bytes, filename: str) -> bytes:

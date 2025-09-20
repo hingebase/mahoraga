@@ -14,7 +14,9 @@
 
 __all__ = ["router"]
 
+import asyncio
 import collections
+import contextvars
 import http
 import posixpath
 from typing import Annotated, Literal
@@ -57,11 +59,15 @@ async def get_pypi_project(
             posixpath.join(str(url), "simple", project) + "/"
             for url in upstreams.all()
         ]
-    _core.cache_action.set("cache-or-fetch")
-    return await _core.stream(
-        urls,
-        headers={"Accept": media_type},
-        media_type=media_type,
+    ctx = contextvars.copy_context()
+    ctx.run(_core.cache_action.set, "cache-or-fetch")
+    return await asyncio.create_task(
+        _core.stream(
+            urls,
+            headers={"Accept": media_type},
+            media_type=media_type,
+        ),
+        context=ctx,
     )
 
 
