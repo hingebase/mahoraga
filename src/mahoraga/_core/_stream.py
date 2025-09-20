@@ -26,9 +26,15 @@ import contextlib
 import hashlib
 import http
 import logging
-import os
+import pathlib
 import shutil
-from collections.abc import AsyncGenerator, Callable, Iterable, Mapping
+from collections.abc import (
+    AsyncGenerator,
+    Callable,
+    Generator,
+    Iterable,
+    Mapping,
+)
 from typing import TYPE_CHECKING, Any, TypedDict, Unpack, overload, override
 
 import anyio
@@ -44,6 +50,8 @@ from starlette._exception_handler import (
 from mahoraga import _core
 
 if TYPE_CHECKING:
+    from _hashlib import HASH
+
     from _typeshed import StrPath
 
 
@@ -212,8 +220,7 @@ async def _entered(
 ) -> fastapi.Response:
     ctx = _core.context.get()
     client = ctx["httpx_client"]
-    inner_stack = contextlib.AsyncExitStack()
-    await stack.enter_async_context(inner_stack)
+    inner_stack = await stack.enter_async_context(contextlib.AsyncExitStack())
     response = None
     async with contextlib.aclosing(load_balance(urls)) as it:
         async for url in it:
@@ -284,43 +291,59 @@ async def _stream(
     async with stack:
         yield b""
         if cache_location and sha256:
-            dir_ = anyio.Path(cache_location).parent
             h = hashlib.sha256()
-            if size:
-                def opener(path: str, flags: int) -> int:
-                    fd = os.open(path, flags)
+            inner_stack = contextlib.ExitStack()
+            loop = asyncio.get_running_loop()
+            try:
+                f = await loop.run_in_executor(
+                    None,
+                    inner_stack.enter_context,
+                    _tempfile(response, cache_location, sha256, size, h),
+                )
+                async for chunk in response.aiter_bytes():
+                    task = loop.create_task(f.write(chunk))
                     try:
-                        os.truncate(fd, size)
-                    except:
-                        os.close(fd)
-                        raise
-                    return fd
-                open_ = opener
-            else:
-                open_ = None
-            await dir_.mkdir(parents=True, exist_ok=True)
-            with pooch.utils.temporary_file(dir_) as tmp:  # pyright: ignore[reportUnknownMemberType]
-                async with await anyio.open_file(tmp, "wb", opener=open_) as f:
-                    async for chunk in response.aiter_bytes():
-                        h.update(chunk)
-                        task = asyncio.create_task(f.write(chunk))
                         yield chunk
+                    finally:
                         await task
-                    ok = h.digest() == sha256 and (
-                        size is None
-                        or size == (
-                            await f.tell()
-                            if "Content-Encoding" in response.headers
-                            else response.num_bytes_downloaded
-                        )
-                    )
-                if ok:
-                    shutil.move(tmp, cache_location)
+                        h.update(chunk)
+            finally:
+                await loop.run_in_executor(None, inner_stack.close)
         elif cache_location or sha256:
             _core.unreachable()
         else:
             async for chunk in response.aiter_bytes():
                 yield chunk
+
+
+@contextlib.contextmanager
+def _tempfile(
+    response: httpx.Response,
+    cache_location: "StrPath",
+    sha256: bytes,
+    size: int | None,
+    hash_: "HASH",
+) -> Generator[anyio.AsyncFile[bytes], Any, None]:
+    dir_ = pathlib.Path(cache_location).parent
+    dir_.mkdir(parents=True, exist_ok=True)
+    with (
+        pooch.utils.temporary_file(dir_) as tmp,  # pyright: ignore[reportUnknownMemberType]
+        contextlib.ExitStack() as stack,
+        pathlib.Path(tmp).open("wb") as f,
+    ):
+        f.truncate(size)
+        try:
+            yield anyio.AsyncFile(f)
+        finally:
+            if hash_.digest() == sha256 and (
+                size is None
+                or size == (
+                    f.tell()
+                    if "Content-Encoding" in response.headers
+                    else response.num_bytes_downloaded
+                )
+            ):
+                stack.callback(shutil.move, tmp, cache_location)
 
 
 def _unify_content_length(
