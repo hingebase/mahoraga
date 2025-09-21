@@ -293,13 +293,22 @@ async def _stream(
         if cache_location and sha256:
             h = hashlib.sha256()
             inner_stack = contextlib.ExitStack()
+            stack.push_async_callback(asyncio.to_thread, inner_stack.close)
             loop = asyncio.get_running_loop()
-            try:
-                f = await loop.run_in_executor(
-                    None,
-                    inner_stack.enter_context,
-                    _tempfile(response, cache_location, sha256, size, h),
-                )
+            f = await loop.run_in_executor(
+                None,
+                inner_stack.enter_context,
+                _tempfile(response, cache_location, sha256, size, h),
+            )
+            if size:
+                async for chunk in response.aiter_bytes():
+                    h.update(chunk)
+                    task = loop.create_task(f.write(chunk))
+                    try:
+                        yield chunk
+                    finally:
+                        await task
+            else:
                 async for chunk in response.aiter_bytes():
                     task = loop.create_task(f.write(chunk))
                     try:
@@ -307,8 +316,6 @@ async def _stream(
                     finally:
                         await task
                         h.update(chunk)
-            finally:
-                await loop.run_in_executor(None, inner_stack.close)
         elif cache_location or sha256:
             _core.unreachable()
         else:

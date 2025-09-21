@@ -16,6 +16,8 @@ __all__ = [
     "APIRoute",
     "AsyncClient",
     "Config",
+    "GitHubRelease",
+    "NPMBase",
     "Predicate",
     "Response",
     "Server",
@@ -42,6 +44,7 @@ from ._context import (
     cache_action,
     schedule_exit,
 )
+from ._metadata import GitHubRelease, NPMBase
 from ._stream import (
     APIRoute,
     Response,

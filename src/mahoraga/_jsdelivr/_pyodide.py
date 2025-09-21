@@ -28,7 +28,6 @@ from typing import Annotated, Literal
 import fastapi.responses
 import packaging.version
 import pooch  # pyright: ignore[reportMissingTypeStubs]
-import pydantic
 import pyodide_lock
 
 from mahoraga import _core, _jsdelivr
@@ -64,9 +63,13 @@ async def get_pyodide_package(
                     "Cache-Control": "public, max-age=31536000, immutable",
                 },
             )
-        release = await asyncio.get_running_loop().run_in_executor(
-            None, _retrieve, version)
-        for asset in _Release.model_validate_json(release).assets:
+        release = await _core.GitHubRelease.fetch(
+            f"pyodide/{version}.json",
+            owner="pyodide",
+            repo="pyodide",
+            tag_name=version,
+        )
+        for asset in release.assets:
             if asset.name == name:
                 break
         else:
@@ -83,6 +86,7 @@ async def get_pyodide_package(
                     stack=stack,
                     cache_location=cache_location,
                     sha256=bytes.fromhex(digest[7:]),
+                    size=asset.size,
                 )
             _logger.warning("GitHub returning non-SHA256 digest: %r", digest)
         return await _core.stream(asset.url, headers=headers, stack=stack)
@@ -251,9 +255,8 @@ async def _get_pyodide_lock(
                 ):
                     return
             metadata = await _jsdelivr.Metadata.fetch(
-                f"https://data.jsdelivr.com/v1/packages/npm/{package}",
-                "npm",
-                f"{package}.json",
+                f"npm/{package}.json",
+                url=f"https://data.jsdelivr.com/v1/packages/npm/{package}",
                 params={"structure": "flat"},
             )
             for file in metadata.files:
@@ -280,32 +283,6 @@ async def _get_pyodide_lock(
                 else:
                     status_code = http.HTTPStatus.GATEWAY_TIMEOUT
                     raise fastapi.HTTPException(status_code)
-
-
-class _ReleaseAsset(pydantic.BaseModel, extra="ignore"):
-    url: str
-    name: str
-    size: int
-    digest: str | None
-
-
-class _Release(pydantic.BaseModel, extra="ignore"):
-    assets: list[_ReleaseAsset]
-
-
-def _retrieve(version: str) -> str:
-    headers = {
-        "Accept": "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-    }
-    p = pooch.retrieve(  # pyright: ignore[reportUnknownMemberType]
-        f"https://api.github.com/repos/pyodide/pyodide/releases/tags/{version}",
-        known_hash=None,
-        fname=f"{version}.json",
-        path="pyodide",
-        downloader=pooch.HTTPDownloader(headers=headers),
-    )
-    return pathlib.Path(p).read_text(encoding="utf-8")
 
 
 _logger = logging.getLogger("mahoraga")

@@ -17,6 +17,7 @@ __all__ = ["router"]
 import asyncio
 import contextlib
 import http
+import logging
 import mimetypes
 import os
 import pathlib
@@ -28,7 +29,9 @@ from typing import Annotated
 import fastapi.responses
 import packaging.version
 import pooch  # pyright: ignore[reportMissingTypeStubs]
+import pydantic
 import pydantic_extra_types.semantic_version
+import requests
 
 from . import _core
 
@@ -108,18 +111,50 @@ async def get_standalone_python(
             posixpath.join(str(url), tag, escaped)
             for url in ctx["config"].upstream.python_build_standalone
         ]
-        sha256 = await _get_standalone_python_sha256(tag, name)
+        sha256, size = await _get_standalone_python_sha256_and_size(tag, name)
         return await _core.stream(
             urls,
             media_type=media_type,
             stack=stack,
             cache_location=cache_location,
             sha256=sha256,
+            size=size,
         )
     return _core.unreachable()
 
 
-async def _get_standalone_python_sha256(tag: str, name: str) -> bytes:
+async def _get_standalone_python_github_release(
+    tag: str,
+    name: str,
+) -> tuple[bytes, int | None]:
+    release = await _core.GitHubRelease.fetch(
+        f"python-build-standalone/{tag}.json",
+        owner="astral-sh",
+        repo="python-build-standalone",
+        tag_name=tag,
+    )
+    for asset in release.assets:
+        if asset.name == name:
+            break
+    else:
+        raise requests.RequestException
+    if digest := asset.digest:
+        if digest.startswith("sha256:"):
+            return bytes.fromhex(digest[7:]), asset.size
+        _logger.warning("GitHub returning non-SHA256 digest: %r", digest)
+    raise requests.RequestException
+
+
+async def _get_standalone_python_sha256_and_size(
+    tag: str,
+    name: str,
+) -> tuple[bytes, int | None]:
+    try:
+        return await _get_standalone_python_github_release(tag, name)
+    except requests.RequestException:
+        pass
+    except (OSError, pydantic.ValidationError):
+        _logger.exception("Failed to get GitHub release metadata")
     cache_location = pathlib.Path("python-build-standalone", tag, "SHA256SUMS")
     ctx = _core.context.get()
     loop = asyncio.get_running_loop()
@@ -156,9 +191,12 @@ async def _get_standalone_python_sha256(tag: str, name: str) -> bytes:
 def _parse_standalone_python_sha256(
     cache_location: pathlib.Path,
     name: str,
-) -> bytes:
+) -> tuple[bytes, None]:
     with cache_location.open(encoding="ascii") as f:
         for line in f:
             if line.endswith(name):
-                return bytes.fromhex(line[:64])
+                return bytes.fromhex(line[:64]), None
     raise fastapi.HTTPException(404)
+
+
+_logger = logging.getLogger("mahoraga")

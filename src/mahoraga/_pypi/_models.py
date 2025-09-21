@@ -37,6 +37,9 @@ class _Entry(pydantic.BaseModel, extra="ignore"):
     filename: str
     hashes: _Hashes
 
+    # Not required, see https://peps.python.org/pep-0691/#project-detail
+    size: int | None = None
+
 
 class _Meta(pydantic.BaseModel, extra="ignore"):
     api_version: Annotated[

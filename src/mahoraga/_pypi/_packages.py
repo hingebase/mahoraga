@@ -131,13 +131,15 @@ async def get_pypi_package(
                 ]
             case _:
                 raise fastapi.HTTPException(404)
-        if sha256 := await _sha256(filename, normalized_name):
+        sha256, size = await _sha256(filename, normalized_name)
+        if sha256:
             return await _core.stream(
                 urls,
                 media_type=media_type,
                 stack=stack,
                 cache_location=cache_location,
                 sha256=sha256,
+                size=size,
             )
         return await _core.stream(
             urls,
@@ -147,7 +149,7 @@ async def get_pypi_package(
     return _core.unreachable()
 
 
-async def _sha256(filename: str, project: str) -> bytes:
+async def _sha256(filename: str, project: str) -> tuple[bytes, int | None]:
     loop = asyncio.get_running_loop()
     upstreams = _core.context.get()["config"].upstream.pypi
     urls = [
@@ -167,11 +169,9 @@ async def _sha256(filename: str, project: str) -> bytes:
     except (NotImplementedError, fastapi.HTTPException):
         pass
     else:
-        return await loop.run_in_executor(
+        return (
+            await loop.run_in_executor(None, _sha256_from_html, raw, filename),
             None,
-            _sha256_from_html,
-            raw,
-            filename,
         )
     ctx.run(_core.cache_action.set, "cache-or-fetch")
     try:
@@ -187,7 +187,7 @@ async def _sha256(filename: str, project: str) -> bytes:
     else:
         return await loop.run_in_executor(
             None,
-            _sha256_from_json,
+            _sha256_and_size_from_json,
             raw,
             project,
             filename,
@@ -205,12 +205,10 @@ async def _sha256(filename: str, project: str) -> bytes:
             context=ctx,
         )
     except fastapi.HTTPException:
-        return b""
-    return await loop.run_in_executor(
+        return b"", None
+    return (
+        await loop.run_in_executor(None, _sha256_from_html, raw, filename),
         None,
-        _sha256_from_html,
-        raw,
-        filename,
     )
 
 
@@ -224,14 +222,18 @@ def _sha256_from_html(raw: bytes, filename: str) -> bytes:
     return binascii.unhexlify(raw[i : i+64])  # noqa: E226
 
 
-def _sha256_from_json(raw: bytes, project: str, filename: str) -> bytes:
+def _sha256_and_size_from_json(
+    raw: bytes,
+    project: str,
+    filename: str,
+) -> tuple[bytes, int | None]:
     simple = _models.Simple.model_validate_json(raw)
     if simple.name != project:
         _core.unreachable()
     for entry in simple.files:
         if entry.filename == filename:
-            return bytes.fromhex(entry.hashes.sha256)
-    return b""
+            return bytes.fromhex(entry.hashes.sha256), entry.size
+    return b"", None
 
 
 async def _stream(

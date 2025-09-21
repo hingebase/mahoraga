@@ -81,9 +81,8 @@ async def get_npm_file(
             ):
                 return response
     metadata = await _jsdelivr.Metadata.fetch(
-        url,
-        "npm",
-        f"{package}.json",
+        f"npm/{package}.json",
+        url=url,
         params={"structure": "flat"},
     )
     for file in metadata.files:

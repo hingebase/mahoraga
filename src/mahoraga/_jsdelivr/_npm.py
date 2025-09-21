@@ -17,18 +17,13 @@ __all__ = ["Metadata", "router"]
 import contextlib
 import logging
 import pathlib
-from typing import TYPE_CHECKING, Annotated, Literal, Self, TypedDict
+from typing import Annotated, TypedDict
 
-import anyio
 import fastapi.responses
-import pydantic
 
 from mahoraga import _core
 
 from . import _utils
-
-if TYPE_CHECKING:
-    from _typeshed import StrPath
 
 router = fastapi.APIRouter(route_class=_core.APIRoute)
 
@@ -77,10 +72,8 @@ async def get_npm_file(
         if scope:
             package = f"@{scope}/{package}"
         resolved = await _Resolved.fetch(
-            f"https://data.jsdelivr.com/v1/packages/npm/{package}/resolved",
-            "npm",
-            package,
-            f"{version}.json",
+            "npm", package, f"{version}.json",
+            url=f"https://data.jsdelivr.com/v1/packages/npm/{package}/resolved",
             params={"specifier": version},
         )
         package = f"{package}@{resolved.version}"
@@ -105,32 +98,6 @@ async def get_npm_file(
     return _core.unreachable()
 
 
-class _Base(pydantic.BaseModel):
-    type: Literal["npm"]
-    name: str
-    version: str
-
-    @classmethod
-    async def fetch(cls, url: str, *args: "StrPath", **kwargs: object) -> Self:
-        cache_location = anyio.Path(*args)
-        ctx = _core.context.get()
-        async with ctx["locks"][str(cache_location)]:
-            try:
-                return cls.model_validate_json(
-                    await cache_location.read_text("utf-8"),
-                )
-            except (OSError, pydantic.ValidationError):
-                raw = await _core.get(url, **kwargs)
-                self = cls.model_validate_json(raw)
-                try:
-                    await cache_location.parent.mkdir(parents=True,
-                                                      exist_ok=True)
-                    await cache_location.write_bytes(raw)
-                except OSError:
-                    _logger.warning("Failed to cache %s", url, exc_info=True)
-                return self
-
-
 class _File(TypedDict):
     name: str
     hash: str
@@ -142,7 +109,7 @@ class _MetadataLinks(TypedDict):
     stats: str
 
 
-class Metadata(_Base):
+class Metadata(_core.NPMBase):
     default: str | None
     files: list[_File]
     links: _MetadataLinks
@@ -152,7 +119,7 @@ class _ResolvedLinks(_MetadataLinks):
     self: str
 
 
-class _Resolved(_Base):
+class _Resolved(_core.NPMBase):
     links: _ResolvedLinks
 
 
