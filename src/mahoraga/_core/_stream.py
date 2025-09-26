@@ -282,40 +282,35 @@ async def load_balance(urls: Iterable[str]) -> AsyncGenerator[str, None]:
 
 async def _stream(
     response: httpx.Response,
-    stack: contextlib.AsyncExitStack,
+    wrapped: contextlib.AsyncExitStack,
     *,
     cache_location: "StrPath | None" = None,
     sha256: bytes | None = None,
     size: int | None = None,
 ) -> AsyncGenerator[bytes, None]:
-    async with stack:
+    async with contextlib.AsyncExitStack() as stack:
+        outer = stack.enter_context(contextlib.ExitStack())
+        await stack.enter_async_context(wrapped)
         yield b""
         if cache_location and sha256:
             h = hashlib.sha256()
-            inner_stack = contextlib.ExitStack()
-            stack.push_async_callback(asyncio.to_thread, inner_stack.close)
+            inner = contextlib.ExitStack()
+            stack.push_async_callback(asyncio.to_thread, inner.close)
+            stack.callback(outer.enter_context, anyio.CancelScope(shield=True))
             loop = asyncio.get_running_loop()
             f = await loop.run_in_executor(
                 None,
-                inner_stack.enter_context,
+                inner.enter_context,
                 _tempfile(response, cache_location, sha256, size, h),
             )
-            if size:
-                async for chunk in response.aiter_bytes():
+            async for chunk in response.aiter_bytes():
+                task = loop.create_task(f.write(chunk))
+                try:
+                    yield chunk
+                finally:
+                    with anyio.CancelScope(shield=True):
+                        await task
                     h.update(chunk)
-                    task = loop.create_task(f.write(chunk))
-                    try:
-                        yield chunk
-                    finally:
-                        await task
-            else:
-                async for chunk in response.aiter_bytes():
-                    task = loop.create_task(f.write(chunk))
-                    try:
-                        yield chunk
-                    finally:
-                        await task
-                        h.update(chunk)
         elif cache_location or sha256:
             _core.unreachable()
         else:
