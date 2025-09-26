@@ -30,6 +30,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
+    "anyio >=4.8.0",
     "fastapi >=0.115.10",
     "filelock >=3.13.2",
     "hishel >=0.1.2",
