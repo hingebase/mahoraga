@@ -289,15 +289,21 @@ async def _stream(
     size: int | None = None,
 ) -> AsyncGenerator[bytes, None]:
     async with contextlib.AsyncExitStack() as stack:
-        outer = stack.enter_context(contextlib.ExitStack())
+        outer = await stack.enter_async_context(contextlib.AsyncExitStack())
         await stack.enter_async_context(wrapped)
         yield b""
         if cache_location and sha256:
             h = hashlib.sha256()
             inner = contextlib.ExitStack()
-            stack.push_async_callback(asyncio.to_thread, inner.close)
-            stack.callback(outer.enter_context, anyio.CancelScope(shield=True))
             loop = asyncio.get_running_loop()
+
+            @stack.callback
+            def _() -> None:
+                try:
+                    outer.enter_context(anyio.CancelScope(shield=True))
+                finally:
+                    fut = loop.run_in_executor(None, inner.close)
+                    outer.push_async_callback(lambda: fut)
             f = await loop.run_in_executor(
                 None,
                 inner.enter_context,
