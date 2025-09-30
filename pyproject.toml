@@ -31,7 +31,7 @@ classifiers = [
 ]
 dependencies = [
     "anyio >=4.8.0",
-    "fastapi >=0.115.10",
+    "fastapi >=0.118.0",
     "filelock >=3.13.2",
     "hishel >=0.1.2",
     "httptools >=0.6.3",
