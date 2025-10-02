@@ -28,9 +28,11 @@ import http
 import logging
 import pathlib
 import shutil
+import types
 from collections.abc import (
     AsyncGenerator,
     Callable,
+    Coroutine,
     Generator,
     Iterable,
     Mapping,
@@ -42,10 +44,6 @@ import fastapi.responses
 import fastapi.routing
 import httpx
 import pooch.utils  # pyright: ignore[reportMissingTypeStubs]
-import starlette.types
-from starlette._exception_handler import (
-    wrap_app_handling_exceptions,  # noqa: PLC2701
-)
 
 from mahoraga import _core
 
@@ -57,48 +55,23 @@ if TYPE_CHECKING:
 
 class APIRoute(fastapi.routing.APIRoute):
     @override
-    def __init__(
-        self,
-        path: str,
-        endpoint: Callable[..., Any],
-        **kwargs: Any,
-    ) -> None:
-        super().__init__(path, endpoint, **kwargs)
-        func = self.get_route_handler()
-
-        async def outer(
-            scope: starlette.types.Scope,
-            receive: starlette.types.Receive,
-            send: starlette.types.Send,
-        ) -> None:
-            req = fastapi.Request(scope, receive, send)
-
-            async def inner(
-                scope: starlette.types.Scope,
-                receive: starlette.types.Receive,
-                send: starlette.types.Send,
-            ) -> None:
-                resp = await func(req)
-                try:
-                    await resp(scope, receive, send)
-                except RuntimeError as e:  # https://github.com/encode/starlette/pull/2856
-                    if (
-                        isinstance(resp, fastapi.responses.FileResponse)
-                        and isinstance(e.__context__, FileNotFoundError)
-                    ):
-                        raise fastapi.HTTPException(404) from e.__context__
-                    raise
-                finally:
-                    if (
-                        isinstance(resp, fastapi.responses.StreamingResponse)
-                        and isinstance(resp.body_iterator, AsyncGenerator)
-                    ):
-                        await resp.body_iterator.aclose()  # pyright: ignore[reportUnknownMemberType]
-
-            middleware = wrap_app_handling_exceptions(inner, req)
-            await middleware(scope, receive, send)
-
-        self.app = outer
+    def get_route_handler(self) -> Callable[
+        [fastapi.Request],
+        Coroutine[Any, Any, fastapi.Response],
+    ]:
+        async def wrapper(request: fastapi.Request) -> fastapi.Response:
+            match response := await wrapped(request):
+                case fastapi.responses.FileResponse():
+                    _get_stack(request).push(_wrap_file_not_found_error)
+                case fastapi.responses.StreamingResponse(
+                    body_iterator=AsyncGenerator() as agen,
+                ):
+                    _get_stack(request).push_async_callback(agen.aclose)
+                case _:
+                    pass
+            return response
+        wrapped = super().get_route_handler()
+        return wrapper
 
 
 class Response(fastapi.Response):
@@ -280,6 +253,15 @@ async def load_balance(urls: Iterable[str]) -> AsyncGenerator[str, None]:
         yield url
 
 
+def _get_stack(request: fastapi.Request) -> contextlib.AsyncExitStack:
+    stack: contextlib.AsyncExitStack
+    match request.scope:
+        case {"fastapi_inner_astack": contextlib.AsyncExitStack() as stack}:  # pyright: ignore[reportUnknownVariableType]
+            return stack
+        case _:
+            return _core.unreachable()
+
+
 async def _stream(
     response: httpx.Response,
     wrapped: contextlib.AsyncExitStack,
@@ -381,6 +363,18 @@ def _unify_content_length(
             )
             raise _ContentLengthError
     return headers
+
+
+def _wrap_file_not_found_error(
+    _exc_type: type[BaseException] | None,
+    exc_value: BaseException | None,
+    _traceback: types.TracebackType | None,
+) -> None:
+    match exc_value:
+        case RuntimeError(__context__=FileNotFoundError() as e):
+            raise fastapi.HTTPException(404) from e
+        case _:
+            pass
 
 
 _logger = logging.getLogger("mahoraga")
