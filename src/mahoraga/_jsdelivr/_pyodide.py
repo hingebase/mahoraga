@@ -197,7 +197,7 @@ async def get_pyodide_file(
         else:
             return fastapi.Response(status_code=404)
         if path.endswith(".whl"):
-            media_type = "application/x-zip-compressed"
+            media_type = "application/zip"
             urls.append(
                 f"https://anaconda.org/pyodide/{spec.name}/{spec.version}/download/{path}",
             )

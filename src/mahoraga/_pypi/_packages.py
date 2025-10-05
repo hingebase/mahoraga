@@ -73,7 +73,7 @@ async def get_pypi_package(
         )
     if filename.endswith(".whl"):
         normalized_name = packaging.utils.parse_wheel_filename(filename)[0]
-        media_type = "application/x-zip-compressed"
+        media_type = "application/zip"
     else:
         normalized_name, _ = packaging.utils.parse_sdist_filename(filename)
         media_type, _ = mimetypes.guess_type(filename)

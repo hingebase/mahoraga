@@ -56,7 +56,7 @@ async def _proxy_cache(
     label: str | None = None,
 ) -> fastapi.Response:
     if name.endswith(".conda"):
-        media_type = "application/x-zip-compressed"
+        media_type = "application/zip"
         package_format_selection = rattler.PackageFormatSelection.ONLY_CONDA
         suffix = ".conda"
     else:
