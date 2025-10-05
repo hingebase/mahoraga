@@ -14,6 +14,8 @@
 
 __all__ = ["router"]
 
+import asyncio
+import contextvars
 from typing import Annotated
 
 import fastapi
@@ -25,12 +27,17 @@ router = fastapi.APIRouter(route_class=_core.APIRoute)
 
 @router.get("/compressed_mapping.json")
 async def get_compressed_mapping() -> fastapi.Response:
-    return await _core.stream(
-        "https://api.github.com/repos/prefix-dev/parselmouth/contents/files/compressed_mapping.json",
-        headers={
-            "Accept": "application/vnd.github.raw+json",
-            "X-GitHub-Api-Version": "2022-11-28",
-        },
+    ctx = contextvars.copy_context()
+    ctx.run(_core.cache_action.set, "cache-or-fetch")
+    return await asyncio.create_task(
+        _core.stream(
+            "https://api.github.com/repos/prefix-dev/parselmouth/contents/files/compressed_mapping.json",
+            headers={
+                "Accept": "application/vnd.github.raw+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+            },
+        ),
+        context=ctx,
     )
 
 
