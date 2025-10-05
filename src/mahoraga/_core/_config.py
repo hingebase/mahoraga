@@ -52,6 +52,7 @@ class Server(pydantic.BaseModel, **_model_config):
     host: Annotated[
         ipaddress.IPv4Address,
         pydantic.Field(description="The host to serve on"),
+        Predicate("not (input_value.is_multicast or input_value.is_reserved)"),
     ] = ipaddress.IPv4Address("127.0.0.1")
     port: Annotated[
         pydantic.PositiveInt,
