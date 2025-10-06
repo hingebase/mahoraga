@@ -78,7 +78,7 @@ class Response(fastapi.Response):
     @override
     def init_headers(self, headers: Mapping[str, str] | None = None) -> None:
         headers = httpx.Headers(headers)
-        for key in "Content-Encoding", "Date", "Server":
+        for key in "Content-Encoding", "Date", "Server", "Transfer-Encoding":
             headers.pop(key, None)
         if self.media_type != type(self).media_type:
             headers.pop("Content-Type", None)
