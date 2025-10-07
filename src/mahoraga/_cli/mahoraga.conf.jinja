@@ -1,0 +1,133 @@
+# Mahoraga Nginx site configuration
+# This file is not managed by the CLI and should be edited by hand.
+
+{%- set use_cache_only -%}
+{%- if "*" in cors.allow_origins -%}
+        if ($http_origin) {
+            add_header Access-Control-Allow-Origin *;
+        }
+{%- else -%}
+        # if ($http_origin) {
+        #     add_header Access-Control-Allow-Origin *;
+        # }
+{%- endif %}
+        limit_except GET {
+            deny all;
+        }
+{%- endset %}
+
+{%- set cache_or_fetch -%}
+        error_page 404 = @fetch;
+        {{ use_cache_only }}
+        log_not_found off;
+{%- endset %}
+
+{%- set no_cache -%}
+        limit_except GET {
+            deny all;
+        }
+        proxy_pass http://mahoraga;
+{%- endset %}
+
+server {
+    access_log {{ server.root }}/log/nginx-access.log;
+    default_type application/octet-stream;
+    error_log {{ server.root }}/log/nginx-error.log warn; 	
+    keepalive_min_timeout {{ server.timeout_graceful_shutdown }};
+    keepalive_timeout {{ server.keep_alive }};
+    listen {{ '*' if server.host.is_unspecified else server.host }}:{{ server.port }} backlog={{ server.backlog }};
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+    proxy_set_header Host $http_host;
+    root {{ server.root }};
+
+    # These options don't work on Windows
+{%- if unix %}
+    aio threads;
+    directio 100m;
+    sendfile on;
+    tcp_nopush on;
+{%- else %}
+    # aio threads;
+    # directio 100m;
+    # sendfile on;
+    # tcp_nopush on;
+{%- endif %}
+
+    location / {
+        {{ no_cache }}
+    }
+
+    location ~ ^/conda/(.+\.(?:conda|tar\.bz2))$ {
+        alias {{ server.root }}/channels/$1;
+        {{ cache_or_fetch }}
+    }
+
+    location ~ ^/conda/(.+\.msgpack\.zst)$ {
+        alias {{ server.root }}/channels/$1;
+        {{ use_cache_only }}
+    }
+
+    location ^~ /npm/ {
+        {{ cache_or_fetch }}
+    }
+
+    location ^~ /parselmouth/hash-v0/ {
+        # Not implemented yet
+        limit_except GET {
+            deny all;
+        }
+        log_not_found off;
+        return 404;
+    }
+
+    location ^~ /pyodide/ {
+        {{ cache_or_fetch }}
+    }
+
+    location = /pyodide/debug/python_cli_entry.mjs {
+        {{ no_cache }}
+    }
+
+    location ^~ /pyodide/dev/ {
+        {{ no_cache }}
+    }
+
+    location = /pyodide/full/python_cli_entry.mjs {
+        {{ no_cache }}
+    }
+
+    location ^~ /pypi/packages/ {
+        alias {{ server.root }}/packages/;
+        {{ cache_or_fetch }}
+    }
+
+    location ^~ /python-build-standalone/ {
+        {{ cache_or_fetch }}
+    }
+
+    location @fetch {
+        internal;
+        proxy_pass http://mahoraga;
+    }
+
+    types {
+        application/gzip gz;
+        application/json json;
+        application/wasm wasm;
+        application/x-bzip2 bz2;
+        application/zip conda whl zip;
+        application/zstd zst;
+        image/png png;
+        image/svg+xml svg;
+        text/css css;
+        text/javascript js mjs;
+        text/x-python py;
+    }
+}
+
+upstream mahoraga {
+    server 127.0.0.1:{{ 0x3450 if server.port == 3450 else 3450 }};
+    keepalive {{ server.limit_concurrency }};
+    keepalive_timeout {{ server.keep_alive }};
+}

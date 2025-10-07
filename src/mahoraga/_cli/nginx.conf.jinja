@@ -1,0 +1,10 @@
+# Mahoraga Nginx server configuration
+# This file is not managed by the CLI and should be edited by hand.
+
+events {
+    worker_connections {{ server.limit_concurrency }};
+}
+
+http {
+    include {{ server.root }}/nginx/mahoraga.conf;
+}
