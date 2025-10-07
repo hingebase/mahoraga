@@ -63,6 +63,7 @@ typing = [
 
 [dependency-groups]
 dev = [
+    "click <=8.2.1",  # https://github.com/mkdocs/mkdocs/issues/4032
     "mkdocs >=1.5.0",
     "mkdocs-macros-plugin >=1.0.4",
     "mkdocs-material >=9.5.0",
