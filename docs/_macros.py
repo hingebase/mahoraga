@@ -37,13 +37,7 @@ if TYPE_CHECKING:
 
 def define_env(env: mkdocs_macros.plugin.MacrosPlugin) -> None:
     release = _Release()
-    for asset in release.assets:
-        name = asset.name
-        if name.startswith("cpython-3.13."):
-            python_version = name[8 : name.index("+")]
-            break
-    else:
-        raise RuntimeError
+    python_version = _python_version(release, "cpython-3.13.")
     with _open(pathlib.Path("docs", "requirements.txt")) as f:
         for line in f:
             k, v = line.split("==")
@@ -54,6 +48,7 @@ def define_env(env: mkdocs_macros.plugin.MacrosPlugin) -> None:
         "python_build_standalone_tag": release.tag_name,
         "python_version": python_version,
         "python_version_short": "".join(python_version.split(".")[:2]),
+        "python312_version": _python_version(release, "cpython-3.12."),
         "readme": pathlib.Path("README.md")
                          .read_text("utf-8")
                          .partition(" [Docs]")[0],
@@ -208,6 +203,14 @@ def _open(requirements: pathlib.Path) -> io.TextIOWrapper:
             check=True,
         )
         return requirements.open(encoding="utf-8")
+
+
+def _python_version(release: _Release, prefix: str) -> str:
+    for asset in release.assets:
+        name = asset.name
+        if name.startswith(prefix):
+            return name[8 : name.index("+")]
+    raise RuntimeError
 
 
 def _retrieve(url: str, params: object = None) -> str:
