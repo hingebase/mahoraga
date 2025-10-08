@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ["Config", "Predicate", "Server"]
+__all__ = ["Address", "Config", "Predicate", "Server"]
 
 import asyncio
 import functools
@@ -48,7 +48,7 @@ _model_config: pydantic.ConfigDict = {
 }
 
 
-class Server(pydantic.BaseModel, **_model_config):
+class Address(pydantic.BaseModel):
     host: Annotated[
         ipaddress.IPv4Address,
         pydantic.Field(description="The host to serve on"),
@@ -59,6 +59,9 @@ class Server(pydantic.BaseModel, **_model_config):
         pydantic.Field(description="The TCP port to serve on"),
         at.Le(65535),
     ] = 3450
+
+
+class Server(Address, **_model_config):
     limit_concurrency: Annotated[
         int,
         pydantic.Field(description="Maximum number of simultaneous connections"

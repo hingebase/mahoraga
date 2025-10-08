@@ -14,6 +14,7 @@
 
 __all__ = [
     "APIRoute",
+    "Address",
     "AsyncClient",
     "Config",
     "GitHubRelease",
@@ -35,7 +36,7 @@ __all__ = [
 
 from typing import NoReturn
 
-from ._config import Config, Predicate, Server
+from ._config import Address, Config, Predicate, Server
 from ._context import (
     AsyncClient,
     Context,

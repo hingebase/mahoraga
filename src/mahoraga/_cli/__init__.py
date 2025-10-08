@@ -14,6 +14,7 @@
 
 __all__ = ["main"]
 
+import contextlib
 import pathlib
 import sys
 import urllib.parse
@@ -51,17 +52,11 @@ class _Config(_core.Config, toml_file=None):
 class _New(_core.Server, alias_generator=None):
     """Create a new directory structure for Mahoraga.
 
-    Mahoraga directory structure is relocatable. It's safe to copy the
-    whole directory to a different path or machine, with the exception that all
-    the absolute paths in Nginx config files must be updated manually. Once
-    you've done with the `mahoraga.toml` file inside, you don't need to run
-    this command again to create another directory.
-
-    Mahoraga directory structure follows semantic versioning. Directory
-    created by Mahoraga version X.Y.Z (X>=1) is guaranteed to work under
-    any version >=X.Y.Z,<X+1. Once updated to an uncompatible version,
-    you have to create a new directory and migrate your settings and
-    data by hand.
+    The default configuration may not be suitable for you. A small subset of
+    the options can be tuned via command line (see below), while the rest live
+    in the `mahoraga.toml` file created by this command. Once you've done with
+    that file, you don't need to run this command again to create another
+    directory. For details, run `mahoraga import -h`.
     """
 
     root: Annotated[
@@ -70,31 +65,42 @@ class _New(_core.Server, alias_generator=None):
     ]
 
     def cli_cmd(self) -> None:
-        self.root.mkdir(parents=True)
-        root = self.root.resolve(strict=True)
-        for subdir in "channels", "log", "nginx", "repodata-cache":
-            (root / subdir).mkdir()
-
-        cfg = _Config(server=self).model_dump()
-        cfg["server"]["root"] = root.as_posix()
-        cfg["unix"] = sys.platform.startswith(("darwin", "linux"))
-        cfg["upstream"]["python"] = [
-            urllib.parse.unquote(str(url)) for url in cfg["upstream"]["python"]
-        ]
-
-        env = jinja2.Environment(
-            autoescape=True,
-            loader=jinja2.PackageLoader(__name__, package_path=""),
-        )
-        cfg_file = root / "mahoraga.toml"
-        for src, dst in [
-            ("mahoraga.toml.jinja", cfg_file),
-            ("mahoraga.conf.jinja", root / "nginx/mahoraga.conf"),
-            ("nginx.conf.jinja", root / "nginx/nginx.conf"),
-        ]:
-            with dst.open("x", encoding="utf-8", newline="") as f:
-                print(env.get_template(src).render(cfg), file=f)
+        cfg = _Config(server=self)
+        cfg_file = _setup(cfg, self.root)
         click.echo(f"Done. Please edit {cfg_file} before starting the server.")
+
+
+class _Import(_core.Address):
+    """Create a new directory structure from existing configuration.
+
+    Mahoraga directory structure is not relocatable. Use this command to move
+    your configuration files to another location, either on the same machine or
+    not.
+
+    Mahoraga directory structure follows semantic versioning. Directory
+    created by Mahoraga version X.Y.Z (X>=1) is guaranteed to work under
+    any version >=X.Y.Z,<X+1. Once updated to an uncompatible version,
+    you have to create a new directory via `mahoraga new` and migrate your data
+    by hand.
+    """
+
+    source: Annotated[
+        pydantic_settings.CliPositionalArg[pydantic.FilePath],
+        pydantic.Field(description="An existing mahoraga.toml file"),
+        _core.Predicate("input_value.name == 'mahoraga.toml'"),
+    ]
+    destination: Annotated[
+        pydantic_settings.CliPositionalArg[pydantic.NewPath],
+        pydantic.Field(description="Root path of the new directory"),
+    ]
+
+    def cli_cmd(self) -> None:
+        with contextlib.chdir(self.source.parent):
+            cfg = _core.Config()
+        cfg.server.host = self.host
+        cfg.server.port = self.port
+        cfg_file = _setup(cfg, self.destination)
+        click.echo(f"Mahoraga root directory created at {cfg_file.parent}")
 
 
 class _Run(pydantic.BaseModel, validate_default=True):
@@ -123,6 +129,34 @@ class _Version(pydantic.BaseModel):
         click.echo(f"Mahoraga v{__version__}")
 
 
+def _setup(cfg: _core.Config, root: pathlib.Path) -> pathlib.Path:
+    root.mkdir(parents=True)
+    root = root.resolve(strict=True)
+    for subdir in "channels", "log", "nginx", "repodata-cache":
+        (root / subdir).mkdir()
+
+    kwargs = cfg.model_dump()
+    kwargs["server"]["root"] = root.as_posix()
+    kwargs["unix"] = sys.platform.startswith(("darwin", "linux"))
+    kwargs["upstream"]["python"] = [
+        urllib.parse.unquote(str(url)) for url in kwargs["upstream"]["python"]
+    ]
+
+    env = jinja2.Environment(
+        autoescape=True,
+        loader=jinja2.PackageLoader(__name__, package_path=""),
+    )
+    cfg_file = root / "mahoraga.toml"
+    for src, dst in [
+        ("mahoraga.toml.jinja", cfg_file),
+        ("mahoraga.conf.jinja", root / "nginx/mahoraga.conf"),
+        ("nginx.conf.jinja", root / "nginx/nginx.conf"),
+    ]:
+        with dst.open("x", encoding="utf-8", newline="") as f:
+            print(env.get_template(src).render(kwargs), file=f)
+    return cfg_file
+
+
 def _summary(docstring: str | None) -> str | None:
     return docstring.split(".", 1)[0] if docstring else None
 
@@ -143,6 +177,10 @@ class _Main(
     new: Annotated[
         pydantic_settings.CliSubCommand[_New],
         pydantic.Field(description=_summary(_New.__doc__)),
+    ]
+    import_: Annotated[
+        pydantic_settings.CliSubCommand[_Import],
+        pydantic.Field(alias="import", description=_summary(_Import.__doc__)),
     ]
     run: Annotated[
         pydantic_settings.CliSubCommand[_Run],
