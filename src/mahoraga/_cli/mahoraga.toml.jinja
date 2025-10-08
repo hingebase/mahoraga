@@ -14,11 +14,20 @@ eager-task-execution = {{ eager_task_execution | lower }}
 # Since Mahoraga is designed to run behind another HTTP server,
 # there is no need to specify the host by IPv6 or domain name,
 # or specify multiple host/port pairs.
-host = "{{ server.host }}"
-port = {{ server.port }}
+host = "127.0.0.1"
+port = {{ 0x3450 if server.port == 3450 else 3450 }}
+
+# Maximum number of simultaneous connections to allow.
+limit-concurrency = {{ server.limit_concurrency }}
+
+# Maximum number of pending connections to allow.
+backlog = {{ server.backlog }}
 
 # Time in seconds to wait before closing idle keep-alive connections.
 keep-alive = {{ server.keep_alive }}
+
+# Time in seconds to wait before graceful shutdown.
+timeout-graceful-shutdown = {{ server.timeout_graceful_shutdown }}
 
 # Logging configuration.
 # The settings are applied to both the console and the log file.

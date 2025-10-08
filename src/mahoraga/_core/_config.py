@@ -59,11 +59,27 @@ class Server(pydantic.BaseModel, **_model_config):
         pydantic.Field(description="The TCP port to serve on"),
         at.Le(65535),
     ] = 3450
+    limit_concurrency: Annotated[
+        int,
+        pydantic.Field(description="Maximum number of simultaneous connections"
+                                   " to allow"),
+        at.Ge(2),
+    ] = 512
+    backlog: Annotated[
+        pydantic.PositiveInt,
+        pydantic.Field(description="Maximum number of pending connections to "
+                                   "allow"),
+    ] = 511
     keep_alive: Annotated[
         pydantic.PositiveInt,
         pydantic.Field(description="Time in seconds to wait before closing "
                                    "idle connections"),
     ] = 5
+    timeout_graceful_shutdown: Annotated[
+        pydantic.NonNegativeInt,
+        pydantic.Field(description="Time in seconds to wait before graceful "
+                                   "shutdown"),
+    ] = 0
 
     def rattler_client(self) -> rattler.Client:
         return _rattler_client(self.host, self.port)
@@ -260,7 +276,10 @@ class Config(
         dotenv_settings: pydantic_settings.PydanticBaseSettingsSource,
         file_secret_settings: pydantic_settings.PydanticBaseSettingsSource,
     ) -> tuple[pydantic_settings.PydanticBaseSettingsSource, ...]:
-        return (pydantic_settings.TomlConfigSettingsSource(settings_cls),)
+        return (
+            pydantic_settings.TomlConfigSettingsSource(settings_cls),
+            init_settings,
+        )
 
 
 @functools.lru_cache(maxsize=1)

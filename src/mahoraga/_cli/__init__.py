@@ -52,9 +52,10 @@ class _New(_core.Server, alias_generator=None):
     """Create a new directory structure for Mahoraga.
 
     Mahoraga directory structure is relocatable. It's safe to copy the
-    whole directory to a different path or machine. Once you've done
-    with the `mahoraga.toml` file inside, you don't need to run this
-    command again to create another directory.
+    whole directory to a different path or machine, with the exception that all
+    the absolute paths in Nginx config files must be updated manually. Once
+    you've done with the `mahoraga.toml` file inside, you don't need to run
+    this command again to create another directory.
 
     Mahoraga directory structure follows semantic versioning. Directory
     created by Mahoraga version X.Y.Z (X>=1) is guaranteed to work under
@@ -71,15 +72,12 @@ class _New(_core.Server, alias_generator=None):
     def cli_cmd(self) -> None:
         self.root.mkdir(parents=True)
         root = self.root.resolve(strict=True)
-        for subdir in "channels", "log", "repodata-cache":
+        for subdir in "channels", "log", "nginx", "repodata-cache":
             (root / subdir).mkdir()
 
-        cfg = _Config().model_dump()
-        cfg["server"] = {
-            "host": self.host,
-            "port": self.port,
-            "keep_alive": self.keep_alive,
-        }
+        cfg = _Config(server=self).model_dump()
+        cfg["server"]["root"] = root.as_posix()
+        cfg["unix"] = sys.platform.startswith(("darwin", "linux"))
         cfg["upstream"]["python"] = [
             urllib.parse.unquote(str(url)) for url in cfg["upstream"]["python"]
         ]
@@ -89,8 +87,13 @@ class _New(_core.Server, alias_generator=None):
             loader=jinja2.PackageLoader(__name__, package_path=""),
         )
         cfg_file = root / "mahoraga.toml"
-        with cfg_file.open("x", encoding="utf-8", newline="") as f:
-            print(env.get_template("mahoraga.toml.jinja").render(cfg), file=f)
+        for src, dst in [
+            ("mahoraga.toml.jinja", cfg_file),
+            ("mahoraga.conf.jinja", root / "nginx/mahoraga.conf"),
+            ("nginx.conf.jinja", root / "nginx/nginx.conf"),
+        ]:
+            with dst.open("x", encoding="utf-8", newline="") as f:
+                print(env.get_template(src).render(cfg), file=f)
         click.echo(f"Done. Please edit {cfg_file} before starting the server.")
 
 
