@@ -45,10 +45,23 @@ fetching some packages from Mahoraga. Then if everything goes well, press
 
         Command `uvw` requires uv version 0.7.9 or later.
 
-For better performance, you can set up another server (for example Nginx) in
-front of Mahoraga. Packages cached on disk can be served within that server,
-so that subsequent requests won't go to Mahoraga again. In a future version,
-`mahoraga new` will generate Nginx configuration files out of the box.
+For better performance, you can set up another server (for example [Nginx][11])
+in front of Mahoraga. Packages cached on disk can be served within that server,
+so that subsequent requests won't go to Mahoraga again. You can find the
+following Nginx configuration files in `~/.mahoraga/nginx`:
+
+- `nginx.conf`: Top-level configuration file for direct use.
+- `mahoraga.conf`: A snippet intended to be included in the `http`
+  ^[:octicons-link-external-16:][12]^ block of another file.
+
+!!! note
+
+    The `nginx` package from Anaconda is outdated and unmaintained.
+    Please install nginx with the system-level package manager for your
+    operating system, or compile it from source.
+To start the Nginx server, simply run `nginx -c ~/.mahoraga/nginx/nginx.conf`.
+When configuring the clients, make sure they don't communicate with Mahoraga
+directly, but through Nginx.
 ## Client Configuration
 !!! note
 
@@ -187,6 +200,13 @@ allow-origins = [
     "*",
 ]
 ```
+Additionally, if you are using Nginx, uncomment all blocks in your
+`mahoraga.conf` like this:
+``` nginx title="mahoraga.conf"
+# if ($http_origin) {
+#     add_header Access-Control-Allow-Origin *;
+# }
+```
 The frontend configuration depends on the library you directly use:
 === "Pyodide"
 
@@ -308,3 +328,5 @@ The next generation of the official Python installer for Windows,
 [8]: https://rattler.build/latest/
 [9]: #pixi
 [10]: https://pyodide.org/en/stable/
+[11]: https://nginx.org/
+[12]: https://nginx.org/en/docs/http/ngx_http_core_module.html#http
