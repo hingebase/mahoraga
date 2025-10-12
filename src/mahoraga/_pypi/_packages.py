@@ -15,7 +15,6 @@
 __all__ = ["router"]
 
 import asyncio
-import binascii
 import contextlib
 import contextvars
 import http
@@ -221,7 +220,7 @@ def _sha256_from_html(raw: bytes, filename: str) -> bytes:
     except ValueError:
         return b""
     i += len(pattern)
-    return binascii.unhexlify(raw[i : i+64])  # noqa: E226
+    return bytes.fromhex(raw[i : i+64])  # noqa: E226  # pyright: ignore[reportArgumentType]
 
 
 def _sha256_and_size_from_json(
