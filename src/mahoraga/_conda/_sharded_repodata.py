@@ -15,6 +15,7 @@
 __all__ = ["router", "split_repo"]
 
 import asyncio
+import compression.zstd
 import hashlib
 import json
 import logging
@@ -25,7 +26,6 @@ from typing import Annotated, Any
 import fastapi.responses
 import msgpack
 import pooch.utils  # pyright: ignore[reportMissingTypeStubs]
-import pyarrow as pa
 import rattler.platform
 
 from mahoraga import _core
@@ -141,13 +141,8 @@ def _sha256(
     }
     with pooch.utils.temporary_file(root) as tmp:  # pyright: ignore[reportUnknownMemberType]
         with pathlib.Path(tmp).open("w+b") as f:
-            # Closing pa.CompressedOutputStream will close the
-            # underlying file object (not fileno) as well
-            with (
-                open(f.fileno(), "ab", closefd=False) as g,
-                pa.CompressedOutputStream(g, "zstd") as h,
-            ):
-                msgpack.dump(shard, h)
+            with compression.zstd.ZstdFile(f, "w", level=19) as g:
+                msgpack.dump(shard, g)
             f.seek(0)
             h = hashlib.file_digest(f, "sha256")
         dst = root / f"{h.hexdigest()}.msgpack.zst"
@@ -176,7 +171,7 @@ def _split_repo(
         json_file.unlink(missing_ok=True)
         shutil.move(new, json_file)
     try:
-        f = pa.CompressedInputStream(json_file, "zstd")
+        f = compression.zstd.ZstdFile(json_file)
     except OSError:
         run_exports: _models.RunExports = {
             "packages": {},
@@ -207,7 +202,7 @@ def _split_repo(
         }
     dst = root.with_name("repodata_shards.msgpack.zst")
     with pooch.utils.temporary_file(root.parent) as tmp:  # pyright: ignore[reportUnknownMemberType]
-        with pa.CompressedOutputStream(tmp, "zstd") as f:
+        with compression.zstd.ZstdFile(tmp, "w", level=19) as f:
             msgpack.dump(sharded_repodata, f)
         dst.unlink(missing_ok=True)
         shutil.move(tmp, dst)
