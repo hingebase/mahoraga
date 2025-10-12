@@ -14,6 +14,7 @@
 
 __all__ = ["main"]
 
+import argparse
 import contextlib
 import pathlib
 import sys
@@ -24,24 +25,20 @@ import click
 import jinja2
 import pydantic
 import pydantic_settings
-import rich.console
-import rich_argparse
 
 from mahoraga import __version__, _asgi, _core
 
 
 def main() -> None:
     """CLI entry."""
+    cli_settings_source = (
+        pydantic_settings.CliSettingsSource[argparse.ArgumentParser](_Main)
+    )
+    cli_settings_source.root_parser.suggest_on_error = True
     pydantic_settings.CliApp.run(
         _Main,
         cli_args=["--help"] if len(sys.argv) <= 1 else None,
-        cli_settings_source=(
-            None if rich.console.detect_legacy_windows()
-            else pydantic_settings.CliSettingsSource(
-                _Main,
-                formatter_class=rich_argparse.RawDescriptionRichHelpFormatter,
-            )
-        ),
+        cli_settings_source=cli_settings_source,
     )
 
 
@@ -129,6 +126,10 @@ class _Version(pydantic.BaseModel):
         click.echo(f"Mahoraga v{__version__}")
 
 
+def _prog_name(arg0: str) -> str | None:
+    return None if arg0.endswith("__main__.py") else arg0
+
+
 def _setup(cfg: _core.Config, root: pathlib.Path) -> pathlib.Path:
     root.mkdir(parents=True)
     root = root.resolve(strict=True)
@@ -163,7 +164,7 @@ def _summary(docstring: str | None) -> str | None:
 
 class _Main(
     pydantic_settings.BaseSettings,
-    cli_prog_name="mahoraga",
+    cli_prog_name=_prog_name(sys.argv[0]),
     nested_model_default_partial_update=True,
     case_sensitive=True,
     cli_hide_none_type=True,
