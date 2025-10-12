@@ -30,7 +30,7 @@ import fastapi.responses
 import packaging.version
 import pooch  # pyright: ignore[reportMissingTypeStubs]
 import pydantic
-import pydantic_extra_types.semantic_version
+import pydantic_extra_types.semantic_version  # noqa: TC002
 import requests
 
 from . import _core

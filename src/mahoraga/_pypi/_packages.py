@@ -22,8 +22,7 @@ import http
 import mimetypes
 import pathlib
 import posixpath
-from collections.abc import AsyncGenerator
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 import fastapi.responses
 import httpx
@@ -32,6 +31,9 @@ import packaging.utils
 from mahoraga import _core
 
 from . import _models
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
 
 router = fastapi.APIRouter(route_class=_core.APIRoute)
 

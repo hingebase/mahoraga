@@ -18,7 +18,6 @@ import asyncio
 import functools
 import ipaddress
 import itertools
-from collections.abc import Iterator
 from typing import TYPE_CHECKING, Annotated, Literal, override
 
 import annotated_types as at
@@ -26,6 +25,9 @@ import pydantic
 import pydantic_settings
 import rattler.networking
 import rattler.platform
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 try:
     import uvloop  # pyright: ignore[reportMissingImports]  # ty: ignore[unresolved-import]

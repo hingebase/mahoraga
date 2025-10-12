@@ -26,11 +26,10 @@ import multiprocessing as mp
 import pathlib
 import sys
 import warnings
-from typing import Any, override
+from typing import TYPE_CHECKING, Any, override
 
 import hishel._controller
 import hishel._utils
-import httpcore
 import httpx
 import pooch.utils  # pyright: ignore[reportMissingTypeStubs]
 import rich.console
@@ -40,6 +39,9 @@ import uvicorn.config
 from mahoraga import __version__, _conda, _core
 
 from . import _app
+
+if TYPE_CHECKING:
+    from httpcore import Request
 
 
 def run() -> None:
@@ -207,7 +209,7 @@ class _ServerConfig(uvicorn.Config):
         atexit.register(listen.stop)
 
 
-def _key_generator(request: httpcore.Request, body: bytes | None = b"") -> str:
+def _key_generator(request: Request, body: bytes | None = b"") -> str:
     for k, v in request.headers:
         if (
             k.lower() == b"accept"

@@ -18,8 +18,8 @@ import dataclasses
 import importlib.abc
 import importlib.util
 import sys
-import types
-from importlib.machinery import ModuleSpec
+import types  # noqa: TC003
+from importlib.machinery import ModuleSpec  # noqa: TC003
 from typing import override
 
 

@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from _typeshed import StrPath
 
 
-def run(root: "StrPath") -> None:
+def run(root: StrPath) -> None:
     with (
         contextlib.chdir(root),
         filelock.FileLock("mahoraga.lock", timeout=0, thread_local=False),
