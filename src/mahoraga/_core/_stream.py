@@ -50,7 +50,7 @@ from mahoraga import _core
 if TYPE_CHECKING:
     from _hashlib import HASH
 
-    from _typeshed import StrPath
+    from _typeshed import ReadableBuffer, StrPath
 
 
 class APIRoute(fastapi.routing.APIRoute):
@@ -286,18 +286,18 @@ async def _stream(
                 finally:
                     fut = loop.run_in_executor(None, inner.close)
                     outer.push_async_callback(lambda: fut)
-            f = await loop.run_in_executor(
+            fwrite = await loop.run_in_executor(
                 None,
                 inner.enter_context,
                 _tempfile(response, cache_location, sha256, size, h),
             )
             async for chunk in response.aiter_bytes():
-                task = loop.create_task(f.write(chunk))
+                fut = loop.run_in_executor(None, fwrite, chunk)
                 try:
                     yield chunk
                 finally:
                     with anyio.CancelScope(shield=True):
-                        await task
+                        await fut
                     h.update(chunk)
         elif cache_location or sha256:
             _core.unreachable()
@@ -313,7 +313,7 @@ def _tempfile(
     sha256: bytes,
     size: int | None,
     hash_: "HASH",
-) -> Generator[anyio.AsyncFile[bytes], Any, None]:
+) -> "Generator[Callable[[ReadableBuffer], int], Any, None]":
     dir_ = pathlib.Path(cache_location).parent
     dir_.mkdir(parents=True, exist_ok=True)
     with (
@@ -323,7 +323,7 @@ def _tempfile(
     ):
         f.truncate(size)
         try:
-            yield anyio.AsyncFile(f)
+            yield f.write
         finally:
             if hash_.digest() == sha256 and (
                 size is None
