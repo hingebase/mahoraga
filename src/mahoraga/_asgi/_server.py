@@ -15,7 +15,6 @@
 __all__ = ["run"]
 
 import asyncio
-import atexit
 import collections
 import concurrent.futures
 import contextlib
@@ -77,21 +76,22 @@ def run() -> None:
         factory=True,
     )
     server = uvicorn.Server(server_config)
-    try:
-        asyncio.run(
-            _main(cfg, server),
-            debug=cfg.log.level == "debug",
-            loop_factory=cfg.loop_factory,
-        )
-    except KeyboardInterrupt:
-        pass
-    except SystemExit:
-        if server.started:
-            raise
-        sys.exit(3)
-    except BaseException as e:
-        _logger.critical("ERROR", exc_info=e)
-        raise SystemExit(server.started or 3) from e
+    with server_config.listen:
+        try:
+            asyncio.run(
+                _main(cfg, server),
+                debug=cfg.log.level == "debug",
+                loop_factory=cfg.loop_factory,
+            )
+        except KeyboardInterrupt:
+            pass
+        except SystemExit:
+            if server.started:
+                raise
+            sys.exit(3)
+        except BaseException as e:
+            _logger.critical("ERROR", exc_info=e)
+            raise SystemExit(server.started or 3) from e
 
 
 async def _event_hook(request: httpx.Request) -> None:  # noqa: RUF029
@@ -204,9 +204,7 @@ class _ServerConfig(uvicorn.Config):
                 new = rich.logging.RichHandler(log_time_format="[%Y-%m-%d %X]")
             root.addHandler(new)
 
-        listen = logging.handlers.QueueListener(old.queue, *root.handlers)
-        listen.start()
-        atexit.register(listen.stop)
+        self.listen = logging.handlers.QueueListener(old.queue, *root.handlers)
 
 
 def _key_generator(request: Request, body: bytes | None = b"") -> str:
