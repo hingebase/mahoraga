@@ -26,7 +26,7 @@ import kiss_headers
 
 from mahoraga import _core
 
-from . import _models
+from . import _models  # noqa: TC001
 
 router = fastapi.APIRouter(route_class=_core.APIRoute)
 

@@ -41,7 +41,7 @@ class GitHubRelease(pydantic.BaseModel, extra="ignore"):
     @classmethod
     async def fetch(
         cls,
-        *args: "StrPath",
+        *args: StrPath,
         owner: str,
         repo: str,
         tag_name: str,
@@ -66,7 +66,7 @@ class NPMBase(pydantic.BaseModel):
     version: str
 
     @classmethod
-    async def fetch(cls, *args: "StrPath", url: str, **kwargs: object) -> Self:
+    async def fetch(cls, *args: StrPath, url: str, **kwargs: object) -> Self:
         if not args:
             _core.unreachable()
         cache_location = pathlib.Path(*args)

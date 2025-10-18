@@ -21,7 +21,6 @@ __all__ = [
 
 import itertools
 import posixpath
-from collections.abc import Callable, Mapping, Sequence
 from typing import TYPE_CHECKING
 
 import rattler.exceptions
@@ -32,6 +31,8 @@ import rattler.rattler
 from mahoraga import _core
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Mapping, Sequence
+
     from _typeshed import StrPath
 
 
@@ -146,7 +147,7 @@ async def _fetch_repo_data(  # noqa: PLR0913
     *,
     channels: list[rattler.Channel],
     platforms: list[rattler.Platform],
-    cache_path: "StrPath",
+    cache_path: StrPath,
     callback: Callable[[int, int], None] | None,
     client: rattler.Client | None = None,
     fetch_options: rattler.networking.FetchRepoDataOptions | None = None,

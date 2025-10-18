@@ -21,7 +21,6 @@ from typing import TYPE_CHECKING, Any, cast
 
 import csscompressor  # pyright: ignore[reportMissingTypeStubs]
 import jsmin  # pyright: ignore[reportMissingTypeStubs]
-import mkdocs_macros.plugin
 import pooch  # pyright: ignore[reportMissingTypeStubs]
 import pydantic
 import pydantic_settings
@@ -33,11 +32,18 @@ if TYPE_CHECKING:
     from material.plugins.privacy.plugin import (  # pyright: ignore[reportMissingTypeStubs]
         PrivacyPlugin,
     )
+    from mkdocs_macros.plugin import MacrosPlugin
 
 
-def define_env(env: mkdocs_macros.plugin.MacrosPlugin) -> None:
+def define_env(env: MacrosPlugin) -> None:
     release = _Release()
-    python_version = _python_version(release, "cpython-3.13.")
+    for asset in release.assets:
+        name = asset.name
+        if name.startswith("cpython-3.14."):
+            python_version = name[8 : name.index("+")]
+            break
+    else:
+        raise RuntimeError
     with _open(pathlib.Path("docs", "requirements.txt")) as f:
         for line in f:
             k, v = line.split("==")
@@ -48,7 +54,6 @@ def define_env(env: mkdocs_macros.plugin.MacrosPlugin) -> None:
         "python_build_standalone_tag": release.tag_name,
         "python_version": python_version,
         "python_version_short": "".join(python_version.split(".")[:2]),
-        "python312_version": _python_version(release, "cpython-3.12."),
         "readme": pathlib.Path("README.md")
                          .read_text("utf-8")
                          .partition(" [Docs]")[0],
@@ -65,7 +70,7 @@ def define_env(env: mkdocs_macros.plugin.MacrosPlugin) -> None:
     env.variables["bokeh_version"] = lock_spec.packages["bokeh"].version
 
 
-def on_post_build(env: mkdocs_macros.plugin.MacrosPlugin) -> None:
+def on_post_build(env: MacrosPlugin) -> None:
     site_dir = pathlib.Path(env.conf.site_dir)
     for css in site_dir.glob("assets/external/fonts.googleapis.com/*.css"):
         with css.open("r+", encoding="utf-8") as f:
@@ -169,7 +174,7 @@ class _Tag(
 
 def _get(
     url: str | bytes,
-    params: "requests.sessions._Params | None" = None,  # pyright: ignore[reportPrivateUsage]
+    params: requests.sessions._Params | None = None,  # pyright: ignore[reportPrivateUsage]
     **kwargs: Any,  # noqa: ANN401
 ) -> requests.Response:
     req = requests.PreparedRequest()
@@ -196,21 +201,12 @@ def _open(requirements: pathlib.Path) -> io.TextIOWrapper:
                 "--no-annotate",
                 "--no-deps",
                 "--no-header",
-                "--python-version", "3.13",
                 "-o", requirements,
                 requirements.with_suffix(".in"),
             ],
             check=True,
         )
         return requirements.open(encoding="utf-8")
-
-
-def _python_version(release: _Release, prefix: str) -> str:
-    for asset in release.assets:
-        name = asset.name
-        if name.startswith(prefix):
-            return name[8 : name.index("+")]
-    raise RuntimeError
 
 
 def _retrieve(url: str, params: object = None) -> str:

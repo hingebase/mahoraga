@@ -16,18 +16,20 @@ __all__ = ["extract_from_tarball", "get_npm_file", "urls"]
 
 import asyncio
 import base64
-import contextlib
 import logging
 import mimetypes
 import pathlib
 import posixpath
 import shutil
 import tarfile
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import fastapi.responses
 
 from mahoraga import _core, _jsdelivr
+
+if TYPE_CHECKING:
+    from contextlib import AsyncExitStack
 
 
 async def extract_from_tarball(
@@ -69,7 +71,7 @@ async def get_npm_file(
     package: str,
     path: str,
     cache_location: pathlib.Path,
-    stack: contextlib.AsyncExitStack,
+    stack: AsyncExitStack,
 ) -> fastapi.Response:
     if package.startswith("pyodide@"):
         for name in _pyodide_packages(path):

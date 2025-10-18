@@ -23,13 +23,11 @@ __all__ = [
 
 import asyncio
 import collections
-import concurrent.futures
 import contextlib
 import contextvars
 import time
 import weakref
-from collections.abc import AsyncGenerator
-from typing import Any, TypedDict, override
+from typing import TYPE_CHECKING, Any, TypedDict, override
 
 import anyio
 import hishel
@@ -39,6 +37,10 @@ import pydantic_settings
 from rattler.networking.fetch_repo_data import CacheAction
 
 from mahoraga import _core
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+    from concurrent.futures import ProcessPoolExecutor
 
 
 class AsyncClient(hishel.AsyncCacheClient, httpx_aiohttp.HttpxAiohttpClient):
@@ -147,7 +149,7 @@ class _Context(TypedDict):
     config: _core.Config
     httpx_client: AsyncClient
     locks: WeakValueDictionary
-    process_pool: concurrent.futures.ProcessPoolExecutor
+    process_pool: ProcessPoolExecutor
     statistics_concurrent_requests: collections.Counter[str]
 
 
