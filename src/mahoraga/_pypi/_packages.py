@@ -15,15 +15,13 @@
 __all__ = ["router"]
 
 import asyncio
-import binascii
 import contextlib
 import contextvars
 import http
 import mimetypes
 import pathlib
 import posixpath
-from collections.abc import AsyncGenerator
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 import fastapi.responses
 import httpx
@@ -32,6 +30,9 @@ import packaging.utils
 from mahoraga import _core
 
 from . import _models
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
 
 router = fastapi.APIRouter(route_class=_core.APIRoute)
 
@@ -219,7 +220,7 @@ def _sha256_from_html(raw: bytes, filename: str) -> bytes:
     except ValueError:
         return b""
     i += len(pattern)
-    return binascii.unhexlify(raw[i : i+64])  # noqa: E226
+    return bytes.fromhex(raw[i : i+64])  # noqa: E226  # pyright: ignore[reportArgumentType]
 
 
 def _sha256_and_size_from_json(

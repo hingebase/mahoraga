@@ -16,16 +16,18 @@ __all__ = ["router"]
 
 import mimetypes
 import posixpath
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 import fastapi
 import httpx
-import pydantic
-import rattler.platform
+import rattler.platform  # noqa: TC002
 
 from mahoraga import _core
 
 from . import _models, _utils
+
+if TYPE_CHECKING:
+    from pydantic import BaseModel
 
 router = fastapi.APIRouter(route_class=_core.APIRoute)
 
@@ -143,7 +145,7 @@ async def _get_repodata(
     )
 
 
-def _to_dict(obj: pydantic.BaseModel) -> dict[str, str]:
+def _to_dict(obj: BaseModel) -> dict[str, str]:
     return {
         k.replace("_", "-"): v
         for k, v in obj.model_dump(exclude_none=True).items()

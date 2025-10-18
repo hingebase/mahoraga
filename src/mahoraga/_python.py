@@ -30,7 +30,7 @@ import fastapi.responses
 import packaging.version
 import pooch  # pyright: ignore[reportMissingTypeStubs]
 import pydantic
-import pydantic_extra_types.semantic_version
+import pydantic_extra_types.semantic_version  # noqa: TC002
 import requests
 
 from . import _core
@@ -184,18 +184,18 @@ async def _get_standalone_python_sha256_and_size(
         None,
         _parse_standalone_python_sha256,
         cache_location,
-        f"  {name}\n",
+        f"  {name}\n".encode("ascii"),
     )
 
 
 def _parse_standalone_python_sha256(
     cache_location: pathlib.Path,
-    name: str,
+    name: bytes,
 ) -> tuple[bytes, None]:
-    with cache_location.open(encoding="ascii") as f:
+    with cache_location.open("rb") as f:
         for line in f:
             if line.endswith(name):
-                return bytes.fromhex(line[:64]), None
+                return bytes.fromhex(line[:64]), None  # pyright: ignore[reportArgumentType]
     raise fastapi.HTTPException(404)
 
 

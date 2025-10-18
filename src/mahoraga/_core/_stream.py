@@ -28,7 +28,6 @@ import http
 import logging
 import pathlib
 import shutil
-import types
 from collections.abc import (
     AsyncGenerator,
     Callable,
@@ -49,6 +48,7 @@ from mahoraga import _core
 
 if TYPE_CHECKING:
     from _hashlib import HASH
+    from types import TracebackType
 
     from _typeshed import ReadableBuffer, StrPath
 
@@ -122,7 +122,7 @@ async def get(urls: Iterable[str], **kwargs: object) -> bytes:
 
 
 class _CacheOptions(TypedDict, total=False):
-    cache_location: "StrPath | None"
+    cache_location: StrPath | None
     sha256: bytes | None
     size: int | None
 
@@ -146,7 +146,7 @@ async def stream(
     headers: Mapping[str, str] | None = ...,
     media_type: str | None = ...,
     stack: contextlib.AsyncExitStack | None = None,
-    cache_location: "StrPath",
+    cache_location: StrPath,
     sha256: bytes,
     size: int | None = ...,
 ) -> fastapi.Response: ...
@@ -266,7 +266,7 @@ async def _stream(
     response: httpx.Response,
     wrapped: contextlib.AsyncExitStack,
     *,
-    cache_location: "StrPath | None" = None,
+    cache_location: StrPath | None = None,
     sha256: bytes | None = None,
     size: int | None = None,
 ) -> AsyncGenerator[bytes, None]:
@@ -309,11 +309,11 @@ async def _stream(
 @contextlib.contextmanager
 def _tempfile(
     response: httpx.Response,
-    cache_location: "StrPath",
+    cache_location: StrPath,
     sha256: bytes,
     size: int | None,
-    hash_: "HASH",
-) -> "Generator[Callable[[ReadableBuffer], int], Any, None]":
+    hash_: HASH,
+) -> Generator[Callable[[ReadableBuffer], int], Any, None]:
     dir_ = pathlib.Path(cache_location).parent
     dir_.mkdir(parents=True, exist_ok=True)
     with (
@@ -368,7 +368,7 @@ def _unify_content_length(
 def _wrap_file_not_found_error(
     _exc_type: type[BaseException] | None,
     exc_value: BaseException | None,
-    _traceback: types.TracebackType | None,
+    _traceback: TracebackType | None,
 ) -> None:
     match exc_value:
         case RuntimeError(__context__=FileNotFoundError() as e):

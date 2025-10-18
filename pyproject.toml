@@ -1,5 +1,5 @@
 [build-system]
-requires = ["uv-build >=0.8.13"]  # https://github.com/astral-sh/uv/issues/15398
+requires = ["uv-build >=0.9.0"]
 build-backend = "uv_build"
 
 [project]
@@ -7,7 +7,7 @@ name = "mahoraga"
 version = "0.3.0"
 description = "Reverse proxy for Python mirrors"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 license = "Apache-2.0"
 keywords = ["conda", "pypi", "mirror"]
 classifiers = [
@@ -23,50 +23,45 @@ classifiers = [
     "Operating System :: Microsoft :: Windows",
     "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: Implementation :: CPython",
     "Topic :: System :: Archiving :: Mirroring",
     "Typing :: Typed",
 ]
 dependencies = [
-    "anyio >=4.8.0",
-    "fastapi >=0.118.0",
-    "filelock >=3.13.2",
-    "hishel >=0.1.2",
-    "httptools >=0.6.3",
+    "aiohttp >=3.13.0",
+    "anyio >=4.10.0",
+    "fastapi >=0.118.3",
+    "filelock >=3.20.0",
+    "hishel >=0.1.4",
+    "httptools >=0.7.1",
     "httpx-aiohttp >=0.1.8",
     "jinja2 >=3.1.5",
     "kiss-headers >=2.4.0",
-    "msgpack >=1.0.7",
+    "msgpack >=1.1.2",
     "packaging >=20.9.0",
     "pooch >=1.8.1",
-    "pyarrow >=14.0.0",
-    "pyarrow <=14.0.2; sys_platform == 'darwin' and platform_release < '19'",
-    "pyarrow <=16.0.0; sys_platform == 'darwin' and platform_release < '20'",
-    "pyarrow <=17.0.0; sys_platform == 'darwin' and platform_release < '21'",
+    "pydantic >=2.12.1",
     "pydantic-extra-types[semver] >=2.10.2",
     "pydantic-settings >=2.7.0",
     "pyodide-lock >=0.1.0",
     "py-rattler >=0.16.0",
-    "rich-argparse >=1.6.0",
-    "uvicorn >=0.32.1",
-    "uvloop >=0.18.0; sys_platform != 'win32' and sys_platform != 'cygwin' and platform_python_implementation != 'PyPy'",
+    "requests >=2.32.5",
+    "rich >=14.2.0",
+    "uvicorn >=0.38.0",
+    "uvloop >=0.22.1; sys_platform != 'win32' and sys_platform != 'cygwin' and platform_python_implementation != 'PyPy'",
 ]
 
 [project.optional-dependencies]
 typing = [
     "msgpack-types ==0.3.0",
-    "pyarrow-stubs >=17.10; sys_platform != 'darwin' or platform_release >= '20'",
-    "types-requests >=2.25.0",
+    "types-requests >=2.32.4",
 ]
 
 [dependency-groups]
 dev = [
-    "click <=8.2.1",  # https://github.com/mkdocs/mkdocs/issues/4032
-    "mkdocs >=1.5.0",
     "mkdocs-macros-plugin >=1.0.4",
-    "mkdocs-material >=9.5.0",
+    "mkdocs-material >=9.6.20,!=9.6.21,!=9.6.22",  # https://github.com/squidfunk/mkdocs-material/issues/8478
     "mkdocs-minify-plugin >=0.7.0",
     "pooch >=1.8.0",
     "pydantic-settings >=2.3.0",

@@ -21,10 +21,12 @@ __all__ = [
     "ShardedRepodata",
 ]
 
-from typing import Any, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict
 
 import pydantic
-import rattler.platform
+
+if TYPE_CHECKING:
+    from rattler.platform import PlatformLiteral
 
 
 class _RepodataHeaders(pydantic.BaseModel, extra="ignore"):
@@ -58,7 +60,7 @@ class Shard(RunExports):
 class _ShardedSubdirInfo(TypedDict):
     base_url: str
     shards_base_url: str
-    subdir: rattler.platform.PlatformLiteral
+    subdir: PlatformLiteral
 
 
 class ShardedRepodata(TypedDict):

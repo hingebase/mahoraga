@@ -156,7 +156,7 @@ Make an empty directory, `cd` to it, and then build the online version of PyApp:
     ``` sh
     export PYAPP_PROJECT_NAME=mahoraga
     export PYAPP_PROJECT_VERSION={{ mahoraga_version }}
-    export PYAPP_DISTRIBUTION_SOURCE=http://127.0.0.1:3450/python-build-standalone/{{ python_build_standalone_tag }}/cpython-{{ python312_version }}+{{ python_build_standalone_tag }}-x86_64-apple-darwin-install_only_stripped.tar.gz
+    export PYAPP_DISTRIBUTION_SOURCE=http://127.0.0.1:3450/python-build-standalone/{{ python_build_standalone_tag }}/cpython-{{ python_version }}+{{ python_build_standalone_tag }}-x86_64-apple-darwin-install_only_stripped.tar.gz
     export PYAPP_FULL_ISOLATION=1
     export PYAPP_UV_ENABLED=1
     export PYAPP_UV_VERSION="$(uv -V | awk '{ print $2 }')"
