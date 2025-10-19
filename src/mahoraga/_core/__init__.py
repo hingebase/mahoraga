@@ -26,6 +26,7 @@ __all__ = [
     "StreamingResponse",
     "WeakValueDictionary",
     "cache_action",
+    "cached_or_locked",
     "context",
     "get",
     "load_balance",
@@ -43,6 +44,7 @@ from ._context import (
     Statistics,
     WeakValueDictionary,
     cache_action,
+    cached_or_locked,
     schedule_exit,
 )
 from ._metadata import GitHubRelease, NPMBase

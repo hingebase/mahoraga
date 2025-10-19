@@ -52,11 +52,8 @@ async def get_pyodide_package(
     except packaging.version.InvalidVersion:
         return fastapi.Response(status_code=404)
     cache_location = pathlib.Path("pyodide", name)
-    ctx = _core.context.get()
-    lock = ctx["locks"][str(cache_location)]
     async with contextlib.AsyncExitStack() as stack:
-        await stack.enter_async_context(lock)
-        if cache_location.is_file():
+        if await _core.cached_or_locked(cache_location, stack):
             return fastapi.responses.FileResponse(
                 cache_location,
                 headers={
@@ -133,9 +130,8 @@ async def get_python_cli_entry(
 ) -> fastapi.Response:
     member = "python_cli_entry.mjs"
     cache_location = pathlib.Path("pyodide", version, "full", member)
-    ctx = _core.context.get()
-    async with ctx["locks"][str(cache_location)]:
-        if cache_location.is_file():
+    async with _core.cached_or_locked(cache_location) as cached:
+        if cached:
             return fastapi.responses.FileResponse(
                 cache_location,
                 headers={
@@ -166,12 +162,8 @@ async def get_pyodide_file(
         # No way to find the checksums
         return await _core.stream(urls, media_type=media_type)
     cache_location = pathlib.Path("pyodide", version, "full", path)
-    ctx = _core.context.get()
-    locks = ctx["locks"]
-    lock = locks[str(cache_location)]
     async with contextlib.AsyncExitStack() as stack:
-        await stack.enter_async_context(lock)
-        if cache_location.is_file():
+        if await _core.cached_or_locked(cache_location, stack):
             return fastapi.responses.FileResponse(
                 cache_location,
                 headers={
@@ -215,11 +207,8 @@ async def _get_npm_file(version: str, name: str) -> fastapi.Response:
     version = version.lstrip("v")
     package = f"pyodide@{version}"
     cache_location = pathlib.Path("npm", package, name)
-    ctx = _core.context.get()
-    lock = ctx["locks"][str(cache_location)]
     async with contextlib.AsyncExitStack() as stack:
-        await stack.enter_async_context(lock)
-        if cache_location.is_file():
+        if await _core.cached_or_locked(cache_location, stack):
             return fastapi.responses.FileResponse(
                 cache_location,
                 headers={
@@ -240,9 +229,8 @@ async def _get_pyodide_lock(
     cache_location: pathlib.Path,
     package: str,
 ) -> None:
-    ctx = _core.context.get()
-    async with ctx["locks"][str(cache_location)]:
-        if not cache_location.is_file():
+    async with _core.cached_or_locked(cache_location) as cached:
+        if not cached:
             for name in "pyodide-core", "xbuildenv":
                 tarball = pathlib.Path(
                     "pyodide",

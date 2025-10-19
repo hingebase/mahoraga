@@ -79,11 +79,8 @@ async def get_pypi_package(
         normalized_name, _ = packaging.utils.parse_sdist_filename(filename)
         media_type, _ = mimetypes.guess_type(filename)
     cache_location = pathlib.Path("packages", tag, prefix, project, filename)
-    ctx = _core.context.get()
     async with contextlib.AsyncExitStack() as stack:
-        lock = ctx["locks"][str(cache_location)]
-        await stack.enter_async_context(lock)
-        if cache_location.is_file():
+        if await _core.cached_or_locked(cache_location, stack):
             return fastapi.responses.FileResponse(
                 cache_location,
                 headers={
@@ -91,6 +88,7 @@ async def get_pypi_package(
                 },
                 media_type=media_type,
             )
+        ctx = _core.context.get()
         match len(tag), len(prefix), len(project):
             case (2, 2, 60):
                 urls = [

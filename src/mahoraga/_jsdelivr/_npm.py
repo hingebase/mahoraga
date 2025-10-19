@@ -49,12 +49,8 @@ async def get_npm_file(
     request: fastapi.Request,
 ) -> fastapi.Response:
     cache_location = pathlib.Path(request.url.path.lstrip("/"))
-    ctx = _core.context.get()
-    locks = ctx["locks"]
-    lock = locks[str(cache_location)]
     async with contextlib.AsyncExitStack() as stack:
-        await stack.enter_async_context(lock)
-        if cache_location.is_file():
+        if await _core.cached_or_locked(cache_location, stack):
             return fastapi.responses.FileResponse(
                 cache_location,
                 headers={
@@ -77,17 +73,15 @@ async def get_npm_file(
             params={"specifier": version},
         )
         package = f"{package}@{resolved.version}"
-        cache_location = pathlib.Path("npm", package, path)
-        lock2 = locks[str(cache_location)]
-        if lock2 is not lock:
-            await stack.enter_async_context(lock2)
-        if cache_location.is_file():
-            return fastapi.responses.FileResponse(
-                cache_location,
-                headers={
-                    "Cache-Control": "public, max-age=31536000, immutable",
-                },
-            )
+        if resolved.version != version:
+            cache_location = pathlib.Path("npm", package, path)
+            if await _core.cached_or_locked(cache_location, stack):
+                return fastapi.responses.FileResponse(
+                    cache_location,
+                    headers={
+                        "Cache-Control": "public, max-age=31536000, immutable",
+                    },
+                )
         return await _utils.get_npm_file(
             resolved.links["self"],
             package,
