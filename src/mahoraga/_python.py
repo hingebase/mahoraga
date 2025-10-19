@@ -92,13 +92,10 @@ async def get_standalone_python(
     ],
     name: str,
 ) -> fastapi.Response:
-    ctx = _core.context.get()
     media_type, _ = mimetypes.guess_type(name)
     cache_location = pathlib.Path("python-build-standalone", tag, name)
-    lock = ctx["locks"][str(cache_location)]
     async with contextlib.AsyncExitStack() as stack:
-        await stack.enter_async_context(lock)
-        if cache_location.is_file():
+        if await _core.cached_or_locked(cache_location, stack):
             return fastapi.responses.FileResponse(
                 cache_location,
                 headers={
@@ -106,6 +103,7 @@ async def get_standalone_python(
                 },
                 media_type=media_type,
             )
+        ctx = _core.context.get()
         escaped = name.replace("+", "%2B")  # Required by aliyun mirrors
         urls = [
             posixpath.join(str(url), tag, escaped)
@@ -156,10 +154,10 @@ async def _get_standalone_python_sha256_and_size(
     except (OSError, pydantic.ValidationError):
         _logger.exception("Failed to get GitHub release metadata")
     cache_location = pathlib.Path("python-build-standalone", tag, "SHA256SUMS")
-    ctx = _core.context.get()
     loop = asyncio.get_running_loop()
-    async with ctx["locks"][str(cache_location)]:
-        if not cache_location.is_file():
+    async with _core.cached_or_locked(cache_location) as cached:
+        if not cached:
+            ctx = _core.context.get()
             dir_, fname = os.path.split(cache_location)
             urls = [
                 posixpath.join(str(url), tag, "SHA256SUMS")

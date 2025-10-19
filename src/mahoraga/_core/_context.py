@@ -18,6 +18,7 @@ __all__ = [
     "Statistics",
     "WeakValueDictionary",
     "cache_action",
+    "cached_or_locked",
     "schedule_exit",
 ]
 
@@ -27,7 +28,7 @@ import contextlib
 import contextvars
 import time
 import weakref
-from typing import TYPE_CHECKING, Any, TypedDict, override
+from typing import TYPE_CHECKING, Any, TypedDict, overload, override
 
 import anyio
 import hishel
@@ -39,8 +40,10 @@ from rattler.networking.fetch_repo_data import CacheAction
 from mahoraga import _core
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
+    from collections.abc import AsyncGenerator, Awaitable
     from concurrent.futures import ProcessPoolExecutor
+
+    from _typeshed import StrPath
 
 
 class AsyncClient(hishel.AsyncCacheClient, httpx_aiohttp.HttpxAiohttpClient):
@@ -65,7 +68,7 @@ class AsyncClient(hishel.AsyncCacheClient, httpx_aiohttp.HttpxAiohttpClient):
         method: str,
         url: httpx.URL | str,
         **kwargs: Any,
-    ) -> AsyncGenerator[httpx.Response, None]:
+    ) -> AsyncGenerator[httpx.Response]:
         url = httpx.URL(url)
         h = url.host
         if h.endswith((
@@ -143,6 +146,37 @@ class WeakValueDictionary(weakref.WeakValueDictionary[str, asyncio.Lock]):
         except KeyError:
             self[key] = value = asyncio.Lock()
             return value
+
+
+@overload
+def cached_or_locked(
+    cache_location: StrPath,
+    stack: None = ...,
+) -> contextlib.AbstractAsyncContextManager[bool]: ...
+
+@overload
+async def cached_or_locked(
+    cache_location: StrPath,
+    stack: contextlib.AsyncExitStack,
+) -> bool: ...
+
+
+def cached_or_locked(
+    cache_location: StrPath,
+    stack: contextlib.AsyncExitStack | None = None,
+) -> Awaitable[bool] | contextlib.AbstractAsyncContextManager[bool]:
+    cm = _cached_or_locked(cache_location)
+    return stack.enter_async_context(cm) if stack else cm
+
+
+@contextlib.asynccontextmanager
+async def _cached_or_locked(cache_location: StrPath) -> AsyncGenerator[bool]:
+    ctx = _core.context.get()
+    async with ctx["locks"][str(cache_location)]:
+        if not await anyio.Path(cache_location).is_file():
+            yield False
+            return
+    yield True
 
 
 class _Context(TypedDict):

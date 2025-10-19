@@ -237,7 +237,7 @@ async def _entered(
     return fastapi.Response(status_code=http.HTTPStatus.GATEWAY_TIMEOUT)
 
 
-async def load_balance(urls: Iterable[str]) -> AsyncGenerator[str, None]:
+async def load_balance(urls: Iterable[str]) -> AsyncGenerator[str]:
     if isinstance(urls, str):
         urls = {urls}
     else:
@@ -269,7 +269,7 @@ async def _stream(
     cache_location: StrPath | None = None,
     sha256: bytes | None = None,
     size: int | None = None,
-) -> AsyncGenerator[bytes, None]:
+) -> AsyncGenerator[bytes]:
     async with contextlib.AsyncExitStack() as stack:
         outer = await stack.enter_async_context(contextlib.AsyncExitStack())
         await stack.enter_async_context(wrapped)
@@ -313,7 +313,7 @@ def _tempfile(
     sha256: bytes,
     size: int | None,
     hash_: HASH,
-) -> Generator[Callable[[ReadableBuffer], int], Any, None]:
+) -> Generator[Callable[[ReadableBuffer], int]]:
     dir_ = pathlib.Path(cache_location).parent
     dir_.mkdir(parents=True, exist_ok=True)
     with (
