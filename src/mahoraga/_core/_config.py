@@ -18,7 +18,8 @@ import asyncio
 import functools
 import ipaddress
 import itertools
-from typing import TYPE_CHECKING, Annotated, Literal, override
+import sys
+from typing import TYPE_CHECKING, Annotated, Literal, no_type_check, override
 
 import annotated_types as at
 import pydantic
@@ -29,10 +30,10 @@ import rattler.platform
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-try:
-    import uvloop  # pyright: ignore[reportMissingImports]  # ty: ignore[unresolved-import]
-except ImportError:
-    uvloop = None
+if sys.platform == "win32":
+    import winloop as uvloop  # pyright: ignore[reportMissingImports]
+else:
+    import uvloop  # pyright: ignore[reportMissingImports]
 
 Predicate = functools.singledispatch(at.Predicate)
 
@@ -260,11 +261,9 @@ class Config(
     upstream: _Upstream = _Upstream()
     eager_task_execution: bool = False
 
+    @no_type_check
     def loop_factory(self) -> asyncio.AbstractEventLoop:
-        if uvloop and not TYPE_CHECKING:
-            loop = uvloop.new_event_loop()
-        else:
-            loop = asyncio.SelectorEventLoop()
+        loop = uvloop.new_event_loop()
         if self.eager_task_execution:
             loop.set_task_factory(asyncio.eager_task_factory)
         return loop

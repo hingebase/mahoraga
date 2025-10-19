@@ -50,6 +50,7 @@ dependencies = [
     "rich >=14.2.0",
     "uvicorn >=0.38.0",
     "uvloop >=0.22.1; sys_platform != 'win32' and sys_platform != 'cygwin' and platform_python_implementation != 'PyPy'",
+    "winloop >=0.2.0; sys_platform == 'win32' and platform_python_implementation != 'PyPy'",
 ]
 
 [project.optional-dependencies]
