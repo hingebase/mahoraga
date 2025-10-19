@@ -127,7 +127,10 @@ async def _main(
                     headers={"User-Agent": f"mahoraga/{__version__}"},
                     timeout=httpx.Timeout(15, read=60, write=60),
                     follow_redirects=False,
-                    limits=httpx.Limits(keepalive_expiry=cfg.server.keep_alive),
+                    limits=httpx.Limits(
+                        max_connections=cfg.server.limit_concurrency,
+                        keepalive_expiry=cfg.server.keep_alive,
+                    ),
                     event_hooks=event_hooks,
                     storage=hishel.AsyncInMemoryStorage(capacity=1024),
                     controller=hishel.Controller(

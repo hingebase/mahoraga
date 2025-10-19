@@ -30,11 +30,14 @@ import time
 import weakref
 from typing import TYPE_CHECKING, Any, TypedDict, overload, override
 
+import aiohttp
 import anyio
+import cyares.aiohttp
 import hishel
 import httpx
 import httpx_aiohttp
 import pydantic_settings
+from httpx._config import DEFAULT_LIMITS  # noqa: PLC2701
 from rattler.networking.fetch_repo_data import CacheAction
 
 from mahoraga import _core
@@ -42,11 +45,37 @@ from mahoraga import _core
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Awaitable
     from concurrent.futures import ProcessPoolExecutor
+    from ssl import SSLContext
 
     from _typeshed import StrPath
+    from httpx._types import CertTypes
 
 
-class AsyncClient(hishel.AsyncCacheClient, httpx_aiohttp.HttpxAiohttpClient):
+class _HttpxAiohttpClient(httpx.AsyncClient):
+    @override
+    def _init_transport(
+        self,
+        verify: SSLContext | str | bool = True,
+        cert: CertTypes | None = None,
+        trust_env: bool = True,
+        http1: bool = True,
+        http2: bool = False,
+        limits: httpx.Limits = DEFAULT_LIMITS,
+        transport: httpx.AsyncBaseTransport | None = None,
+    ) -> httpx.AsyncBaseTransport:
+        if transport is not None:
+            return transport
+        return _AiohttpTransport(
+            verify=verify,
+            cert=cert,
+            trust_env=trust_env,
+            http1=http1,
+            http2=http2,
+            limits=limits,
+        )
+
+
+class AsyncClient(hishel.AsyncCacheClient, _HttpxAiohttpClient):
     @override
     def _transport_for_url(self, url: httpx.URL) -> httpx.AsyncBaseTransport:
         t = super()._transport_for_url(url)
@@ -177,6 +206,28 @@ async def _cached_or_locked(cache_location: StrPath) -> AsyncGenerator[bool]:
             yield False
             return
     yield True
+
+
+class _AiohttpTransport(httpx_aiohttp.AiohttpTransport):
+    @override
+    def get_client(self) -> aiohttp.ClientSession:
+        if (
+            callable(self.client)
+            or isinstance(self.client, aiohttp.ClientSession)
+            or self.uds
+            or not self.limits.max_connections
+        ):
+            return super().get_client()
+        connector = aiohttp.TCPConnector(
+            limit=self.limits.max_connections,
+            keepalive_timeout=self.limits.keepalive_expiry,
+            ssl=self.ssl_context,
+            local_addr=(self.local_address, 0) if self.local_address else None,
+            resolver=cyares.aiohttp.CyAresResolver(
+                loop=asyncio.get_running_loop(),
+            ),
+        )
+        return aiohttp.ClientSession(connector=connector)
 
 
 class _Context(TypedDict):
