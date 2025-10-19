@@ -31,9 +31,9 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
 if sys.platform == "win32":
-    import winloop as uvloop  # pyright: ignore[reportMissingImports]  # ty: ignore[unresolved-import]
+    import winloop as uvloop  # pyright: ignore[reportMissingImports]
 else:
-    import uvloop  # pyright: ignore[reportMissingImports]  # ty: ignore[unresolved-import]
+    import uvloop  # pyright: ignore[reportMissingImports]
 
 Predicate = functools.singledispatch(at.Predicate)
 
