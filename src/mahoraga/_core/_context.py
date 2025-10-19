@@ -65,7 +65,7 @@ class AsyncClient(hishel.AsyncCacheClient, httpx_aiohttp.HttpxAiohttpClient):
         method: str,
         url: httpx.URL | str,
         **kwargs: Any,
-    ) -> AsyncGenerator[httpx.Response, None]:
+    ) -> AsyncGenerator[httpx.Response]:
         url = httpx.URL(url)
         h = url.host
         if h.endswith((

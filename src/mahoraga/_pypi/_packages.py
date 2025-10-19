@@ -240,7 +240,7 @@ def _sha256_and_size_from_json(
 async def _stream(
     response: httpx.Response,
     stack: contextlib.AsyncExitStack,
-) -> AsyncGenerator[bytes, None]:
+) -> AsyncGenerator[bytes]:
     async with stack:
         yield b""
         async for chunk in response.aiter_bytes():
