@@ -4,6 +4,9 @@ It's recommended to install Mahoraga with [uv][1]:
 ``` sh
 uv tool install -U mahoraga
 ```
+!!! note
+
+    Installing Mahoraga requires uv version 0.9.0 or later.
 ## Server Configuration
 Before starting Mahoraga, you need to initialize a directory (for example
 `~/.mahoraga`) to hold its configuration and data:
@@ -41,9 +44,6 @@ fetching some packages from Mahoraga. Then if everything goes well, press
     ```
     uvw tool run mahoraga run
     ```
-    !!! note
-
-        Command `uvw` requires uv version 0.7.9 or later.
 
 For better performance, you can set up another server (for example [Nginx][11])
 in front of Mahoraga. Packages cached on disk can be served within that server,
