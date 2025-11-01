@@ -49,6 +49,10 @@ def define_env(env: MacrosPlugin) -> None:
             k, v = line.split("==")
             env.variables[f"{k}_version".replace("-", "_")] = v.rstrip()
     env.variables.update({  # pyright: ignore[reportUnknownMemberType]
+        "mahoraga_base_url": os.getenv(
+            "MAHORAGA_BASE_URL",
+            default="http://127.0.0.1:3450",
+        ).rstrip("/"),
         "mahoraga_version": _Project().version,
         "pymanager_version": _Tag().name,
         "python_build_standalone_tag": release.tag_name,

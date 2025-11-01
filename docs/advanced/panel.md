@@ -9,7 +9,7 @@ frontend assets, eliminating direct requests to upstream servers completely.
 The following example is for Pyodide, but can be adapted to CPython as well.
 !!! note
 
-    Mahoraga serves on `http://127.0.0.1:3450` by default. Replace it with the
+    Mahoraga serves on `{{ mahoraga_base_url }}` by default. Replace it with the
     actual URL exposed to your clients.
 
 ## Prerequisites
@@ -28,11 +28,11 @@ URLs in Panel with a runtime configurable prefix, i.e. the Mahoraga URL.
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <script type="text/javascript" src="http://127.0.0.1:3450/pyodide/v{{ pyodide_py_version }}/full/pyodide.js"></script>
-        <script type="text/javascript" src="http://127.0.0.1:3450/npm/@bokeh/bokehjs@{{ bokeh_version }}/build/js/bokeh.min.js"></script>
-        <script type="text/javascript" src="http://127.0.0.1:3450/npm/@bokeh/bokehjs@{{ bokeh_version }}/build/js/bokeh-widgets.min.js"></script>
-        <script type="text/javascript" src="http://127.0.0.1:3450/npm/@bokeh/bokehjs@{{ bokeh_version }}/build/js/bokeh-tables.min.js"></script>
-        <script type="text/javascript" src="http://127.0.0.1:3450/npm/@holoviz/panel@{{ panel_version }}/dist/panel.min.js"></script>
+        <script type="text/javascript" src="{{ mahoraga_base_url }}/pyodide/v{{ pyodide_py_version }}/full/pyodide.js"></script>
+        <script type="text/javascript" src="{{ mahoraga_base_url }}/npm/@bokeh/bokehjs@{{ bokeh_version }}/build/js/bokeh.min.js"></script>
+        <script type="text/javascript" src="{{ mahoraga_base_url }}/npm/@bokeh/bokehjs@{{ bokeh_version }}/build/js/bokeh-widgets.min.js"></script>
+        <script type="text/javascript" src="{{ mahoraga_base_url }}/npm/@bokeh/bokehjs@{{ bokeh_version }}/build/js/bokeh-tables.min.js"></script>
+        <script type="text/javascript" src="{{ mahoraga_base_url }}/npm/@holoviz/panel@{{ panel_version }}/dist/panel.min.js"></script>
       </head>
       <body>
         <div id="simple_app"></div>
@@ -49,17 +49,17 @@ URLs in Panel with a runtime configurable prefix, i.e. the Mahoraga URL.
                 micropip.package_manager.Transaction = _Transaction
             `);
             const micropip = pyodide.pyimport("micropip");
-            micropip.set_index_urls("http://127.0.0.1:3450/pypi/simple/{package_name}/?micropip=1");
+            micropip.set_index_urls("{{ mahoraga_base_url }}/pypi/simple/{package_name}/?micropip=1");
             await micropip.install(["panel =={{ panel_version }}"]);
             await pyodide.runPythonAsync(`
                 from pyodide.http import pyfetch
-                response = await pyfetch("http://127.0.0.1:3450/static/panel_support.py")
+                response = await pyfetch("{{ mahoraga_base_url }}/static/panel_support.py")
                 with open("panel_support.py", "wb") as f:
                     f.write(await response.bytes())
             `);
             pyodide.runPython(`
                 import panel_support
-                panel_support.monkey_patch("http://127.0.0.1:3450/")
+                panel_support.monkey_patch("{{ mahoraga_base_url }}/")
                 import panel as pn
                 pn.extension(sizing_mode="stretch_width")
                 slider = pn.widgets.FloatSlider(start=0, end=10, name="Amplitude")
@@ -82,17 +82,17 @@ URLs in Panel with a runtime configurable prefix, i.e. the Mahoraga URL.
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <script type="text/javascript" src="http://127.0.0.1:3450/npm/@bokeh/bokehjs@{{ bokeh_version }}/build/js/bokeh.min.js"></script>
-        <script type="text/javascript" src="http://127.0.0.1:3450/npm/@bokeh/bokehjs@{{ bokeh_version }}/build/js/bokeh-widgets.min.js"></script>
-        <script type="text/javascript" src="http://127.0.0.1:3450/npm/@bokeh/bokehjs@{{ bokeh_version }}/build/js/bokeh-tables.min.js"></script>
-        <script type="text/javascript" src="http://127.0.0.1:3450/npm/@holoviz/panel@{{ panel_version }}/dist/panel.min.js"></script>
-        <script type="module" src="http://127.0.0.1:3450/npm/@pyscript/core@0/dist/core.js"></script>
-        <link rel="stylesheet" href="http://127.0.0.1:3450/npm/@pyscript/core@0/dist/core.css">
+        <script type="text/javascript" src="{{ mahoraga_base_url }}/npm/@bokeh/bokehjs@{{ bokeh_version }}/build/js/bokeh.min.js"></script>
+        <script type="text/javascript" src="{{ mahoraga_base_url }}/npm/@bokeh/bokehjs@{{ bokeh_version }}/build/js/bokeh-widgets.min.js"></script>
+        <script type="text/javascript" src="{{ mahoraga_base_url }}/npm/@bokeh/bokehjs@{{ bokeh_version }}/build/js/bokeh-tables.min.js"></script>
+        <script type="text/javascript" src="{{ mahoraga_base_url }}/npm/@holoviz/panel@{{ panel_version }}/dist/panel.min.js"></script>
+        <script type="module" src="{{ mahoraga_base_url }}/npm/@pyscript/core@0/dist/core.js"></script>
+        <link rel="stylesheet" href="{{ mahoraga_base_url }}/npm/@pyscript/core@0/dist/core.css">
       </head>
       <body>
         <div id="simple_app"></div>
         <script type="py" config='{
-          "interpreter": "http://127.0.0.1:3450/pyodide/v{{ pyodide_py_version }}/full/pyodide.mjs",
+          "interpreter": "{{ mahoraga_base_url }}/pyodide/v{{ pyodide_py_version }}/full/pyodide.mjs",
           "packages": ["bokeh"]
         }'>
             import micropip
@@ -101,16 +101,16 @@ URLs in Panel with a runtime configurable prefix, i.e. the Mahoraga URL.
                     super().__post_init__()
                     self.search_pyodide_lock_first = True
             micropip.package_manager.Transaction = _Transaction
-            micropip.set_index_urls("http://127.0.0.1:3450/pypi/simple/{package_name}/?micropip=1")
+            micropip.set_index_urls("{{ mahoraga_base_url }}/pypi/simple/{package_name}/?micropip=1")
             await micropip.install(["panel =={{ panel_version }}"])
 
             from pyodide.http import pyfetch
-            response = await pyfetch("http://127.0.0.1:3450/static/panel_support.py")
+            response = await pyfetch("{{ mahoraga_base_url }}/static/panel_support.py")
             with open("panel_support.py", "wb") as f:
                 f.write(await response.bytes())
 
             import panel_support
-            panel_support.monkey_patch("http://127.0.0.1:3450/")
+            panel_support.monkey_patch("{{ mahoraga_base_url }}/")
             import panel as pn
             pn.extension(sizing_mode="stretch_width")
             slider = pn.widgets.FloatSlider(start=0, end=10, name="Amplitude")

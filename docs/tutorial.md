@@ -65,7 +65,7 @@ directly, but through Nginx.
 ## Client Configuration
 !!! note
 
-    Mahoraga serves on `http://127.0.0.1:3450` by default. Replace it with the
+    Mahoraga serves on `{{ mahoraga_base_url }}` by default. Replace it with the
     actual URL exposed to your clients.
 ### uv
 !!! note
@@ -76,8 +76,8 @@ via either environment variables or a config file:
 === ".profile"
 
     ``` sh
-    export UV_PYTHON_INSTALL_MIRROR=http://127.0.0.1:3450/python-build-standalone
-    export UV_DEFAULT_INDEX=http://127.0.0.1:3450/pypi/simple
+    export UV_PYTHON_INSTALL_MIRROR={{ mahoraga_base_url }}/python-build-standalone
+    export UV_DEFAULT_INDEX={{ mahoraga_base_url }}/pypi/simple
     export UV_HTTP_TIMEOUT=60
     ```
     !!! note
@@ -87,8 +87,8 @@ via either environment variables or a config file:
 === "profile.ps1"
 
     ``` powershell
-    $Env:UV_PYTHON_INSTALL_MIRROR = "http://127.0.0.1:3450/python-build-standalone"
-    $Env:UV_DEFAULT_INDEX = "http://127.0.0.1:3450/pypi/simple"
+    $Env:UV_PYTHON_INSTALL_MIRROR = "{{ mahoraga_base_url }}/python-build-standalone"
+    $Env:UV_DEFAULT_INDEX = "{{ mahoraga_base_url }}/pypi/simple"
     $Env:UV_HTTP_TIMEOUT = "60"
     ```
     !!! note
@@ -98,10 +98,10 @@ via either environment variables or a config file:
 === "uv.toml"
 
     ``` toml
-    python-install-mirror = "http://127.0.0.1:3450/python-build-standalone"
+    python-install-mirror = "{{ mahoraga_base_url }}/python-build-standalone"
 
     [[index]]
-    url = "http://127.0.0.1:3450/pypi/simple"
+    url = "{{ mahoraga_base_url }}/pypi/simple"
     default = true
 
     # Mahoraga inherits upstream response headers.
@@ -116,10 +116,10 @@ via either environment variables or a config file:
 
     ``` toml
     [tool.uv]
-    python-install-mirror = "http://127.0.0.1:3450/python-build-standalone"
+    python-install-mirror = "{{ mahoraga_base_url }}/python-build-standalone"
 
     [[tool.uv.index]]
-    url = "http://127.0.0.1:3450/pypi/simple"
+    url = "{{ mahoraga_base_url }}/pypi/simple"
     default = true
 
     # Mahoraga inherits upstream response headers.
@@ -142,8 +142,8 @@ Pixi mirror configuration can be done in a single command:
 
     ``` sh
     pixi config set -g mirrors '{
-        "https://conda.anaconda.org/": ["http://127.0.0.1:3450/conda/"],
-        "https://pypi.org/simple/": ["http://127.0.0.1:3450/pypi/simple/"]
+        "https://conda.anaconda.org/": ["{{ mahoraga_base_url }}/conda/"],
+        "https://pypi.org/simple/": ["{{ mahoraga_base_url }}/pypi/simple/"]
     }'
     ```
 
@@ -151,10 +151,10 @@ Pixi mirror configuration can be done in a single command:
 
     ``` sh
     pixi config set -g mirrors '{
-        "https://conda.anaconda.org/": ["http://127.0.0.1:3450/conda/"],
-        "https://pypi.org/simple/": ["http://127.0.0.1:3450/pypi/simple/"],
-        "https://raw.githubusercontent.com/prefix-dev/parselmouth/main/files/": ["http://127.0.0.1:3450/parselmouth/"],
-        "https://conda-mapping.prefix.dev/": ["http://127.0.0.1:3450/parselmouth/"]
+        "https://conda.anaconda.org/": ["{{ mahoraga_base_url }}/conda/"],
+        "https://pypi.org/simple/": ["{{ mahoraga_base_url }}/pypi/simple/"],
+        "https://raw.githubusercontent.com/prefix-dev/parselmouth/main/files/": ["{{ mahoraga_base_url }}/parselmouth/"],
+        "https://conda-mapping.prefix.dev/": ["{{ mahoraga_base_url }}/parselmouth/"]
     }'
     ```
 
@@ -216,7 +216,7 @@ The frontend configuration depends on the library you directly use:
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <script type="text/javascript" src="http://127.0.0.1:3450/pyodide/v{{ pyodide_py_version }}/full/pyodide.js"></script>
+        <script type="text/javascript" src="{{ mahoraga_base_url }}/pyodide/v{{ pyodide_py_version }}/full/pyodide.js"></script>
       </head>
       <body>
         <script type="text/javascript">
@@ -234,7 +234,7 @@ The frontend configuration depends on the library you directly use:
                 micropip.package_manager.Transaction = _Transaction
             `);
             const micropip = pyodide.pyimport("micropip");
-            micropip.set_index_urls("http://127.0.0.1:3450/pypi/simple/{package_name}/?micropip=1");
+            micropip.set_index_urls("{{ mahoraga_base_url }}/pypi/simple/{package_name}/?micropip=1");
             await micropip.install(["your_package"]);
             pyodide.runPython(`# Your Python code here`);
           }
@@ -252,13 +252,13 @@ The frontend configuration depends on the library you directly use:
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <script type="module" src="http://127.0.0.1:3450/npm/@pyscript/core@0/dist/core.js"></script>
-        <link rel="stylesheet" href="http://127.0.0.1:3450/npm/@pyscript/core@0/dist/core.css">
+        <script type="module" src="{{ mahoraga_base_url }}/npm/@pyscript/core@0/dist/core.js"></script>
+        <link rel="stylesheet" href="{{ mahoraga_base_url }}/npm/@pyscript/core@0/dist/core.css">
       </head>
       <body>
         <script type="py" config='{
-          "index_urls": ["http://127.0.0.1:3450/pypi/simple/{package_name}/?micropip=1"],
-          "interpreter": "http://127.0.0.1:3450/pyodide/v{{ pyodide_py_version }}/full/pyodide.mjs",
+          "index_urls": ["{{ mahoraga_base_url }}/pypi/simple/{package_name}/?micropip=1"],
+          "interpreter": "{{ mahoraga_base_url }}/pyodide/v{{ pyodide_py_version }}/full/pyodide.mjs",
           "packages": ["your_package"]
         }'># Your Python code here</script>
       </body>
@@ -273,18 +273,18 @@ The frontend configuration depends on the library you directly use:
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
-        <link rel="stylesheet" href="http://127.0.0.1:3450/npm/@stlite/browser@0/build/stlite.css">
+        <link rel="stylesheet" href="{{ mahoraga_base_url }}/npm/@stlite/browser@0/build/stlite.css">
       </head>
       <body>
         <div id="root"></div>
         <script type="module">
-          import { mount } from "http://127.0.0.1:3450/npm/@stlite/browser@0/build/stlite.js";
+          import { mount } from "{{ mahoraga_base_url }}/npm/@stlite/browser@0/build/stlite.js";
           mount(
             {
-              pyodideUrl: "http://127.0.0.1:3450/pyodide/v{{ pyodide_py_version }}/full/pyodide.js",
+              pyodideUrl: "{{ mahoraga_base_url }}/pyodide/v{{ pyodide_py_version }}/full/pyodide.js",
               requirements: [
-                "http://127.0.0.1:3450/pypi/packages/py3/b/blinker/blinker-{{ blinker_version }}-py3-none-any.whl",
-                "http://127.0.0.1:3450/pypi/packages/py3/t/tenacity/tenacity-{{ tenacity_version }}-py3-none-any.whl",
+                "{{ mahoraga_base_url }}/pypi/packages/py3/b/blinker/blinker-{{ blinker_version }}-py3-none-any.whl",
+                "{{ mahoraga_base_url }}/pypi/packages/py3/t/tenacity/tenacity-{{ tenacity_version }}-py3-none-any.whl",
               ],
               entrypoint: "your_app.py",
               files: {
@@ -304,13 +304,13 @@ The next generation of the official Python installer for Windows,
 === "Windows 10 21H2 (Windows Server 2022) or later"
 
     ``` powershell
-    curl -O http://127.0.0.1:3450/python/pymanager/python-manager-{{ pymanager_version }}.msix
+    curl -O {{ mahoraga_base_url }}/python/pymanager/python-manager-{{ pymanager_version }}.msix
     ```
 
 === "Legacy versions"
 
     ``` powershell
-    curl -O http://127.0.0.1:3450/python/pymanager/python-manager-{{ pymanager_version }}.msi
+    curl -O {{ mahoraga_base_url }}/python/pymanager/python-manager-{{ pymanager_version }}.msi
     ```
 
 !!! note

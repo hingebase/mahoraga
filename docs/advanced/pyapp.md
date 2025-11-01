@@ -6,7 +6,7 @@ The Mahoraga executable can be copied to another machine, and will help you set
 up Python development environment efficiently.
 !!! note
 
-    Mahoraga serves on `http://127.0.0.1:3450` by default. Replace it with the
+    Mahoraga serves on `{{ mahoraga_base_url }}` by default. Replace it with the
     actual URL exposed to your clients.
 ## Prerequisites
 - A running Mahoraga server which we have set up in the previous [tutorial][2].
@@ -39,7 +39,7 @@ up Python development environment efficiently.
             async def main():
                 client = rattler.Client([
                     rattler.networking.MirrorMiddleware({
-                        "https://conda.anaconda.org/": ["http://127.0.0.1:3450/conda/"],
+                        "https://conda.anaconda.org/": ["{{ mahoraga_base_url }}/conda/"],
                     }),
                 ])
                 records = await rattler.solve(
@@ -125,7 +125,7 @@ Make an empty directory, `cd` to it, and then build the online version of PyApp:
     ``` sh
     export PYAPP_PROJECT_NAME=mahoraga
     export PYAPP_PROJECT_VERSION={{ mahoraga_version }}
-    export PYAPP_DISTRIBUTION_SOURCE=http://127.0.0.1:3450/python-build-standalone/{{ python_build_standalone_tag }}/cpython-{{ python_version }}+{{ python_build_standalone_tag }}-x86_64_v3-unknown-linux-gnu-install_only_stripped.tar.gz
+    export PYAPP_DISTRIBUTION_SOURCE={{ mahoraga_base_url }}/python-build-standalone/{{ python_build_standalone_tag }}/cpython-{{ python_version }}+{{ python_build_standalone_tag }}-x86_64_v3-unknown-linux-gnu-install_only_stripped.tar.gz
     export PYAPP_FULL_ISOLATION=1
     export PYAPP_UV_ENABLED=1
     export PYAPP_UV_VERSION="$(uv -V | awk '{ print $2 }')"
@@ -143,7 +143,7 @@ Make an empty directory, `cd` to it, and then build the online version of PyApp:
     ``` sh
     export PYAPP_PROJECT_NAME=mahoraga
     export PYAPP_PROJECT_VERSION={{ mahoraga_version }}
-    export PYAPP_DISTRIBUTION_SOURCE=http://127.0.0.1:3450/python-build-standalone/{{ python_build_standalone_tag }}/cpython-{{ python_version }}+{{ python_build_standalone_tag }}-aarch64-apple-darwin-install_only_stripped.tar.gz
+    export PYAPP_DISTRIBUTION_SOURCE={{ mahoraga_base_url }}/python-build-standalone/{{ python_build_standalone_tag }}/cpython-{{ python_version }}+{{ python_build_standalone_tag }}-aarch64-apple-darwin-install_only_stripped.tar.gz
     export PYAPP_FULL_ISOLATION=1
     export PYAPP_UV_ENABLED=1
     export PYAPP_UV_VERSION="$(uv -V | awk '{ print $2 }')"
@@ -156,7 +156,7 @@ Make an empty directory, `cd` to it, and then build the online version of PyApp:
     ``` sh
     export PYAPP_PROJECT_NAME=mahoraga
     export PYAPP_PROJECT_VERSION={{ mahoraga_version }}
-    export PYAPP_DISTRIBUTION_SOURCE=http://127.0.0.1:3450/python-build-standalone/{{ python_build_standalone_tag }}/cpython-{{ python_version }}+{{ python_build_standalone_tag }}-x86_64-apple-darwin-install_only_stripped.tar.gz
+    export PYAPP_DISTRIBUTION_SOURCE={{ mahoraga_base_url }}/python-build-standalone/{{ python_build_standalone_tag }}/cpython-{{ python_version }}+{{ python_build_standalone_tag }}-x86_64-apple-darwin-install_only_stripped.tar.gz
     export PYAPP_FULL_ISOLATION=1
     export PYAPP_UV_ENABLED=1
     export PYAPP_UV_VERSION="$(uv -V | awk '{ print $2 }')"
@@ -169,7 +169,7 @@ Make an empty directory, `cd` to it, and then build the online version of PyApp:
     ``` powershell title="PowerShell"
     $Env:PYAPP_PROJECT_NAME = "mahoraga"
     $Env:PYAPP_PROJECT_VERSION = "{{ mahoraga_version }}"
-    $Env:PYAPP_DISTRIBUTION_SOURCE = "http://127.0.0.1:3450/python/{{ python_version }}/python-{{ python_version }}-embed-amd64.zip"
+    $Env:PYAPP_DISTRIBUTION_SOURCE = "{{ mahoraga_base_url }}/python/{{ python_version }}/python-{{ python_version }}-embed-amd64.zip"
     $Env:PYAPP_FULL_ISOLATION = "1"
     $Env:PYAPP_UV_ENABLED = "1"
     $Env:PYAPP_UV_VERSION = $(uv -V).Substring(3)
