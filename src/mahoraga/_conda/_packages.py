@@ -30,7 +30,7 @@ from . import _utils
 router = fastapi.APIRouter(route_class=_core.APIRoute)
 
 
-@router.get("/{channel}/{platform}/{name}")
+@router.get("/{channel}/{platform}/{name}", dependencies=_core.immutable)
 async def get_conda_package(
     channel: str,
     platform: rattler.platform.PlatformLiteral,
@@ -39,7 +39,10 @@ async def get_conda_package(
     return await _proxy_cache(channel, platform, name)
 
 
-@router.get("/{channel}/label/{label}/{platform}/{name}")
+@router.get(
+    "/{channel}/label/{label}/{platform}/{name}",
+    dependencies=_core.immutable,
+)
 async def get_conda_package_with_label(
     channel: str,
     label: str,
@@ -75,9 +78,6 @@ async def _proxy_cache(
         if cache_location.is_file():
             return fastapi.responses.FileResponse(
                 cache_location,
-                headers={
-                    "Cache-Control": "public, max-age=31536000, immutable",
-                },
                 media_type=media_type,
             )
         pkg_name, version, build = name.removesuffix(suffix).rsplit("-", 2)

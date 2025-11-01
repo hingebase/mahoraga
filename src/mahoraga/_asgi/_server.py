@@ -25,10 +25,10 @@ import multiprocessing as mp
 import pathlib
 import sys
 import warnings
-from typing import TYPE_CHECKING, Any, override
+from typing import Any, override
 
-import hishel._controller
-import hishel._utils
+import anysqlite
+import hishel._core._spec  # pyright: ignore[reportMissingTypeStubs]
 import httpx
 import pooch.utils  # pyright: ignore[reportMissingTypeStubs]
 import rich.console
@@ -38,9 +38,6 @@ import uvicorn.config
 from mahoraga import __version__, _conda, _core
 
 from . import _app
-
-if TYPE_CHECKING:
-    from httpcore import Request
 
 
 def run() -> None:
@@ -129,10 +126,10 @@ async def _main(
                     follow_redirects=False,
                     limits=httpx.Limits(keepalive_expiry=cfg.server.keep_alive),
                     event_hooks=event_hooks,
-                    storage=hishel.AsyncInMemoryStorage(capacity=1024),
-                    controller=hishel.Controller(
-                        allow_heuristics=True,
-                        key_generator=_key_generator,
+                    storage=hishel.AsyncSqliteStorage(
+                        connection=await stack.enter_async_context(
+                            await anysqlite.connect(":memory:"),
+                        ),
                     ),
                 ),
             ),
@@ -165,7 +162,7 @@ class _ServerConfig(uvicorn.Config):
     @override
     def configure_logging(self) -> None:
         super().configure_logging()
-        logging.getLogger("hishel.controller").setLevel(logging.DEBUG)
+        logging.getLogger("hishel").setLevel(logging.DEBUG)
         if self.access_log:
             logging.getLogger("uvicorn.access").setLevel(logging.INFO)
         if self.log_level == logging.DEBUG:
@@ -207,16 +204,5 @@ class _ServerConfig(uvicorn.Config):
         self.listen = logging.handlers.QueueListener(old.queue, *root.handlers)
 
 
-def _key_generator(request: Request, body: bytes | None = b"") -> str:
-    for k, v in request.headers:
-        if (
-            k.lower() == b"accept"
-            and v.startswith(b"application/vnd.pypi.simple.v1+")
-        ):
-            project = request.url.target.rsplit(b"/", 2)[1]
-            return (b"%b|%b" % (project, v)).decode("ascii")
-    return hishel._utils.generate_key(request, body or b"")  # noqa: SLF001
-
-
-hishel._controller.get_heuristic_freshness = lambda response, clock: 600  # noqa: ARG005, SLF001  # ty: ignore[invalid-assignment]
+hishel._core._spec.get_heuristic_freshness = lambda response: 600  # noqa: ARG005, SLF001  # ty: ignore[invalid-assignment]
 _logger = logging.getLogger("mahoraga")

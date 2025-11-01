@@ -29,6 +29,8 @@ __all__ = [
     "cached_or_locked",
     "context",
     "get",
+    "hourly",
+    "immutable",
     "load_balance",
     "schedule_exit",
     "stream",
@@ -53,6 +55,8 @@ from ._stream import (
     Response,
     StreamingResponse,
     get,
+    hourly,
+    immutable,
     load_balance,
     stream,
 )
