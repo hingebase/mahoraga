@@ -26,6 +26,7 @@ import asyncio
 import collections
 import contextlib
 import contextvars
+import dataclasses
 import time
 import weakref
 from typing import TYPE_CHECKING, Any, TypedDict, overload, override
@@ -207,6 +208,23 @@ class _AsyncCacheProxy(hishel.AsyncCacheProxy):
                     project = request.url.rsplit("/", 2)[1]
                     return f"{project}|{header}"
         return await super()._get_key_for_request(request)
+
+    @override
+    async def _handle_idle_state(
+        self,
+        state: hishel.IdleClient,
+        request: hishel.Request,
+    ) -> hishel.AnyState:
+        stored_entries = [
+            dataclasses.replace(
+                pair,
+                request=dataclasses.replace(pair.request, url=request.url),
+            )
+            for pair in await self.storage.get_entries(
+                await self._get_key_for_request(request),
+            )
+        ]
+        return state.next(request, stored_entries)
 
 
 class _AsyncCacheTransport(hishel.httpx.AsyncCacheTransport):
