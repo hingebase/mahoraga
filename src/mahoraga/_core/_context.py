@@ -31,7 +31,7 @@ import weakref
 from typing import TYPE_CHECKING, Any, TypedDict, overload, override
 
 import anyio
-import hishel
+import hishel.httpx
 import httpx
 import httpx_aiohttp
 import pydantic_settings
@@ -46,17 +46,36 @@ if TYPE_CHECKING:
     from _typeshed import StrPath
 
 
-class AsyncClient(hishel.AsyncCacheClient, httpx_aiohttp.HttpxAiohttpClient):
+class AsyncClient(
+    httpx_aiohttp.HttpxAiohttpClient,
+    hishel.httpx.AsyncCacheClient,
+):
+    @override
+    def _init_transport(
+        self,
+        *args: Any,
+        **kwargs: object,
+    ) -> httpx.AsyncBaseTransport:
+        next_transport = super()._init_transport(*args, **kwargs)
+        return _AsyncCacheTransport(
+            next_transport=next_transport,
+            storage=self.storage,
+            policy=self.policy,
+        )
+
     @override
     def _transport_for_url(self, url: httpx.URL) -> httpx.AsyncBaseTransport:
         t = super()._transport_for_url(url)
-        if isinstance(t, hishel.AsyncCacheTransport):
+        if isinstance(t, hishel.httpx.AsyncCacheTransport):
             match cache_action.get():
                 case "no-cache":
-                    return t._transport  # noqa: SLF001  # pyright: ignore[reportPrivateUsage]
+                    return t.next_transport
                 case "force-cache-only" | "use-cache-only":
-                    return hishel.AsyncCacheTransport(
-                        _not_implemented, t._storage, t._controller)  # noqa: SLF001  # pyright: ignore[reportPrivateUsage]
+                    return hishel.httpx.AsyncCacheTransport(
+                        _not_implemented,
+                        t.storage,
+                        t._cache_proxy.policy,  # noqa: SLF001  # pyright: ignore[reportPrivateUsage]
+                    )
                 case "cache-or-fetch":
                     pass
         return t
@@ -177,6 +196,34 @@ async def _cached_or_locked(cache_location: StrPath) -> AsyncGenerator[bool]:
             yield False
             return
     yield True
+
+
+class _AsyncCacheProxy(hishel.AsyncCacheProxy):
+    @override
+    async def _get_key_for_request(self, request: hishel.Request) -> str:
+        if headers := request.headers.get_list("accept"):
+            for header in headers:
+                if header.startswith("application/vnd.pypi.simple.v1+"):
+                    project = request.url.rsplit("/", 2)[1]
+                    return f"{project}|{header}"
+        return await super()._get_key_for_request(request)
+
+
+class _AsyncCacheTransport(hishel.httpx.AsyncCacheTransport):
+    @override
+    def __init__(
+        self,
+        next_transport: httpx.AsyncBaseTransport,
+        storage: hishel.AsyncBaseStorage | None = None,
+        policy: hishel.CachePolicy | None = None,
+    ) -> None:
+        self.next_transport = next_transport
+        self._cache_proxy = _AsyncCacheProxy(
+            request_sender=self.request_sender,
+            storage=storage,
+            policy=policy,
+        )
+        self.storage = self._cache_proxy.storage
 
 
 class _Context(TypedDict):
