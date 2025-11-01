@@ -41,6 +41,7 @@ from typing import TYPE_CHECKING, Any, TypedDict, Unpack, overload, override
 import anyio
 import fastapi.responses
 import fastapi.routing
+import hishel.fastapi
 import httpx
 import pooch.utils  # pyright: ignore[reportMissingTypeStubs]
 
@@ -51,6 +52,13 @@ if TYPE_CHECKING:
     from types import TracebackType
 
     from _typeshed import ReadableBuffer, StrPath
+
+hourly = [
+    hishel.fastapi.cache(max_age=3600),
+]
+immutable = [
+    hishel.fastapi.cache(max_age=31536000, public=True, immutable=True),
+]
 
 
 class APIRoute(fastapi.routing.APIRoute):

@@ -84,7 +84,10 @@ async def get_embedded_python(
     return await _core.stream(urls, media_type=media_type)
 
 
-@router.get("/python-build-standalone/{tag}/{name}")
+@router.get(
+    "/python-build-standalone/{tag}/{name}",
+    dependencies=_core.immutable,
+)
 async def get_standalone_python(
     tag: Annotated[
         str,
@@ -98,9 +101,6 @@ async def get_standalone_python(
         if await _core.cached_or_locked(cache_location, stack):
             return fastapi.responses.FileResponse(
                 cache_location,
-                headers={
-                    "Cache-Control": "public, max-age=31536000, immutable",
-                },
                 media_type=media_type,
             )
         ctx = _core.context.get()

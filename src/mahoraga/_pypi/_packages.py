@@ -61,7 +61,10 @@ async def check_pypi_package_availability(
     )
 
 
-@router.get("/{tag}/{prefix}/{project}/{filename}")
+@router.get(
+    "/{tag}/{prefix}/{project}/{filename}",
+    dependencies=_core.immutable,
+)
 async def get_pypi_package(
     tag: str,
     prefix: Annotated[str, fastapi.Path(min_length=1, max_length=2)],
@@ -83,9 +86,6 @@ async def get_pypi_package(
         if await _core.cached_or_locked(cache_location, stack):
             return fastapi.responses.FileResponse(
                 cache_location,
-                headers={
-                    "Cache-Control": "public, max-age=31536000, immutable",
-                },
                 media_type=media_type,
             )
         ctx = _core.context.get()

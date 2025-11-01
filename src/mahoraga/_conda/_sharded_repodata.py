@@ -35,18 +35,23 @@ from . import _models, _utils
 router = fastapi.APIRouter(route_class=_core.APIRoute)
 
 
-@router.get("/{channel}/{platform}/repodata_shards.msgpack.zst")
+@router.get(
+    "/{channel}/{platform}/repodata_shards.msgpack.zst",
+    dependencies=_core.hourly,
+)
 async def get_sharded_repodata_index(
     channel: str,
     platform: rattler.platform.PlatformLiteral,
 ) -> fastapi.Response:
     return fastapi.responses.FileResponse(
         f"channels/{channel}/{platform}/repodata_shards.msgpack.zst",
-        headers={"Cache-Control": "public, max-age=3600"},
     )
 
 
-@router.get("/{channel}/label/{label}/{platform}/repodata_shards.msgpack.zst")
+@router.get(
+    "/{channel}/label/{label}/{platform}/repodata_shards.msgpack.zst",
+    dependencies=_core.hourly,
+)
 async def get_sharded_repodata_index_with_label(
     channel: str,
     label: str,
@@ -54,11 +59,13 @@ async def get_sharded_repodata_index_with_label(
 ) -> fastapi.Response:
     return fastapi.responses.FileResponse(
         f"channels/{channel}/label/{label}/{platform}/repodata_shards.msgpack.zst",
-        headers={"Cache-Control": "public, max-age=3600"},
     )
 
 
-@router.get("/{channel}/{platform}/shards/{name}")
+@router.get(
+    "/{channel}/{platform}/shards/{name}",
+    dependencies=_core.immutable,
+)
 async def get_sharded_repodata(
     channel: str,
     platform: rattler.platform.PlatformLiteral,
@@ -66,11 +73,13 @@ async def get_sharded_repodata(
 ) -> fastapi.Response:
     return fastapi.responses.FileResponse(
         f"channels/{channel}/{platform}/shards/{name}",
-        headers={"Cache-Control": "public, max-age=31536000, immutable"},
     )
 
 
-@router.get("/{channel}/label/{label}/{platform}/shards/{name}")
+@router.get(
+    "/{channel}/label/{label}/{platform}/shards/{name}",
+    dependencies=_core.immutable,
+)
 async def get_sharded_repodata_with_label(
     channel: str,
     label: str,
@@ -79,7 +88,6 @@ async def get_sharded_repodata_with_label(
 ) -> fastapi.Response:
     return fastapi.responses.FileResponse(
         f"channels/{channel}/label/{label}/{platform}/shards/{name}",
-        headers={"Cache-Control": "public, max-age=31536000, immutable"},
     )
 
 

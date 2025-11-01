@@ -28,12 +28,15 @@ from . import _utils
 router = fastapi.APIRouter(route_class=_core.APIRoute)
 
 
-@router.get("/@bokeh/{package}/{path:path}")
-@router.get("/@holoviz/{package}/{path:path}")
-@router.get("/@pyscript/{package}/{path:path}")
-@router.get("/@stlite/{package}/{path:path}")
+@router.get("/@bokeh/{package}/{path:path}", dependencies=_core.immutable)
+@router.get("/@holoviz/{package}/{path:path}", dependencies=_core.immutable)
+@router.get("/@pyscript/{package}/{path:path}", dependencies=_core.immutable)
+@router.get("/@stlite/{package}/{path:path}", dependencies=_core.immutable)
 # Must be the last
-@router.get("/@material-design-icons/{package}/{path:path}")
+@router.get(
+    "/@material-design-icons/{package}/{path:path}",
+    dependencies=_core.immutable,
+)
 async def get_scoped_npm_file(
     package: Annotated[str, fastapi.Path(pattern=r"^[^@]+@[^@]+$")],
     path: Annotated[str, fastapi.Path(pattern=r"^[^/]")],
@@ -42,7 +45,7 @@ async def get_scoped_npm_file(
     return await get_npm_file(package, path, request)
 
 
-@router.get("/{package}/{path:path}")
+@router.get("/{package}/{path:path}", dependencies=_core.immutable)
 async def get_npm_file(
     package: Annotated[str, fastapi.Path(pattern=r"^[^@]+@[^@]+$")],
     path: Annotated[str, fastapi.Path(pattern=r"^[^/]")],
@@ -51,12 +54,7 @@ async def get_npm_file(
     cache_location = pathlib.Path(request.url.path.lstrip("/"))
     async with contextlib.AsyncExitStack() as stack:
         if await _core.cached_or_locked(cache_location, stack):
-            return fastapi.responses.FileResponse(
-                cache_location,
-                headers={
-                    "Cache-Control": "public, max-age=31536000, immutable",
-                },
-            )
+            return fastapi.responses.FileResponse(cache_location)
         prefix = request.url.path.removeprefix("/npm")
         if prefix.startswith("/@"):
             scope, _ = prefix[2:].split("/", 1)
@@ -76,12 +74,7 @@ async def get_npm_file(
         if resolved.version != version:
             cache_location = pathlib.Path("npm", package, path)
             if await _core.cached_or_locked(cache_location, stack):
-                return fastapi.responses.FileResponse(
-                    cache_location,
-                    headers={
-                        "Cache-Control": "public, max-age=31536000, immutable",
-                    },
-                )
+                return fastapi.responses.FileResponse(cache_location)
         return await _utils.get_npm_file(
             resolved.links["self"],
             package,

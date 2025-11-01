@@ -127,12 +127,7 @@ def _extract_from_tarball(
             with cache_location.open("xb") as f3:
                 f3.truncate(info.size)
                 shutil.copyfileobj(f2, f3)
-        return fastapi.responses.FileResponse(
-            cache_location,
-            headers={
-                "Cache-Control": "public, max-age=31536000, immutable",
-            },
-        )
+        return fastapi.responses.FileResponse(cache_location)
     _logger.warning("Invalid tarball %s", tarball)
     return None
 
