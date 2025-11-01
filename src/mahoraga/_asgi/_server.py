@@ -162,7 +162,7 @@ class _ServerConfig(uvicorn.Config):
     @override
     def configure_logging(self) -> None:
         super().configure_logging()
-        logging.getLogger("hishel.controller").setLevel(logging.DEBUG)
+        logging.getLogger("hishel").setLevel(logging.DEBUG)
         if self.access_log:
             logging.getLogger("uvicorn.access").setLevel(logging.INFO)
         if self.log_level == logging.DEBUG:
