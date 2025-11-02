@@ -130,6 +130,7 @@ async def _main(
                         connection=await stack.enter_async_context(
                             await anysqlite.connect(":memory:"),
                         ),
+                        default_ttl=600.,
                     ),
                 ),
             ),
