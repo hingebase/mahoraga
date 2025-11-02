@@ -71,11 +71,8 @@ async def _proxy_cache(
             "channels", channel, "label", label, platform, name)
     else:
         cache_location = pathlib.Path("channels", channel, platform, name)
-    ctx = _core.context.get()
-    lock = ctx["locks"][str(cache_location)]
     async with contextlib.AsyncExitStack() as stack:
-        await stack.enter_async_context(lock)
-        if cache_location.is_file():
+        if await _core.cached_or_locked(cache_location, stack):
             return fastapi.responses.FileResponse(
                 cache_location,
                 media_type=media_type,
