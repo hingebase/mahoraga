@@ -224,13 +224,16 @@ async def _entered(
                 _core.schedule_exit(inner_stack)
                 response = None
                 continue
-            new_stack = stack.pop_all()
+            new_stack = contextlib.AsyncExitStack()
             content = _stream(response, new_stack, **kwargs)
             try:
-                await anext(content)
-            except:
-                stack.push_async_exit(new_stack)
-                raise
+                if await anext(content):
+                    _core.unreachable()
+            except httpx.TransportError:
+                _core.schedule_exit(inner_stack)
+                response = None
+                continue
+            await new_stack.enter_async_context(stack.pop_all())
             return StreamingResponse(
                 content,
                 response.status_code,
@@ -278,10 +281,11 @@ async def _stream(
     sha256: bytes | None = None,
     size: int | None = None,
 ) -> AsyncGenerator[bytes]:
+    last = b""
+    scope = anyio.CancelScope(shield=True)
     async with contextlib.AsyncExitStack() as stack:
         outer = await stack.enter_async_context(contextlib.AsyncExitStack())
         await stack.enter_async_context(wrapped)
-        yield b""
         if cache_location and sha256:
             h = hashlib.sha256()
             inner = contextlib.ExitStack()
@@ -290,7 +294,7 @@ async def _stream(
             @stack.callback
             def _() -> None:
                 try:
-                    outer.enter_context(anyio.CancelScope(shield=True))
+                    outer.enter_context(scope)
                 finally:
                     fut = loop.run_in_executor(None, inner.close)
                     outer.push_async_callback(lambda: fut)
@@ -299,19 +303,20 @@ async def _stream(
                 inner.enter_context,
                 _tempfile(response, cache_location, sha256, size, h),
             )
-            async for chunk in response.aiter_bytes():
-                fut = loop.run_in_executor(None, fwrite, chunk)
-                try:
-                    yield chunk
-                finally:
-                    with anyio.CancelScope(shield=True):
-                        await fut
-                    h.update(chunk)
-        elif cache_location or sha256:
-            _core.unreachable()
+            async for current in response.aiter_bytes():
+                fut = loop.run_in_executor(None, fwrite, current)
+                yield last
+                last = current
+                await fut
+                h.update(current)
         else:
-            async for chunk in response.aiter_bytes():
-                yield chunk
+            stack.callback(outer.enter_context, scope)
+            if cache_location or sha256:
+                _core.unreachable()
+            async for current in response.aiter_bytes():
+                yield last
+                last = current
+        yield last
 
 
 @contextlib.contextmanager
