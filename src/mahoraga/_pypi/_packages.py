@@ -150,21 +150,27 @@ async def get_pypi_package(
 
 async def _sha256(filename: str, project: str) -> tuple[bytes, int | None]:
     loop = asyncio.get_running_loop()
-    upstreams = _core.context.get()["config"].upstream.pypi
+    ctx = contextvars.copy_context()
+    match ctx[_core.context]:
+        case {"config": config, "locks": locks}:
+            pass
+        case _:
+            _core.unreachable()
     urls = [
         posixpath.join(str(url), "simple", project) + "/"
-        for url in upstreams.json_
+        for url in config.upstream.pypi.json_
     ]
-    ctx = contextvars.copy_context()
     ctx.run(_core.cache_action.set, "force-cache-only")
+    lock = locks[f"{project}|application/vnd.pypi.simple.v1+html"]
     try:
-        raw = await loop.create_task(
-            _core.get(
-                urls,
-                headers={"Accept": "application/vnd.pypi.simple.v1+html"},
-            ),
-            context=ctx,
-        )
+        async with lock:
+            raw = await loop.create_task(
+                _core.get(
+                    urls,
+                    headers={"Accept": "application/vnd.pypi.simple.v1+html"},
+                ),
+                context=ctx,
+            )
     except (NotImplementedError, fastapi.HTTPException):
         pass
     else:
@@ -174,13 +180,14 @@ async def _sha256(filename: str, project: str) -> tuple[bytes, int | None]:
         )
     ctx.run(_core.cache_action.set, "cache-or-fetch")
     try:
-        raw = await loop.create_task(
-            _core.get(
-                urls,
-                headers={"Accept": "application/vnd.pypi.simple.v1+json"},
-            ),
-            context=ctx,
-        )
+        async with locks[f"{project}|application/vnd.pypi.simple.v1+json"]:
+            raw = await loop.create_task(
+                _core.get(
+                    urls,
+                    headers={"Accept": "application/vnd.pypi.simple.v1+json"},
+                ),
+                context=ctx,
+            )
     except fastapi.HTTPException:
         pass
     else:
@@ -193,16 +200,17 @@ async def _sha256(filename: str, project: str) -> tuple[bytes, int | None]:
         )
     urls += [
         posixpath.join(str(url), "simple", project) + "/"
-        for url in upstreams.html
+        for url in config.upstream.pypi.html
     ]
     try:
-        raw = await loop.create_task(
-            _core.get(
-                urls,
-                headers={"Accept": "application/vnd.pypi.simple.v1+html"},
-            ),
-            context=ctx,
-        )
+        async with lock:
+            raw = await loop.create_task(
+                _core.get(
+                    urls,
+                    headers={"Accept": "application/vnd.pypi.simple.v1+html"},
+                ),
+                context=ctx,
+            )
     except fastapi.HTTPException:
         return b"", None
     return (

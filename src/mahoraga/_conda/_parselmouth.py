@@ -15,6 +15,7 @@
 __all__ = ["router"]
 
 import asyncio
+import contextlib
 import contextvars
 from typing import Annotated
 
@@ -28,17 +29,21 @@ router = fastapi.APIRouter(route_class=_core.APIRoute)
 @router.get("/compressed_mapping.json")
 async def get_compressed_mapping() -> fastapi.Response:
     ctx = contextvars.copy_context()
+    lock = ctx[_core.context]["locks"]["compressed_mapping.json"]
     ctx.run(_core.cache_action.set, "cache-or-fetch")
-    return await asyncio.create_task(
-        _core.stream(
-            "https://api.github.com/repos/prefix-dev/parselmouth/contents/files/compressed_mapping.json",
-            headers={
-                "Accept": "application/vnd.github.raw+json",
-                "X-GitHub-Api-Version": "2022-11-28",
-            },
-        ),
-        context=ctx,
-    )
+    async with contextlib.AsyncExitStack() as stack:
+        await stack.enter_async_context(lock)
+        return await asyncio.create_task(
+            _core.stream(
+                "https://api.github.com/repos/prefix-dev/parselmouth/contents/files/compressed_mapping.json",
+                headers={
+                    "Accept": "application/vnd.github.raw+json",
+                    "X-GitHub-Api-Version": "2022-11-28",
+                },
+                stack=stack,
+            ),
+            context=ctx,
+        )
 
 
 @router.get("/hash-v0/{sha256}")

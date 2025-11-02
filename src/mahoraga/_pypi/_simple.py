@@ -16,6 +16,7 @@ __all__ = ["router"]
 
 import asyncio
 import collections
+import contextlib
 import contextvars
 import http
 import posixpath
@@ -43,32 +44,38 @@ async def get_pypi_project(
     *,
     micropip: Annotated[bool, fastapi.Query()] = False,
 ) -> fastapi.Response:
-    ctx = _core.context.get()
-    upstreams = ctx["config"].upstream.pypi
-    if micropip or not upstreams.json_:
+    ctx = contextvars.copy_context()
+    match ctx[_core.context]:
+        case {"config": config, "locks": locks}:
+            pass
+        case _:
+            _core.unreachable()
+    if micropip or not config.upstream.pypi.json_:
         media_type = "application/vnd.pypi.simple.v1+html"
     else:
         media_type = _decide_content_type(accept)
     if media_type == "application/vnd.pypi.simple.v1+json":
         urls = [
             posixpath.join(str(url), "simple", project) + "/"
-            for url in upstreams.json_
+            for url in config.upstream.pypi.json_
         ]
     else:
         urls = [
             posixpath.join(str(url), "simple", project) + "/"
-            for url in upstreams.all()
+            for url in config.upstream.pypi.all()
         ]
-    ctx = contextvars.copy_context()
     ctx.run(_core.cache_action.set, "cache-or-fetch")
-    return await asyncio.create_task(
-        _core.stream(
-            urls,
-            headers={"Accept": media_type},
-            media_type=media_type,
-        ),
-        context=ctx,
-    )
+    async with contextlib.AsyncExitStack() as stack:
+        await stack.enter_async_context(locks[f"{project}|{media_type}"])
+        return await asyncio.create_task(
+            _core.stream(
+                urls,
+                headers={"Accept": media_type},
+                media_type=media_type,
+                stack=stack,
+            ),
+            context=ctx,
+        )
 
 
 def _decide_content_type(accept: str | None) -> Literal[
