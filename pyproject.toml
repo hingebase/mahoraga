@@ -59,7 +59,7 @@ typing = [
 [dependency-groups]
 dev = [
     "mkdocs-macros-plugin >=1.0.4",
-    "mkdocs-material >=9.6.20,!=9.6.21,!=9.6.22",  # https://github.com/squidfunk/mkdocs-material/issues/8478
+    "mkdocs-material ==9.6.20",  # https://github.com/squidfunk/mkdocs-material/issues/8478
     "mkdocs-minify-plugin >=0.7.0",
     "pooch >=1.8.0",
     "pydantic-settings >=2.3.0",
