@@ -127,9 +127,7 @@ async def _main(
                     limits=httpx.Limits(keepalive_expiry=cfg.server.keep_alive),
                     event_hooks=event_hooks,
                     storage=hishel.AsyncSqliteStorage(
-                        connection=await stack.enter_async_context(
-                            await anysqlite.connect(":memory:"),
-                        ),
+                        connection=await anysqlite.connect(":memory:"),
                         default_ttl=600.,
                     ),
                 ),
