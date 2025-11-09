@@ -162,6 +162,12 @@ class _ServerConfig(uvicorn.Config):
     def configure_logging(self) -> None:
         super().configure_logging()
         logging.getLogger("hishel").setLevel(logging.DEBUG)
+        logging.getLogger("hishel.core.spec").addFilter(
+            lambda rec: rec.msg != "Storing response in cache",
+        )
+        logging.getLogger("hishel.integrations.clients").addFilter(
+            lambda rec: rec.msg != "Handling state: IdleClient",
+        )
         if self.access_log:
             logging.getLogger("uvicorn.access").setLevel(logging.INFO)
         if self.log_level == logging.DEBUG:
