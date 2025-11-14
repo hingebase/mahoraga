@@ -18,12 +18,14 @@ import asyncio
 import collections
 import concurrent.futures
 import contextlib
+import inspect
 import io
 import logging.config
 import logging.handlers
 import multiprocessing as mp
 import pathlib
 import sys
+import types
 import warnings
 from typing import Any, override
 
@@ -103,6 +105,34 @@ def _initializer(cfg: dict[str, Any]) -> None:
     pooch.utils.LOGGER = logging.getLogger("pooch")
 
 
+def _log_filter(rec: logging.LogRecord) -> bool:
+    message: str = rec.msg
+    if not message.startswith("Handling state: "):
+        return True
+    if (
+        message == "Handling state: IdleClient"
+        or (
+            message != "Handling state: FromCache"
+            and _core.cache_action.get() != "cache-or-fetch"
+        )
+    ):
+        return False
+    for frame in inspect.stack(0):
+        match frame:
+            case [
+                types.FrameType(f_locals={"request": hishel.Request(url=url)}),
+                rec.pathname,
+                rec.lineno,
+                rec.funcName,
+                *_,
+            ]:
+                _logger.info("%s: %s", message[16:], url)
+                return False
+            case _:
+                pass
+    return _core.unreachable()
+
+
 async def _main(
     cfg: _core.Config,
     server: uvicorn.Server,
@@ -165,9 +195,7 @@ class _ServerConfig(uvicorn.Config):
         logging.getLogger("hishel.core.spec").addFilter(
             lambda rec: rec.msg != "Storing response in cache",
         )
-        logging.getLogger("hishel.integrations.clients").addFilter(
-            lambda rec: rec.msg != "Handling state: IdleClient",
-        )
+        logging.getLogger("hishel.integrations.clients").addFilter(_log_filter)
         if self.access_log:
             logging.getLogger("uvicorn.access").setLevel(logging.INFO)
         if self.log_level == logging.DEBUG:
