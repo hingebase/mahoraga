@@ -70,12 +70,13 @@ directly, but through Nginx.
 ### uv
 !!! note
 
-    Mirror configuration requires uv version 0.8.5 or later.
+    Mirror configuration requires uv version 0.9.10 or later.
 [uv][1] can be configured to grab PyPI packages and Python itself from Mahoraga,
 via either environment variables or a config file:
 === ".profile"
 
     ``` sh
+    export UV_PYTHON_DOWNLOADS_JSON_URL={{ mahoraga_base_url }}/uv/python-downloads.json
     export UV_PYTHON_INSTALL_MIRROR={{ mahoraga_base_url }}/python-build-standalone
     export UV_DEFAULT_INDEX={{ mahoraga_base_url }}/pypi/simple
     export UV_HTTP_TIMEOUT=60
@@ -87,6 +88,7 @@ via either environment variables or a config file:
 === "profile.ps1"
 
     ``` powershell
+    $Env:UV_PYTHON_DOWNLOADS_JSON_URL = "{{ mahoraga_base_url }}/uv/python-downloads.json"
     $Env:UV_PYTHON_INSTALL_MIRROR = "{{ mahoraga_base_url }}/python-build-standalone"
     $Env:UV_DEFAULT_INDEX = "{{ mahoraga_base_url }}/pypi/simple"
     $Env:UV_HTTP_TIMEOUT = "60"
@@ -98,6 +100,7 @@ via either environment variables or a config file:
 === "uv.toml"
 
     ``` toml
+    python-downloads-json-url = "{{ mahoraga_base_url }}/uv/python-downloads.json"
     python-install-mirror = "{{ mahoraga_base_url }}/python-build-standalone"
 
     [[index]]
@@ -116,6 +119,7 @@ via either environment variables or a config file:
 
     ``` toml
     [tool.uv]
+    python-downloads-json-url = "{{ mahoraga_base_url }}/uv/python-downloads.json"
     python-install-mirror = "{{ mahoraga_base_url }}/python-build-standalone"
 
     [[tool.uv.index]]
