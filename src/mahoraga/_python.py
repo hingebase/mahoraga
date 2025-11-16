@@ -16,6 +16,7 @@ __all__ = ["router"]
 
 import asyncio
 import contextlib
+import contextvars
 import http
 import logging
 import mimetypes
@@ -119,6 +120,26 @@ async def get_standalone_python(
             size=size,
         )
     return _core.unreachable()
+
+
+@router.get("/uv/python-downloads.json")
+async def get_uv_python_downloads_json() -> fastapi.Response:
+    ctx = contextvars.copy_context()
+    lock = ctx[_core.context]["locks"]["python-downloads.json"]
+    ctx.run(_core.cache_action.set, "cache-or-fetch")
+    async with contextlib.AsyncExitStack() as stack:
+        await stack.enter_async_context(lock)
+        return await asyncio.create_task(
+            _core.stream(
+                "https://api.github.com/repos/astral-sh/uv/contents/crates/uv-python/download-metadata.json",
+                headers={
+                    "Accept": "application/vnd.github.raw+json",
+                    "X-GitHub-Api-Version": "2022-11-28",
+                },
+                stack=stack,
+            ),
+            context=ctx,
+        )
 
 
 async def _get_standalone_python_github_release(
