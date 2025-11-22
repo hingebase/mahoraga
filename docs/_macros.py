@@ -17,7 +17,7 @@ import os
 import pathlib
 import subprocess  # noqa: S404
 import time
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, cast, override
 
 import csscompressor  # pyright: ignore[reportMissingTypeStubs]
 import jsmin  # pyright: ignore[reportMissingTypeStubs]
@@ -25,14 +25,17 @@ import pooch  # pyright: ignore[reportMissingTypeStubs]
 import pydantic
 import pydantic_settings
 import pyodide_lock
-import requests.sessions
-from typing_extensions import override  # noqa: UP035
+import requests
 
 if TYPE_CHECKING:
+    from _typeshed import Incomplete
     from material.plugins.privacy.plugin import (  # pyright: ignore[reportMissingTypeStubs]
         PrivacyPlugin,
     )
     from mkdocs_macros.plugin import MacrosPlugin
+    from requests.sessions import (
+        _Params,  # pyright: ignore[reportPrivateUsage]
+    )
 
 
 def define_env(env: MacrosPlugin) -> None:
@@ -178,8 +181,8 @@ class _Tag(
 
 def _get(
     url: str | bytes,
-    params: requests.sessions._Params | None = None,  # pyright: ignore[reportPrivateUsage]
-    **kwargs: Any,  # noqa: ANN401
+    params: _Params | None = None,
+    **kwargs: Incomplete,
 ) -> requests.Response:
     req = requests.PreparedRequest()
     req.prepare_url(url, params)  # pyright: ignore[reportUnknownMemberType]
@@ -213,7 +216,7 @@ def _open(requirements: pathlib.Path) -> io.TextIOWrapper:
         return requirements.open(encoding="utf-8")
 
 
-def _retrieve(url: str, params: object = None) -> str:
+def _retrieve(url: str, params: _Params | None = None) -> str:
     headers = {
         "Accept": "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28",
