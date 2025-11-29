@@ -27,15 +27,19 @@ import collections
 import contextlib
 import contextvars
 import dataclasses
+import inspect
+import logging
 import time
 import weakref
 from typing import TYPE_CHECKING, Any, TypedDict, overload, override
 
+import aiohttp
 import anyio
 import hishel.httpx
 import httpx
 import httpx_aiohttp
 import pydantic_settings
+from httpx._config import DEFAULT_LIMITS  # noqa: PLC2701
 from rattler.networking.fetch_repo_data import CacheAction
 
 from mahoraga import _core
@@ -43,21 +47,33 @@ from mahoraga import _core
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Awaitable
     from concurrent.futures import ProcessPoolExecutor
+    from ssl import SSLContext
 
-    from _typeshed import StrPath
+    from _typeshed import StrPath, Unused
+    from httpx._types import CertTypes
 
 
-class AsyncClient(
-    httpx_aiohttp.HttpxAiohttpClient,
-    hishel.httpx.AsyncCacheClient,
-):
+class AsyncClient(hishel.httpx.AsyncCacheClient):
     @override
     def _init_transport(
         self,
-        *args: Any,
-        **kwargs: object,
+        verify: SSLContext | str | bool = True,
+        cert: CertTypes | None = None,
+        trust_env: bool = True,
+        http1: bool = True,
+        http2: bool = False,
+        limits: httpx.Limits = DEFAULT_LIMITS,
+        transport: httpx.AsyncBaseTransport | None = None,
+        **kwargs: Unused,
     ) -> httpx.AsyncBaseTransport:
-        next_transport = super()._init_transport(*args, **kwargs)
+        next_transport = transport or _AiohttpTransport(
+            verify=verify,
+            cert=cert,
+            trust_env=trust_env,
+            http1=http1,
+            http2=http2,
+            limits=limits,
+        )
         return _AsyncCacheTransport(
             next_transport=next_transport,
             storage=self.storage,
@@ -199,6 +215,50 @@ async def _cached_or_locked(cache_location: StrPath) -> AsyncGenerator[bool]:
     yield True
 
 
+class _AiohttpTransport(httpx_aiohttp.AiohttpTransport):
+    @override
+    def get_client(self) -> aiohttp.ClientSession:
+        if (
+            callable(self.client)
+            or isinstance(self.client, aiohttp.ClientSession)
+            or self.uds
+            or not self.limits.max_connections
+        ):
+            return super().get_client()
+        connector = aiohttp.TCPConnector(
+            limit=self.limits.max_connections,
+            keepalive_timeout=self.limits.keepalive_expiry,
+            ssl=self.ssl_context,
+            local_addr=(self.local_address, 0) if self.local_address else None,
+        )
+        if _logger.isEnabledFor(logging.INFO):
+            trace_config = aiohttp.TraceConfig()
+            trace_config.on_connection_create_start.append(
+                lambda _session, _context, _params: _on_signal("Creating"),
+            )
+            trace_config.on_connection_reuseconn.append(
+                lambda _session, _context, _params: _on_signal("Reusing"),
+            )
+            trace_configs = [trace_config]
+        else:
+            trace_configs = None
+        return aiohttp.ClientSession(
+            connector=connector,
+            trace_configs=trace_configs,
+        )
+
+
+async def _on_signal(verb: str) -> None:  # noqa: RUF029
+    for info in inspect.stack(0):
+        match info.frame.f_locals:
+            case {"req": aiohttp.ClientRequest(url=url)}:
+                _logger.info("%s TCP connection: %s", verb, url)
+                return
+            case _:
+                pass
+    _core.unreachable()
+
+
 class _AsyncCacheProxy(hishel.AsyncCacheProxy):
     @override
     async def _get_key_for_request(self, request: hishel.Request) -> str:
@@ -259,4 +319,5 @@ cache_action = contextvars.ContextVar[CacheAction](
 )
 _exclude = {"backup_servers", "concurrent_requests"}
 _json = anyio.Path("statistics.json")
+_logger = logging.getLogger("mahoraga")
 _not_implemented = httpx.AsyncBaseTransport()

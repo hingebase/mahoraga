@@ -27,7 +27,7 @@ import pathlib
 import sys
 import types
 import warnings
-from typing import Any, override
+from typing import Any, cast, override
 
 import anysqlite
 import hishel._core._spec  # pyright: ignore[reportMissingTypeStubs]
@@ -36,6 +36,7 @@ import pooch.utils  # pyright: ignore[reportMissingTypeStubs]
 import rich.console
 import rich.logging
 import uvicorn.config
+import uvicorn.logging
 
 from mahoraga import __version__, _conda, _core
 
@@ -154,7 +155,10 @@ async def _main(
                     headers={"User-Agent": f"mahoraga/{__version__}"},
                     timeout=httpx.Timeout(15, read=60, write=60),
                     follow_redirects=False,
-                    limits=httpx.Limits(keepalive_expiry=cfg.server.keep_alive),
+                    limits=httpx.Limits(
+                        max_connections=cfg.server.limit_concurrency,
+                        keepalive_expiry=cfg.server.keep_alive,
+                    ),
                     event_hooks=event_hooks,
                     storage=hishel.AsyncSqliteStorage(
                         connection=await anysqlite.connect(":memory:"),
@@ -198,8 +202,18 @@ class _ServerConfig(uvicorn.Config):
         logging.getLogger("hishel.integrations.clients").addFilter(_log_filter)
         if self.access_log:
             logging.getLogger("uvicorn.access").setLevel(logging.INFO)
-        if self.log_level == logging.DEBUG:
-            warnings.simplefilter("always", ResourceWarning)
+        level = cast("int", self.log_level)
+        if level <= logging.INFO:
+            logger = logging.getLogger("uvicorn.error")
+            logger.setLevel(uvicorn.logging.TRACE_LOG_LEVEL)
+            logger.addFilter(
+                lambda rec: rec.levelno >= level or rec.msg.endswith((
+                    "HTTP connection made",
+                    "HTTP connection lost",
+                )),
+            )
+            if level <= logging.DEBUG:
+                warnings.simplefilter("always", ResourceWarning)
         logging.captureWarnings(capture=True)
         pooch.utils.LOGGER = logging.getLogger("pooch")
 
