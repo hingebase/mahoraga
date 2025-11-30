@@ -94,12 +94,6 @@ def run() -> None:
             raise SystemExit(server.started or 3) from e
 
 
-async def _event_hook(request: httpx.Request) -> None:  # noqa: RUF029
-    async def trace(event_name: str, _info: dict[str, Any]) -> None:  # noqa: RUF029
-        _logger.debug("%s: %s", event_name, request.url)
-    request.extensions["trace"] = trace
-
-
 def _initializer(cfg: dict[str, Any]) -> None:
     logging.config.dictConfig(cfg)
     logging.captureWarnings(capture=True)
@@ -138,11 +132,6 @@ async def _main(
     cfg: _core.Config,
     server: uvicorn.Server,
 ) -> None:
-    if cfg.log.level == "debug":
-        event_hooks = {"request": [_event_hook]}
-    else:
-        event_hooks = None
-
     log_config = server.config.log_config
     if not isinstance(log_config, dict):
         _core.unreachable()
@@ -159,7 +148,6 @@ async def _main(
                         max_connections=cfg.server.limit_concurrency,
                         keepalive_expiry=cfg.server.keep_alive,
                     ),
-                    event_hooks=event_hooks,
                     storage=hishel.AsyncSqliteStorage(
                         connection=await anysqlite.connect(":memory:"),
                         default_ttl=600.,
