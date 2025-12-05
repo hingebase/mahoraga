@@ -1,0 +1,24 @@
+name: Update license year
+
+permissions:
+  contents: write
+  pull-requests: write
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: 0 3 1 1 *
+
+jobs:
+  update-license-year:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: FantasticFiasco/action-update-license-year@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: |
+            src/**/*.py
+            docs/_macros.py
+          commitTitle: 📄 Update license year
+          prTitle: Happy New Year
