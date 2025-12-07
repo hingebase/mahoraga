@@ -184,21 +184,20 @@ async def _get_standalone_python_sha256_and_size(
                 posixpath.join(str(url), tag, "SHA256SUMS")
                 for url in ctx["config"].upstream.python_build_standalone
             ]
-            async with contextlib.aclosing(_core.load_balance(urls)) as it:
-                async for url in it:
-                    with contextlib.suppress(Exception):
-                        await loop.run_in_executor(
-                            None,
-                            pooch.retrieve,  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
-                            url,
-                            None,
-                            fname,
-                            dir_,
-                        )
-                        break
-                else:
-                    status_code = http.HTTPStatus.GATEWAY_TIMEOUT
-                    raise fastapi.HTTPException(status_code)
+            for url in _core.load_balance(urls):
+                with contextlib.suppress(Exception):
+                    await loop.run_in_executor(
+                        None,
+                        pooch.retrieve,  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
+                        url,
+                        None,
+                        fname,
+                        dir_,
+                    )
+                    break
+            else:
+                status_code = http.HTTPStatus.GATEWAY_TIMEOUT
+                raise fastapi.HTTPException(status_code)
     return await loop.run_in_executor(
         None,
         _parse_standalone_python_sha256,

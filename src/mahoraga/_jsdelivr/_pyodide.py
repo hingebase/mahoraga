@@ -244,21 +244,20 @@ async def _get_pyodide_lock(
             dir_, fname = os.path.split(cache_location)
             loop = asyncio.get_running_loop()
             urls = _utils.urls("npm", package, "pyodide-lock.json")
-            async with contextlib.aclosing(_core.load_balance(urls)) as it:
-                async for url in it:
-                    with contextlib.suppress(Exception):
-                        await loop.run_in_executor(
-                            None,
-                            pooch.retrieve,  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
-                            url,
-                            known_hash,
-                            fname,
-                            dir_,
-                        )
-                        break
-                else:
-                    status_code = http.HTTPStatus.GATEWAY_TIMEOUT
-                    raise fastapi.HTTPException(status_code)
+            for url in _core.load_balance(urls):
+                with contextlib.suppress(Exception):
+                    await loop.run_in_executor(
+                        None,
+                        pooch.retrieve,  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
+                        url,
+                        known_hash,
+                        fname,
+                        dir_,
+                    )
+                    break
+            else:
+                status_code = http.HTTPStatus.GATEWAY_TIMEOUT
+                raise fastapi.HTTPException(status_code)
 
 
 _logger = logging.getLogger("mahoraga")

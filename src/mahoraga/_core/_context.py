@@ -116,7 +116,8 @@ class AsyncClient(hishel.httpx.AsyncCacheClient):
             kwargs["follow_redirects"] = True
         cm = super().stream(method, url, **kwargs)
         ctx = _core.context.get()
-        concurrent_requests = ctx["statistics_concurrent_requests"]
+        s = ctx["statistics"]
+        concurrent_requests = s.concurrent_requests
         concurrent_requests[h] += 1
         async with contextlib.AsyncExitStack() as stack:
             tic = time.monotonic()
@@ -126,10 +127,9 @@ class AsyncClient(hishel.httpx.AsyncCacheClient):
                 toc = time.monotonic()
                 concurrent_requests[h] -= 1
                 if seconds := round(toc - tic):
+                    s.total_seconds[h] += seconds
                     schedule_exit(stack)
                     async with ctx["locks"]["statistics.json"]:
-                        s = Statistics()
-                        s.total_seconds[h] += seconds
                         await _json.write_text(
                             s.model_dump_json(exclude=_exclude),
                             encoding="utf-8",
@@ -142,7 +142,7 @@ def schedule_exit(stack: contextlib.AsyncExitStack) -> None:
 
 
 class Statistics(pydantic_settings.BaseSettings, json_file_encoding="utf-8"):
-    backup_servers: set[str] = set()
+    backup_servers: set[str]
     concurrent_requests: collections.Counter[str] = collections.Counter()
     total_seconds: collections.Counter[str] = collections.Counter()
 
@@ -164,14 +164,9 @@ class Statistics(pydantic_settings.BaseSettings, json_file_encoding="utf-8"):
         dotenv_settings: pydantic_settings.PydanticBaseSettingsSource,
         file_secret_settings: pydantic_settings.PydanticBaseSettingsSource,
     ) -> tuple[pydantic_settings.PydanticBaseSettingsSource, ...]:
-        ctx = _core.context.get()
         json_settings = pydantic_settings.JsonConfigSettingsSource(
             settings_cls, "statistics.json")
-        json_settings.init_kwargs.update(  # pyright: ignore[reportUnknownMemberType]
-            backup_servers=ctx["config"].upstream.backup,
-            concurrent_requests=ctx["statistics_concurrent_requests"],
-        )
-        return (json_settings,)
+        return (init_settings, json_settings)
 
 
 class WeakValueDictionary(weakref.WeakValueDictionary[str, asyncio.Lock]):
@@ -309,7 +304,7 @@ class _Context(TypedDict):
     httpx_client: AsyncClient
     locks: WeakValueDictionary
     process_pool: ProcessPoolExecutor
-    statistics_concurrent_requests: collections.Counter[str]
+    statistics: Statistics
 
 
 Context = contextvars.ContextVar[_Context]

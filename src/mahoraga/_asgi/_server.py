@@ -15,7 +15,6 @@
 __all__ = ["run"]
 
 import asyncio
-import collections
 import concurrent.futures
 import contextlib
 import inspect
@@ -162,7 +161,7 @@ async def _main(
                     max_tasks_per_child=1000,
                 ),
             ),
-            "statistics_concurrent_requests": collections.Counter(),
+            "statistics": _core.Statistics(backup_servers=cfg.upstream.backup),
         })
         await server.serve()
 

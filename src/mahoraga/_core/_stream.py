@@ -101,11 +101,8 @@ async def get(urls: Iterable[str], **kwargs: object) -> bytes:
     ctx = _core.context.get()
     client = ctx["httpx_client"]
     response = None
-    async with (
-        contextlib.AsyncExitStack() as stack,
-        contextlib.aclosing(load_balance(urls)) as it,
-    ):
-        async for url in it:
+    async with contextlib.AsyncExitStack() as stack:
+        for url in load_balance(urls):
             try:
                 response = await stack.enter_async_context(
                     client.stream("GET", url, **kwargs),
@@ -203,43 +200,42 @@ async def _entered(
     client = ctx["httpx_client"]
     inner_stack = await stack.enter_async_context(contextlib.AsyncExitStack())
     response = None
-    async with contextlib.aclosing(load_balance(urls)) as it:
-        async for url in it:
-            try:
-                response = await inner_stack.enter_async_context(
-                    client.stream("GET", url, headers=headers),
-                )
-            except httpx.HTTPError:
-                continue
-            if response.status_code == http.HTTPStatus.NOT_MODIFIED:
-                break
-            try:
-                response.raise_for_status()
-            except httpx.HTTPStatusError:
-                _core.schedule_exit(inner_stack)
-                continue
-            try:
-                headers = _unify_content_length(response.headers, kwargs)
-            except _ContentLengthError:
-                _core.schedule_exit(inner_stack)
-                response = None
-                continue
-            new_stack = contextlib.AsyncExitStack()
-            content = _stream(response, new_stack, **kwargs)
-            try:
-                if await anext(content):
-                    _core.unreachable()
-            except httpx.TransportError:
-                _core.schedule_exit(inner_stack)
-                response = None
-                continue
-            await new_stack.enter_async_context(stack.pop_all())
-            return StreamingResponse(
-                content,
-                response.status_code,
-                headers,
-                media_type,
+    for url in load_balance(urls):
+        try:
+            response = await inner_stack.enter_async_context(
+                client.stream("GET", url, headers=headers),
             )
+        except httpx.HTTPError:
+            continue
+        if response.status_code == http.HTTPStatus.NOT_MODIFIED:
+            break
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError:
+            _core.schedule_exit(inner_stack)
+            continue
+        try:
+            headers = _unify_content_length(response.headers, kwargs)
+        except _ContentLengthError:
+            _core.schedule_exit(inner_stack)
+            response = None
+            continue
+        new_stack = contextlib.AsyncExitStack()
+        content = _stream(response, new_stack, **kwargs)
+        try:
+            if await anext(content):
+                _core.unreachable()
+        except httpx.TransportError:
+            _core.schedule_exit(inner_stack)
+            response = None
+            continue
+        await new_stack.enter_async_context(stack.pop_all())
+        return StreamingResponse(
+            content,
+            response.status_code,
+            headers,
+            media_type,
+        )
     if response:
         return Response(
             status_code=response.status_code,
@@ -248,18 +244,17 @@ async def _entered(
     return fastapi.Response(status_code=http.HTTPStatus.GATEWAY_TIMEOUT)
 
 
-async def load_balance(urls: Iterable[str]) -> AsyncGenerator[str]:
+def load_balance(urls: Iterable[str]) -> Generator[str]:
     if isinstance(urls, str):
         urls = {urls}
     else:
         ctx = _core.context.get()
-        lock = ctx["locks"]["statistics.json"]
+        key = ctx["statistics"].key
         urls = set(urls)
         while len(urls) > 1:
-            async with lock:
-                url = min(urls, key=_core.Statistics().key)
-            urls.remove(url)
+            url = min(urls, key=key)
             yield url
+            urls.remove(url)
     for url in urls:
         yield url
 
