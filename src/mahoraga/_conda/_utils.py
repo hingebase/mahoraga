@@ -19,6 +19,7 @@ __all__ = [
     "urls",
 ]
 
+import asyncio
 import itertools
 import posixpath
 from typing import TYPE_CHECKING
@@ -77,6 +78,7 @@ async def fetch_repo_data_and_load_matching_records(
     *,
     label: str | None = None,
 ) -> list[rattler.RepoDataRecord]:
+    loop = asyncio.get_running_loop()
     if label:
         channel = f"{channel}/label/{label}"
     channels = [rattler.Channel(channel)]
@@ -93,12 +95,14 @@ async def fetch_repo_data_and_load_matching_records(
     except rattler.exceptions.FetchRepoDataError:
         pass
     else:
-        with repodata:
-            if records := repodata.load_matching_records(
-                specs,
-                package_format_selection,
-            ):
-                return records
+        if records := await loop.run_in_executor(
+            None,
+            _load_matching_records_and_close,
+            repodata,
+            specs,
+            package_format_selection,
+        ):
+            return records
     ctx = _core.context.get()
     [repodata] = await _fetch_repo_data(
         channels=channels,
@@ -107,8 +111,13 @@ async def fetch_repo_data_and_load_matching_records(
         callback=None,
         client=ctx["config"].server.rattler_client(),
     )
-    with repodata:
-        return repodata.load_matching_records(specs, package_format_selection)
+    return await loop.run_in_executor(
+        None,
+        _load_matching_records_and_close,
+        repodata,
+        specs,
+        package_format_selection,
+    )
 
 
 def prefix(channel: str) -> str:
@@ -176,6 +185,15 @@ def _getitem[T](mapping: Mapping[str, str | list[T]], key: str) -> Sequence[T]:
         seen.add(value)
         value = mapping.get(value, ())
     return value
+
+
+def _load_matching_records_and_close(
+    repodata: rattler.SparseRepoData,
+    specs: list[rattler.MatchSpec],
+    package_format_selection: rattler.PackageFormatSelection,
+) -> list[rattler.RepoDataRecord]:
+    with repodata:
+        return repodata.load_matching_records(specs, package_format_selection)
 
 
 _fetch_options = rattler.networking.FetchRepoDataOptions(
