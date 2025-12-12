@@ -149,7 +149,8 @@ def _sha256(
     }
     with pooch.utils.temporary_file(root) as tmp:  # pyright: ignore[reportUnknownMemberType]
         with pathlib.Path(tmp).open("w+b") as f:
-            with compression.zstd.ZstdFile(f, "w", level=19) as g:
+            # https://github.com/conda/rattler/blob/py-rattler-v0.18.0/crates/rattler_index/src/lib.rs#L826
+            with compression.zstd.ZstdFile(f, "w") as g:
                 msgpack.dump(shard, g)
             f.seek(0)
             h = hashlib.file_digest(f, "sha256")
