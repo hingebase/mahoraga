@@ -174,8 +174,26 @@ however a small shell trick can work:
 !!! note
 
     Mirror configuration requires Pixi version 0.43.1 or later.
-Pixi mirror configuration can be done in a single command:
-=== "Packages only"
+It's recommended to enable [sharded repodata][6] in [Mahoraga configuration][7]
+if you use [Pixi][5] or any other tools for the conda ecosystem.  
+There is no mirror for the standalone installer of Pixi as of now. Instead, we
+provide a Python script which can be executed by uv:
+``` sh
+uv run {{ mahoraga_base_url }}/static/get_pixi.py {{ mahoraga_base_url }}
+```
+By default, the script installs the latest version of Pixi to `PIXI_HOME`
+[^:octicons-link-external-16:^][14], replacing any existed version. To specify a
+version, pass it via CLI arguments:
+``` sh
+-v '0.43.1'  # Exact version
+-v '0.43.*'  # Latest revision of a specific minor version
+-v '>=0.43.1,<1'  # Version range
+```
+The script respects environment variables `PIXI_HOME` and `PIXI_CACHE_DIR`
+[^:octicons-link-external-16:^][14] if present.
+
+Once Pixi is installed, run the following command to configure it:
+=== "Stable"
 
     ``` sh
     pixi config set -g mirrors '{
@@ -184,7 +202,7 @@ Pixi mirror configuration can be done in a single command:
     }'
     ```
 
-=== "Packages and PyPI mappings (Experimental)"
+=== "Experimental PyPI mappings support"
 
     ``` sh
     pixi config set -g mirrors '{
@@ -195,12 +213,7 @@ Pixi mirror configuration can be done in a single command:
     }'
     ```
 
-It's recommended to enable [sharded repodata][6] in [Mahoraga configuration][7]
-if you use Pixi or [rattler-build][8].  
-Similar to uv, `pixi self-update` cannot utilize Mahoraga. Furthermore,
-`pixi global` prevents any tool to be exposed as `pixi`, so you'll need to give
-it an alias if you update Pixi in this way. Alternatively,
-`pixi exec --force-reinstall pixi` works as of now.
+After that, you can install conda packages like [rattler-build][8] with Pixi.
 ### rattler-build
 !!! note
 
@@ -361,10 +374,11 @@ The next generation of the official Python installer for Windows,
 [4]: https://docs.python.org/dev/using/windows.html#python-install-manager
 [5]: https://pixi.sh/latest/
 [6]: https://conda.org/learn/ceps/cep-0016/
-[7]: #server-configuration
+[7]: https://github.com/hingebase/mahoraga/blob/v0.3.1/src/mahoraga/_cli/mahoraga.toml.jinja#L48-L58
 [8]: https://rattler.build/latest/
 [9]: #pixi
 [10]: https://pyodide.org/en/stable/
 [11]: https://nginx.org/
 [12]: https://nginx.org/en/docs/http/ngx_http_core_module.html#http
 [13]: https://github.com/astral-sh/uv/issues/16519
+[14]: https://pixi.sh/latest/reference/environment_variables/#configurable-environment-variables
