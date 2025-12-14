@@ -11,67 +11,11 @@ up Python development environment efficiently.
 ## Prerequisites
 - A running Mahoraga server which we have set up in the previous [tutorial][2].
 - [uv][3] and [Pixi][4] should be available in your `PATH` and should have been
-  configured according to the [tutorial][2]. If you have only one of them, fetch
-  the other from Mahoraga now:
+  configured according to the [tutorial][2].
+  !!! note
 
-    === "Fetch Pixi with uv"
-
-        ``` sh
-        uv run get_pixi.py
-        ```
-        ??? note "get_pixi.py"
-
-            ``` py
-            # /// script
-            # dependencies = [
-            #   "py-rattler >=0.9.0",
-            # ]
-            # requires-python = ">=3.8"
-            # ///
-
-            import asyncio
-            import shutil
-            import os
-
-            import rattler.networking
-
-
-            async def main():
-                client = rattler.Client([
-                    rattler.networking.MirrorMiddleware({
-                        "https://conda.anaconda.org/": ["{{ mahoraga_base_url }}/conda/"],
-                    }),
-                ])
-                records = await rattler.solve(
-                    channels=["conda-forge"],
-                    specs=["pixi >=0.43.1"],
-                    gateway=rattler.Gateway(
-                        default_config=rattler.SourceConfig(sharded_enabled=True),
-                        client=client,
-                    ),
-                )
-                target_prefix = os.path.expanduser("~/.pixi")
-                await rattler.install(records, target_prefix, client=client)
-                if pixi := shutil.which("pixi", path=os.path.join(target_prefix, "bin")):
-                    print(os.path.normcase(pixi))
-                else:
-                    raise FileNotFoundError("pixi")
-
-
-            if __name__ == "__main__":
-                asyncio.run(main())
-            ```
-
-    === "Fetch uv with Pixi"
-
-        ``` sh
-        pixi global install uv
-        ```
-        !!! note
-
-            Pixi exposes `uv` as a [trampoline][5]. Use `uv run which uv` to
-            retrieve the actual path.
-
+      If your `uv` was installed by Pixi, it would be exposed as a
+      [trampoline][5]. Use `uv run which uv` to retrieve the actual path.
 - Xcode/MSVC toolchain if you are using macOS/Windows. If you don't need the
   Xcode/VS IDE, just install [Xcode Command Line Tools][6] or
   [Microsoft C++ Build Tools][7].
