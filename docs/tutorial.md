@@ -82,7 +82,7 @@ standalone installer:
 
 === "Windows"
 
-    ``` powershell
+    ``` powershell title="PowerShell"
     $Env:UV_DOWNLOAD_URL = "{{ mahoraga_base_url }}/uv"
     irm {{ mahoraga_base_url }}/uv/uv-installer.ps1 | iex
     ```
@@ -153,6 +153,22 @@ via either environment variables or a config file:
     !!! note
 
         Timeout can only be set via environment variable.
+
+Upgrading or downgrading uv to a specific version is not directly supported,
+however a small shell trick can work:
+=== "Linux/macOS"
+
+    ``` sh
+    alias uv='uvx uv@0.9.10'
+    ```
+
+=== "Windows"
+
+    ``` powershell title="PowerShell"
+    function uv {
+        uvx 'uv@0.9.10' @args
+    }
+    ```
 
 ### Pixi
 !!! note
