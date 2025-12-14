@@ -12,10 +12,12 @@ up Python development environment efficiently.
 - A running Mahoraga server which we have set up in the previous [tutorial][2].
 - [uv][3] and [Pixi][4] should be available in your `PATH` and should have been
   configured according to the [tutorial][2].
-  !!! note
 
-      If your `uv` was installed by Pixi, it would be exposed as a
-      [trampoline][5]. Use `uv run which uv` to retrieve the actual path.
+    !!! note
+
+        If your `uv` was installed by Pixi, it would be exposed as a
+        [trampoline][5]. Use `uv run which uv` to retrieve the actual path.
+
 - Xcode/MSVC toolchain if you are using macOS/Windows. If you don't need the
   Xcode/VS IDE, just install [Xcode Command Line Tools][6] or
   [Microsoft C++ Build Tools][7].
