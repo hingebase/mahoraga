@@ -74,13 +74,14 @@ async def _get_distribution_metadata(
     ctx = contextvars.copy_context()
     ctx.run(_core.cache_action.set, "cache-or-fetch")
     try:
-        raw = await asyncio.create_task(
-            _core.get(
-                "https://api.github.com/repos/astral-sh/uv/releases/latest",
-                headers=_core.headers,
-            ),
-            context=ctx,
-        )
+        async with ctx[_core.context]["locks"]["uv/latest.json"]:
+            raw = await asyncio.create_task(
+                _core.get(
+                    "https://api.github.com/repos/astral-sh/uv/releases/latest",
+                    headers=_core.headers,
+                ),
+                context=ctx,
+            )
     except fastapi.HTTPException:
         pass
     else:
