@@ -142,38 +142,29 @@ async def get_uv_python_downloads_json() -> fastapi.Response:
         )
 
 
-async def _get_standalone_python_github_release(
-    tag: str,
-    name: str,
-) -> tuple[bytes, int | None]:
-    release = await _core.GitHubRelease.fetch(
-        f"python-build-standalone/{tag}.json",
-        owner="astral-sh",
-        repo="python-build-standalone",
-        tag_name=tag,
-    )
-    for asset in release.assets:
-        if asset.name == name:
-            break
-    else:
-        raise requests.RequestException
-    if digest := asset.digest:
-        if digest.startswith("sha256:"):
-            return bytes.fromhex(digest[7:]), asset.size
-        _logger.warning("GitHub returning non-SHA256 digest: %r", digest)
-    raise requests.RequestException
-
-
 async def _get_standalone_python_sha256_and_size(
     tag: str,
     name: str,
 ) -> tuple[bytes, int | None]:
     try:
-        return await _get_standalone_python_github_release(tag, name)
+        release = await _core.GitHubRelease.fetch(
+            f"python-build-standalone/{tag}.json",
+            owner="astral-sh",
+            repo="python-build-standalone",
+            tag_name=tag,
+        )
     except requests.RequestException:
         pass
-    except (OSError, pydantic.ValidationError):
+    except OSError, pydantic.ValidationError:
         _logger.exception("Failed to get GitHub release metadata")
+    else:
+        for asset in release.assets:
+            if asset.name == name:
+                if sha256 := asset.sha256():
+                    return sha256, asset.size
+                break
+        else:
+            raise fastapi.HTTPException(404)
     cache_location = pathlib.Path("python-build-standalone", tag, "SHA256SUMS")
     loop = asyncio.get_running_loop()
     async with _core.cached_or_locked(cache_location) as cached:

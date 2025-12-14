@@ -71,7 +71,27 @@ directly, but through Nginx.
 !!! note
 
     Mirror configuration requires uv version 0.9.10 or later.
-[uv][1] can be configured to grab PyPI packages and Python itself from Mahoraga,
+To install or update [uv][1] on a client machine, download and run the
+standalone installer:
+=== "Linux/macOS"
+
+    ``` sh
+    curl -LsSf {{ mahoraga_base_url }}/uv/uv-installer.sh |
+        env UV_DOWNLOAD_URL="{{ mahoraga_base_url }}/uv" sh
+    ```
+
+=== "Windows"
+
+    ``` powershell
+    $Env:UV_DOWNLOAD_URL = "{{ mahoraga_base_url }}/uv"
+    irm {{ mahoraga_base_url }}/uv/uv-installer.ps1 | iex
+    ```
+
+!!! note
+
+    `uv self update` is unsupported due to
+    [this issue^:octicons-link-external-16:^][13].
+uv can be configured to grab PyPI packages and Python itself from Mahoraga,
 via either environment variables or a config file:
 === ".profile"
 
@@ -134,9 +154,6 @@ via either environment variables or a config file:
 
         Timeout can only be set via environment variable.
 
-To receive latest Python updates, you should always update uv to latest version.
-However, `uv self update` cannot make use of Mahoraga. You can update uv by
-either `uv tool install -U uv` or [Pixi][5].
 ### Pixi
 !!! note
 
@@ -334,3 +351,4 @@ The next generation of the official Python installer for Windows,
 [10]: https://pyodide.org/en/stable/
 [11]: https://nginx.org/
 [12]: https://nginx.org/en/docs/http/ngx_http_core_module.html#http
+[13]: https://github.com/astral-sh/uv/issues/16519

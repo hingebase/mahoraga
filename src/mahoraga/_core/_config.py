@@ -213,6 +213,19 @@ class _PyPI(pydantic.BaseModel):
         return itertools.chain(self.html, self.json_)
 
 
+class _Uv(pydantic.BaseModel):
+    latest: list[_HttpUrl] = _adapter.validate_python([
+        "https://mirror.nyist.edu.cn/github-release/astral-sh/uv/LatestRelease/",
+        "https://mirrors.ustc.edu.cn/github-release/astral-sh/uv/LatestRelease/",
+        "https://github.com/astral-sh/uv/releases/latest/download/",
+    ])
+    tag: list[_HttpUrl] = _adapter.validate_python([
+        "https://mirror.nyist.edu.cn/github-release/astral-sh/uv/",
+        "https://mirrors.ustc.edu.cn/github-release/astral-sh/uv/",
+        "https://github.com/astral-sh/uv/releases/download/",
+    ])
+
+
 class _Upstream(pydantic.BaseModel, **_model_config):
     conda: _Conda = _Conda()
     pyodide: list[_HttpUrl] = _adapter.validate_python([
@@ -241,6 +254,7 @@ class _Upstream(pydantic.BaseModel, **_model_config):
         "https://pycdn-2025-03-02.oss-cn-shanghai.aliyuncs.com/mirror/astral-sh/python-build-standalone/",
         "https://github.com/astral-sh/python-build-standalone/releases/download/",
     ])
+    uv: _Uv = _Uv()
     backup: set[str] = {
         "conda.anaconda.org",
         "github.com",
