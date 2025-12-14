@@ -2,7 +2,7 @@
 # This file is not managed by the CLI and should be edited by hand.
 
 # Improve server performance by starting a task as soon as it is constructed.
-# For detail, see https://docs.python.org/3/library/asyncio-task.html#asyncio.eager_task_factory
+# For details, see https://docs.python.org/3/library/asyncio-task.html#asyncio.eager_task_factory
 eager-task-execution = {{ eager_task_execution | lower }}
 
 # HTTP server configuration.
@@ -48,7 +48,7 @@ access = {{ log.access | lower }}
 # Conda sharded repodata configuration.
 # Keys should be channel names, and values should be lists of platform names.
 # Sharded repodata are generated every hour for all channel/platform pairs.
-# For detail, see https://conda.org/learn/ceps/cep-0016/
+# For details, see https://conda.org/learn/ceps/cep-0016/
 [shard]
 conda-forge = [
     # "linux-64",
@@ -58,7 +58,7 @@ conda-forge = [
 ]
 
 # Cross-origin resource sharing (CORS) configuration.
-# For detail, see https://fastapi.tiangolo.com/tutorial/cors/
+# For details, see https://fastapi.tiangolo.com/tutorial/cors/
 [cors]
 allow-origins = [
     {%- for origin in cors.allow_origins %}
@@ -106,7 +106,7 @@ python = [
 ]
 
 # Mirrors for https://github.com/astral-sh/python-build-standalone/
-# For detail, see https://docs.astral.sh/uv/reference/settings/#python-install-mirror
+# For details, see https://docs.astral.sh/uv/reference/settings/#python-install-mirror
 # There is no need to use a file:// URL; just copy or link your files to the
 # `python-build-standalone` folder (create one if not exist) next to this file.
 python-build-standalone = [
@@ -169,7 +169,7 @@ default = [
 # The PyPI index API have two variants: HTML and JSON.
 # Mirrors only support the HTML API should be listed in the html section,
 # and those with both HTML and JSON API should be listed in the json section.
-# For detail, see https://docs.pypi.org/api/index-api/
+# For details, see https://docs.pypi.org/api/index-api/
 [upstream.pypi]
 html = [
     {%- for url in upstream.pypi.html %}
