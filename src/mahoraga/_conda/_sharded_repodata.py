@@ -169,7 +169,7 @@ def _split_repo(
     root.mkdir(parents=True, exist_ok=True)
     json_file = root.with_name("run_exports.json.zst")
     try:
-        new = pooch.retrieve(  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
+        new = pooch.retrieve(  # pyright: ignore[reportUnknownMemberType]
             f"https://{_utils.prefix(channel)}/{platform}/run_exports.json.zst",
             known_hash=None,
             path=root.parent,

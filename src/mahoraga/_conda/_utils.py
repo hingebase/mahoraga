@@ -162,17 +162,17 @@ async def _fetch_repo_data(  # noqa: PLR0913
     fetch_options: rattler.networking.FetchRepoDataOptions | None = None,
 ) -> list[rattler.SparseRepoData]:
     fetch_options = fetch_options or rattler.networking.FetchRepoDataOptions()
-    repo_data_list = await rattler.rattler.py_fetch_repo_data(  # pyright: ignore[]
-        [channel._channel for channel in channels],  # noqa: SLF001  # pyright: ignore[]
-        [platform._inner for platform in platforms],  # noqa: SLF001  # pyright: ignore[]
+    repo_data_list = await rattler.rattler.py_fetch_repo_data(  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
+        [channel._channel for channel in channels],  # noqa: SLF001  # pyright: ignore[reportPrivateUsage, reportUnknownMemberType]
+        [platform._inner for platform in platforms],  # noqa: SLF001  # pyright: ignore[reportPrivateUsage, reportUnknownMemberType]
         cache_path,
         callback,
-        client._client if client else None,  # noqa: SLF001  # pyright: ignore[]
-        fetch_options._into_py(),  # noqa: SLF001  # pyright: ignore[]
+        client and client._client,  # noqa: SLF001  # pyright: ignore[reportPrivateUsage, reportUnknownMemberType]
+        fetch_options._into_py(),  # noqa: SLF001  # pyright: ignore[reportPrivateUsage, reportUnknownMemberType]
     )
     return [
-        rattler.SparseRepoData._from_py_sparse_repo_data(repo_data)  # noqa: SLF001  # pyright: ignore[]
-        for repo_data in repo_data_list  # pyright: ignore[reportUnknownVariableType]
+        rattler.SparseRepoData._from_py_sparse_repo_data(  # noqa: SLF001  # pyright: ignore[reportPrivateUsage, reportUnknownMemberType]
+            repo_data) for repo_data in repo_data_list  # pyright: ignore[reportUnknownArgumentType, reportUnknownVariableType]
     ]
 
 
