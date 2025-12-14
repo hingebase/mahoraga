@@ -24,7 +24,7 @@ import jinja2
 import starlette.middleware.cors
 import starlette.staticfiles
 
-from mahoraga import _conda, _core, _jsdelivr, _pypi, _python
+from mahoraga import _conda, _core, _jsdelivr, _pypi, _python, _uv
 
 URL_FOR = "{{ url_for('get_npm_file', package='swagger-ui-dist@5', path=%r) }}"
 
@@ -73,6 +73,11 @@ def make_app() -> fastapi.FastAPI:
     app.include_router(_jsdelivr.pyodide, prefix="/pyodide", tags=["pyodide"])
     app.include_router(_pypi.router, prefix="/pypi", tags=["pypi"])
     app.include_router(_python.router, tags=["python"])
+    app.include_router(
+        _uv.router,  # Must be included after python
+        prefix="/uv",
+        tags=["uv"],
+    )
     app.mount(
         "/static",
         starlette.staticfiles.StaticFiles(packages=[("mahoraga", "_static")]),

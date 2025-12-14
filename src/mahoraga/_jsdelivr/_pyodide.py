@@ -74,18 +74,16 @@ async def get_pyodide_package(
             "Accept": "application/octet-stream",
             "X-GitHub-Api-Version": "2022-11-28",
         }
-        if digest := asset.digest:
-            if digest.startswith("sha256:"):
-                return await _core.stream(
-                    asset.url,
-                    headers=headers,
-                    media_type=media_type,
-                    stack=stack,
-                    cache_location=cache_location,
-                    sha256=bytes.fromhex(digest[7:]),
-                    size=asset.size,
-                )
-            _logger.warning("GitHub returning non-SHA256 digest: %r", digest)
+        if sha256 := asset.sha256():
+            return await _core.stream(
+                asset.url,
+                headers=headers,
+                media_type=media_type,
+                stack=stack,
+                cache_location=cache_location,
+                sha256=sha256,
+                size=asset.size,
+            )
         return await _core.stream(asset.url, headers=headers, stack=stack)
     return _core.unreachable()
 

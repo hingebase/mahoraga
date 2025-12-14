@@ -29,6 +29,7 @@ __all__ = [
     "cached_or_locked",
     "context",
     "get",
+    "headers",
     "hourly",
     "immutable",
     "load_balance",
@@ -49,7 +50,7 @@ from ._context import (
     cached_or_locked,
     schedule_exit,
 )
-from ._metadata import GitHubRelease, NPMBase
+from ._metadata import GitHubRelease, NPMBase, headers
 from ._stream import (
     APIRoute,
     Response,

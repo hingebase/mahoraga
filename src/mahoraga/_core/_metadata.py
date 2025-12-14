@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ["GitHubRelease", "NPMBase"]
+__all__ = ["GitHubRelease", "NPMBase", "headers"]
 
 import asyncio
+import logging
 import os
 import pathlib
 from typing import TYPE_CHECKING, Any, Literal, Self
@@ -34,9 +35,17 @@ class _ReleaseAsset(pydantic.BaseModel, extra="ignore"):
     size: int
     digest: str | None
 
+    def sha256(self) -> bytes | None:
+        if digest := self.digest:
+            if digest.startswith("sha256:"):
+                return bytes.fromhex(digest[7:])
+            _logger.warning("GitHub returning non-SHA256 digest: %r", digest)
+        return None
+
 
 class GitHubRelease(pydantic.BaseModel, extra="ignore"):
     assets: list[_ReleaseAsset]
+    tag_name: str
 
     @classmethod
     async def fetch(
@@ -56,7 +65,7 @@ class GitHubRelease(pydantic.BaseModel, extra="ignore"):
                 cls,
                 f"https://api.github.com/repos/{owner}/{repo}/releases/tags/{tag_name}",
                 cache_location,
-                headers=_headers,
+                headers=headers,
             )
 
 
@@ -98,7 +107,8 @@ def _fetch[T: pydantic.BaseModel](
         raise
 
 
-_headers = {
+headers = {
     "Accept": "application/vnd.github+json",
     "X-GitHub-Api-Version": "2022-11-28",
 }
+_logger = logging.getLogger("mahoraga")

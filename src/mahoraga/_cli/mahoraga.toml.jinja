@@ -181,3 +181,16 @@ json = [
     "{{ url }}",
     {%- endfor %}
 ]
+
+# Mirrors for uv GitHub releases.
+[upstream.uv]
+latest = [
+    {%- for url in upstream.uv.latest %}
+    "{{ url }}",
+    {%- endfor %}
+]
+tag = [
+    {%- for url in upstream.uv.tag %}
+    "{{ url }}",
+    {%- endfor %}
+]
