@@ -22,4 +22,5 @@ jobs:
         with:
           enable-cache: false
       - run: uv build
+      - uses: astral-sh/attest-action@v0.0.4
       - run: uv publish --trusted-publishing always
