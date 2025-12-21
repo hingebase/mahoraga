@@ -56,9 +56,11 @@ following Nginx configuration files in `~/.mahoraga/nginx`:
 
 !!! note
 
-    The `nginx` package from Anaconda is outdated and unmaintained.
-    Please install nginx with the system-level package manager for your
-    operating system, or compile it from source.
+    For Linux and macOS, Nginx is available in conda-forge and can be installed
+    by [Pixi][5]:
+    ``` sh
+    pixi global install nginx
+    ```
 To start the Nginx server, simply run `nginx -c ~/.mahoraga/nginx/nginx.conf`.
 When configuring the clients, make sure they don't communicate with Mahoraga
 directly, but through Nginx.
