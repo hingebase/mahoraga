@@ -92,7 +92,7 @@ standalone installer:
     `uv self update` is unsupported due to
     [this issue^:octicons-link-external-16:^][13].
 uv can be configured to grab PyPI packages and Python itself from Mahoraga,
-via either environment variables or a config file:
+via either environment variables or a [config file][15]:
 === ".profile"
 
     ``` sh
@@ -382,3 +382,4 @@ The next generation of the official Python installer for Windows,
 [12]: https://nginx.org/en/docs/http/ngx_http_core_module.html#http
 [13]: https://github.com/astral-sh/uv/issues/16519
 [14]: https://pixi.sh/latest/reference/environment_variables/#configurable-environment-variables
+[15]: https://docs.astral.sh/uv/reference/storage/#configuration-directories
