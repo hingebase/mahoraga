@@ -61,7 +61,7 @@
 
     ---
 
-    Receive latest conda package updates with minimal network traffic.
+    Receive latest Conda package updates with minimal network traffic.
     Automatically updated every hour.
     [:octicons-arrow-right-24: Configuration][11]
 

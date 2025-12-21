@@ -56,9 +56,11 @@ following Nginx configuration files in `~/.mahoraga/nginx`:
 
 !!! note
 
-    The `nginx` package from Anaconda is outdated and unmaintained.
-    Please install nginx with the system-level package manager for your
-    operating system, or compile it from source.
+    For Linux and macOS, Nginx is available in conda-forge and can be installed
+    by [Pixi][5]:
+    ``` sh
+    pixi global install nginx
+    ```
 To start the Nginx server, simply run `nginx -c ~/.mahoraga/nginx/nginx.conf`.
 When configuring the clients, make sure they don't communicate with Mahoraga
 directly, but through Nginx.
@@ -92,7 +94,7 @@ standalone installer:
     `uv self update` is unsupported due to
     [this issue^:octicons-link-external-16:^][13].
 uv can be configured to grab PyPI packages and Python itself from Mahoraga,
-via either environment variables or a config file:
+via either environment variables or a [config file][15]:
 === ".profile"
 
     ``` sh
@@ -175,7 +177,7 @@ however a small shell trick can work:
 
     Mirror configuration requires Pixi version 0.43.1 or later.
 It's recommended to enable [sharded repodata][6] in [Mahoraga configuration][7]
-if you use [Pixi][5] or any other tools for the conda ecosystem.  
+if you use [Pixi][5] or any other tools for the Conda ecosystem.  
 There is no mirror for the standalone installer of Pixi as of now. Instead, we
 provide a Python script which can be executed by uv:
 ``` sh
@@ -213,7 +215,7 @@ Once Pixi is installed, run the following command to configure it:
     }'
     ```
 
-After that, you can install conda packages like [rattler-build][8] with Pixi.
+After that, you can install Conda packages like [rattler-build][8] with Pixi.
 ### rattler-build
 !!! note
 
@@ -382,3 +384,4 @@ The next generation of the official Python installer for Windows,
 [12]: https://nginx.org/en/docs/http/ngx_http_core_module.html#http
 [13]: https://github.com/astral-sh/uv/issues/16519
 [14]: https://pixi.sh/latest/reference/environment_variables/#configurable-environment-variables
+[15]: https://docs.astral.sh/uv/reference/storage/#configuration-directories
