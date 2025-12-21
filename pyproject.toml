@@ -4,14 +4,14 @@ build-backend = "uv_build"
 
 [project]
 name = "mahoraga"
-version = "0.3.1"
+version = "0.4.0"
 description = "Reverse proxy for Python mirrors"
 readme = "README.md"
 requires-python = ">=3.14"
 license = "Apache-2.0"
 keywords = ["conda", "pypi", "mirror"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Environment :: Console",
     "Framework :: FastAPI",
     "Framework :: Pydantic :: 2",
