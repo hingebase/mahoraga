@@ -177,7 +177,7 @@ however a small shell trick can work:
 
     Mirror configuration requires Pixi version 0.43.1 or later.
 It's recommended to enable [sharded repodata][6] in [Mahoraga configuration][7]
-if you use [Pixi][5] or any other tools for the conda ecosystem.  
+if you use [Pixi][5] or any other tools for the Conda ecosystem.  
 There is no mirror for the standalone installer of Pixi as of now. Instead, we
 provide a Python script which can be executed by uv:
 ``` sh
@@ -215,7 +215,7 @@ Once Pixi is installed, run the following command to configure it:
     }'
     ```
 
-After that, you can install conda packages like [rattler-build][8] with Pixi.
+After that, you can install Conda packages like [rattler-build][8] with Pixi.
 ### rattler-build
 !!! note
 
