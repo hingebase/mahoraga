@@ -51,11 +51,24 @@ access = {{ log.access | lower }}
 # For details, see https://conda.org/learn/ceps/cep-0016/
 [shard]
 conda-forge = [
-    # "linux-64",
-    # "noarch",
-    # "osx-arm64",
-    # "win-64",
+    {%- for platform in shard["conda-forge"] %}
+    "{{ platform }}",
+    {%- endfor %}
+    {%- for platform in ["linux-64", "noarch", "osx-arm64", "win-64"] %}
+    {%- if platform not in shard["conda-forge"] %}
+    # "{{ platform }}",
+    {%- endif %}
+    {%- endfor %}
 ]
+{%- for key, value in shard | dictsort %}
+{%- if key != "conda-forge" %}
+{{ key }} = [
+    {%- for platform in value %}
+    "{{ platform }}",
+    {%- endfor %}
+]
+{%- endif %}
+{%- endfor %}
 
 # Cross-origin resource sharing (CORS) configuration.
 # For details, see https://fastapi.tiangolo.com/tutorial/cors/
@@ -76,7 +89,11 @@ allow-headers = [
     {%- endfor %}
 ]
 allow-credentials = {{ cors.allow_credentials | lower }}
+{%- if cors.allow_origin_regex %}
+allow-origin-regex = "{{ cors.allow_origin_regex }}"
+{%- else %}
 # allow-origin-regex = ""
+{%- endif %}
 expose-headers = [
     {%- for header in cors.expose_headers %}
     "{{ header }}",
