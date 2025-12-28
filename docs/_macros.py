@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
+import datetime
 import io
 import os
 import pathlib
+import re
 import subprocess  # noqa: S404
 import time
 from typing import TYPE_CHECKING, Any, cast, override
@@ -24,6 +27,7 @@ import jsmin  # pyright: ignore[reportMissingTypeStubs]
 import pooch  # pyright: ignore[reportMissingTypeStubs]
 import pydantic
 import pydantic_settings
+import pygit2
 import pyodide_lock
 import requests
 
@@ -52,6 +56,7 @@ def define_env(env: MacrosPlugin) -> None:
             k, v = line.split("==")
             env.variables[f"{k}_version".replace("-", "_")] = v.rstrip()
     env.variables.update({  # pyright: ignore[reportUnknownMemberType]
+        "changelog": _changelog(),
         "mahoraga_base_url": os.getenv(
             "MAHORAGA_BASE_URL",
             default="http://127.0.0.1:3450",
@@ -177,6 +182,50 @@ class _Tag(
             params={"per_page": "1"},
         )
         return (_JsonConfigSettingsSource(settings_cls, j),)
+
+
+def _changelog() -> list[tuple[str, collections.defaultdict[str, list[str]]]]:
+    repo = pygit2.Repository(".git")
+    tags = {
+        ref.peel(pygit2.Tag).target: ref.name.removeprefix("refs/tags/v")
+        for ref in repo.references.iterator(pygit2.enums.ReferenceFilter.TAGS)
+    }
+    groups = {
+        "\u2728": "\0\u2728 New features",
+        "\u26a1": "\1\u26a1 Performance",
+        "\U0001f41b": "\2\U0001f41b Bug fixes",
+        "\U0001f4dd": "\3\U0001f4dd Documentation",
+    }
+    pattern = re.compile(r" \(#([1-9]\d*)\)$")
+    section: collections.defaultdict[str, list[str]]
+    section = collections.defaultdict(list)
+    sections = [("Unreleased", section)]
+    for commit in repo.walk(repo.head.target):
+        try:
+            tag = tags[commit.id]
+        except KeyError:
+            try:
+                group = groups[commit.message[0]]
+            except KeyError:
+                continue
+            message = pattern.sub(
+                r" ([#\1](https://github.com/hingebase/mahoraga/pull/\1))",
+                commit.message[1:].splitlines()[0].strip(),
+            )
+            section[group].append(message)
+        else:
+            commit_time = datetime.datetime.fromtimestamp(
+                commit.commit_time,
+                datetime.UTC,
+            )
+            title = f"{tag} ({commit_time:%Y-%m-%d})"
+            section = collections.defaultdict(list)
+            sections.append((title, section))
+            if tag == "0.4.0":
+                break
+    if not sections[0][1]:
+        sections.pop(0)
+    return sections
 
 
 def _get(

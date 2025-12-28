@@ -10,6 +10,7 @@ nav:
   - Advanced:
       - advanced/panel.md
       - advanced/pyapp.md
+  - changelog.md
 
 exclude_docs: |
   __pycache__
