@@ -122,7 +122,8 @@ class _Run(pydantic.BaseModel, validate_default=True):
 class _Version(pydantic.BaseModel):
     """Show Mahoraga version and exit."""
 
-    def cli_cmd(self) -> None:  # noqa: PLR6301
+    def cli_cmd(self) -> None:
+        del self
         click.echo(f"Mahoraga v{__version__}")
 
 

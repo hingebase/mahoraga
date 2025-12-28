@@ -252,8 +252,9 @@ def _open(requirements: pathlib.Path) -> io.TextIOWrapper:
         return requirements.open(encoding="utf-8")
     except OSError:
         subprocess.run(  # noqa: S603
-            [  # noqa: S607
-                "uv", "pip", "compile",
+            [
+                os.getenv("UV", "uv"),
+                "pip", "compile",
                 "--no-annotate",
                 "--no-deps",
                 "--no-header",
