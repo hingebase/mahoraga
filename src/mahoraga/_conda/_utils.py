@@ -40,16 +40,14 @@ if TYPE_CHECKING:
 async def fetch_repo_data(
     channel: str,
     platform: rattler.platform.PlatformLiteral,
+    cfg: _core.Config | None = None,
     *,
-    client: rattler.Client | None = None,
     label: str | None = None,
 ) -> rattler.SparseRepoData:
-    if not client:
+    if not cfg:
         ctx = _core.context.get()
-        client = ctx["config"].server.rattler_client()
-    if label:
-        channel = f"{channel}/label/{label}"
-    channels = [rattler.Channel(channel)]
+        cfg = ctx["config"]
+    channels = _channels(channel, label, cfg)
     platforms = [rattler.Platform(platform)]
     try:
         [repodata] = await _fetch_repo_data(
@@ -57,7 +55,7 @@ async def fetch_repo_data(
             platforms=platforms,
             cache_path="repodata-cache",
             callback=None,
-            client=client,
+            client=cfg.server.rattler_client(),
         )
     except rattler.exceptions.FetchRepoDataError:
         [repodata] = await rattler.fetch_repo_data(
@@ -79,9 +77,7 @@ async def fetch_repo_data_and_load_matching_records(
     label: str | None = None,
 ) -> list[rattler.RepoDataRecord]:
     loop = asyncio.get_running_loop()
-    if label:
-        channel = f"{channel}/label/{label}"
-    channels = [rattler.Channel(channel)]
+    channels = _channels(channel, label)
     platforms = [rattler.Platform(platform)]
     specs = [rattler.MatchSpec(spec, strict=True)]
     try:
@@ -120,10 +116,16 @@ async def fetch_repo_data_and_load_matching_records(
     )
 
 
-def prefix(channel: str) -> str:
-    if channel == "emscripten-forge-dev":
-        return "prefix.dev/emscripten-forge-dev"
-    return f"conda.anaconda.org/{channel}"
+def prefix(channel: str, cfg: _core.Config | None = None) -> str:
+    if not cfg:
+        ctx = _core.context.get()
+        cfg = ctx["config"]
+    key = channel.split("/label/", maxsplit=1)[0]
+    try:
+        url = cfg.upstream.conda.channel_alias[key]
+    except KeyError:
+        return f"https://conda.anaconda.org/{channel}"
+    return posixpath.join(str(url), channel)
 
 
 def urls(
@@ -134,21 +136,58 @@ def urls(
 ) -> list[str]:
     ctx = _core.context.get()
     cfg = ctx["config"].upstream.conda
-    if label:
+    try:
+        url = cfg.channel_alias[channel]
+    except KeyError:
+        if label:
+            return [
+                posixpath.join(
+                    str(url),
+                    channel, "label", label,
+                    platform,
+                    name,
+                )
+                for url in itertools.chain(
+                    cfg.default,
+                    _getitem(cfg.with_label, channel),
+                )
+            ]
         return [
-            posixpath.join(str(url), channel, "label", label, platform, name)
+            posixpath.join(str(url), channel, platform, name)
             for url in itertools.chain(
                 cfg.default,
                 _getitem(cfg.with_label, channel),
+                _getitem(cfg.without_label, channel),
             )
         ]
+    if label:
+        return [
+            posixpath.join(str(url), channel, "label", label, platform, name),
+        ]
+    return [posixpath.join(str(url), channel, platform, name)]
+
+
+def _channels(
+    channel: str,
+    label: str | None,
+    cfg: _core.Config | None = None,
+) -> list[rattler.Channel]:
+    if not cfg:
+        ctx = _core.context.get()
+        cfg = ctx["config"]
+    try:
+        url = cfg.upstream.conda.channel_alias[channel]
+    except KeyError:
+        if label:
+            channel = f"{channel}/label/{label}"
+        return [rattler.Channel(channel)]
+    if label:
+        channel = f"{channel}/label/{label}"
     return [
-        posixpath.join(str(url), channel, platform, name)
-        for url in itertools.chain(
-            cfg.default,
-            _getitem(cfg.with_label, channel),
-            _getitem(cfg.without_label, channel),
-        )
+        rattler.Channel(
+            channel,
+            rattler.ChannelConfig(str(url)),  # Currently root_dir is unused
+        ),
     ]
 
 

@@ -152,7 +152,6 @@ class _Conda(pydantic.BaseModel, **_model_config):
         "conda-forge": "bioconda",
         "deepmodeling": "auto",
         "dglteam": "auto",
-        "emscripten-forge-dev": "nvidia",
         "fastai": "auto",
         "fermi": "auto",
         "idaholab": "auto",
@@ -189,6 +188,11 @@ class _Conda(pydantic.BaseModel, **_model_config):
         "stackless": "auto",
         "ursky": "auto",
     }
+    channel_alias: dict[str, _HttpUrl] = pydantic.TypeAdapter(
+        dict[str, _HttpUrl],
+    ).validate_python({
+        "emscripten-forge-dev": "https://prefix.dev/",
+    })
 
 
 class _PyPI(pydantic.BaseModel):

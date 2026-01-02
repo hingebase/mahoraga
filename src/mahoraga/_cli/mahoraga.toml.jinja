@@ -182,6 +182,14 @@ default = [
 {%- endif %}
 {%- endfor %}
 
+# Conda channels which don't live in the default mirrors.
+# Keys should be channel names, and values should be corresponding URLs except
+# for the channel name part. Currently only one URL is allowed per channel.
+[upstream.conda.channel-alias]
+{%- for key, value in upstream.conda.channel_alias | dictsort %}
+{{ key }} = "{{ value }}"
+{%- endfor %}
+
 # Upstream PyPI mirror servers.
 # The PyPI index API have two variants: HTML and JSON.
 # Mirrors only support the HTML API should be listed in the html section,
