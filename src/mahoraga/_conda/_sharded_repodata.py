@@ -170,7 +170,7 @@ def _split_repo(
     json_file = root.with_name("run_exports.json.zst")
     try:
         new = pooch.retrieve(  # pyright: ignore[reportUnknownMemberType]
-            f"https://{_utils.prefix(channel)}/{platform}/run_exports.json.zst",
+            f"{_utils.prefix(channel, cfg)}/{platform}/run_exports.json.zst",
             known_hash=None,
             path=root.parent,
         )
@@ -190,11 +190,7 @@ def _split_repo(
         with f:
             run_exports = json.load(f)
     with asyncio.run(
-        _utils.fetch_repo_data(
-            channel,
-            platform,
-            client=cfg.server.rattler_client(),
-        ),
+        _utils.fetch_repo_data(channel, platform, cfg),
         debug=cfg.log.level == "debug",
         loop_factory=cfg.loop_factory,
     ) as repodata:
