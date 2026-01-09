@@ -20,9 +20,11 @@ import pathlib
 import re
 import subprocess  # noqa: S404
 import time
+import xml.etree.ElementTree as ET  # noqa: S405
 from typing import TYPE_CHECKING, Any, cast, override
 
 import csscompressor  # pyright: ignore[reportMissingTypeStubs]
+import defusedxml.ElementTree
 import jsmin  # pyright: ignore[reportMissingTypeStubs]
 import pooch  # pyright: ignore[reportMissingTypeStubs]
 import pydantic
@@ -70,10 +72,14 @@ def define_env(env: MacrosPlugin) -> None:
                          .read_text("utf-8")
                          .partition(" [Docs]")[0],
     })
-    if not os.getenv("GH_TOKEN"):
+    if os.getenv("GH_TOKEN"):
+        svg = "https://raw.githubusercontent.com/marella/material-design-icons/refs/heads/main/svg/filled/temple_buddhist.svg"
+    else:
+        svg = "https://cdn.jsdelivr.net/npm/@material-design-icons/svg@0/filled/temple_buddhist.svg"
         privacy = cast("PrivacyPlugin", env.conf.plugins["material/privacy"])
         privacy.config.assets = True
         requests.get = _get  # ty: ignore[invalid-assignment]
+    _coloring(svg)
     lock_file = pooch.retrieve(  # pyright: ignore[reportUnknownMemberType]
         f"https://cdn.jsdelivr.net/pyodide/v{env.variables['pyodide_py_version']}/full/pyodide-lock.json",
         known_hash=None,
@@ -226,6 +232,24 @@ def _changelog() -> list[tuple[str, collections.defaultdict[str, list[str]]]]:
     if not sections[0][1]:
         sections.pop(0)
     return sections
+
+
+def _coloring(src: str) -> None:
+    dst = pathlib.Path("docs", "favicon.svg")
+    if dst.is_file():
+        return
+
+    # https://github.com/python/cpython/issues/61290
+    ET.register_namespace("", "http://www.w3.org/2000/svg")
+
+    tree = defusedxml.ElementTree.parse(pooch.retrieve(src, known_hash=None))  # pyright: ignore[reportUnknownMemberType]
+    root = tree.getroot()
+    if root is None:
+        raise RuntimeError
+    g = ET.Element("g", {"fill": "#6b8e7b"})
+    g[:] = root
+    root[:] = [g]
+    tree.write(dst)
 
 
 def _get(

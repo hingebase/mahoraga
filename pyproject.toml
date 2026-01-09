@@ -58,6 +58,7 @@ typing = [
 
 [dependency-groups]
 dev = [
+    "defusedxml >=0.7.1",
     "mkdocs-macros-plugin >=1.0.4",
     "mkdocs-material ==9.6.20",  # https://github.com/squidfunk/mkdocs-material/issues/8478
     "mkdocs-minify-html-plugin >=0.3.9",
