@@ -224,7 +224,7 @@ def _changelog() -> list[tuple[str, collections.defaultdict[str, list[str]]]]:
                 commit.commit_time,
                 datetime.UTC,
             )
-            title = f"{tag} ({commit_time:%Y-%m-%d})"
+            title = f"{tag} ({commit_time:%Y-%m-%d}) {{#{tag}}}"
             section = collections.defaultdict(list)
             sections.append((title, section))
             if tag == "0.4.0":
