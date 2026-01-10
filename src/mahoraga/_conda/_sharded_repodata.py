@@ -21,7 +21,7 @@ import json
 import logging
 import pathlib
 import shutil
-from typing import Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 import fastapi.responses
 import msgpack
@@ -31,6 +31,9 @@ import rattler.platform
 from mahoraga import _core
 
 from . import _models, _utils
+
+if TYPE_CHECKING:
+    from concurrent.futures import ProcessPoolExecutor
 
 router = fastapi.APIRouter(route_class=_core.APIRoute)
 
@@ -91,14 +94,15 @@ async def get_sharded_repodata_with_label(
     )
 
 
-async def split_repo() -> None:  # noqa: RUF029
-    ctx = _core.context.get()
-    cfg = ctx["config"]
-    if any(cfg.shard.values()):
-        executor = ctx["process_pool"]
-        for channel, platforms in cfg.shard.items():
-            for platform in platforms:
-                executor.submit(_worker, cfg, channel, platform)
+def split_repo(
+    loop: asyncio.AbstractEventLoop,
+    cfg: _core.Config,
+    executor: ProcessPoolExecutor,
+) -> None:
+    loop.call_later(3600., split_repo, loop, cfg, executor)
+    for channel, platforms in cfg.shard.items():
+        for platform in platforms:
+            executor.submit(_worker, cfg, channel, platform)
 
 
 def _packages(
