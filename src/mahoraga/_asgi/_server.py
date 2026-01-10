@@ -117,7 +117,6 @@ def run() -> None:
         port=cfg.server.port,
         loop="none",
         log_config=cast("dict[str, object]", log_config),
-        log_level=log_level,
         access_log=cfg.log.access,
         forwarded_allow_ips="127.0.0.1",
         limit_concurrency=cfg.server.limit_concurrency,
