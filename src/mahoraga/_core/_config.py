@@ -26,6 +26,7 @@ import pydantic
 import pydantic_settings
 import rattler.networking
 import rattler.platform
+import uvicorn.config
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -102,6 +103,9 @@ class _HttpUrl(pydantic.AnyUrl):
 class _Log(pydantic.BaseModel):
     level: Literal["debug", "info", "warning", "error", "critical"] = "info"
     access: bool = True
+
+    def levelno(self) -> int:
+        return uvicorn.config.LOG_LEVELS[self.level]
 
 
 class _CORS(pydantic.BaseModel, **_model_config):

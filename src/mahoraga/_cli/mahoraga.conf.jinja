@@ -68,6 +68,13 @@ server {
         {{ use_cache_only }}
     }
 
+    location = /log {
+        limit_except GET {
+            deny all;
+        }
+        return 403;
+    }
+
     location ^~ /npm/ {
         {{ cache_or_fetch }}
     }
