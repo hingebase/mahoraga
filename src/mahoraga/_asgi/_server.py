@@ -16,51 +16,107 @@ __all__ = ["run"]
 
 import asyncio
 import functools
-import inspect
 import io
-import logging.handlers
-import multiprocessing as mp
-import pathlib
+import logging
 import sys
-import types
-import warnings
-from typing import cast, override
+from typing import TYPE_CHECKING, cast
 
 import hishel._core._spec  # pyright: ignore[reportMissingTypeStubs]
-import pooch.utils  # pyright: ignore[reportMissingTypeStubs]
 import rich.console
-import rich.logging
-import uvicorn.config
 import uvicorn.logging
 
-from mahoraga import _core
+from mahoraga import _core, _preload
 
 from . import _app
+
+if TYPE_CHECKING:
+    from logging.config import (
+        _DictConfigArgs,  # pyright: ignore[reportPrivateUsage]
+    )
 
 
 def run() -> None:
     cfg = _core.Config()
-    log_level = uvicorn.config.LOG_LEVELS[cfg.log.level]
-    log_config = {
+    log_level = cfg.log.levelno()
+    log_config: _DictConfigArgs = {
         "version": 1,
-        "handlers": {
+        "formatters": {
             "default": {
-                "class": "logging.handlers.QueueHandler",
-                "queue": mp.get_context("spawn").Queue(),
+                "format": "[{asctime}] {levelname:8} {message}",
+                "datefmt": "%Y-%m-%d %X",
+                "style": "{",
+            },
+        },
+        "filters": {
+            "hishel_core_spec": {
+                "()": "mahoraga._preload.HishelCoreSpec",
+            },
+            "hishel_integrations_clients": {
+                "()": "mahoraga._preload.HishelIntegrationsClients",
+            },
+            "uvicorn_access": {
+                "()": "mahoraga._preload.UvicornAccess",
+            },
+            "uvicorn_error": {
+                "()": "mahoraga._preload.UvicornError",
+                "level": log_level,
+            },
+        },
+        "handlers": {
+            "console_legacy": {
+                "class": "logging.StreamHandler",
+                "formatter": "default",
+                "stream": "ext://sys.stdout",
+            },
+            "console_rich": {
+                "class": "rich.logging.RichHandler",
+                "log_time_format": "[%Y-%m-%d %X]",
+            },
+            "filesystem": {
+                "class": "mahoraga._preload.RotatingFileHandler",
+                "formatter": "default",
+                "filename": "log/mahoraga.log",
+                "maxBytes": 20000 * 81,  # lines * chars
+                "backupCount": 10,
+                "encoding": "utf-8",
+            },
+        },
+        "loggers": {
+            "hishel": {
+                "level": "DEBUG",
+            },
+            "hishel.core.spec": {
+                "filters": ["hishel_core_spec"],
+            },
+            "hishel.integrations.clients": {
+                "filters": ["hishel_integrations_clients"],
+            },
+            "uvicorn.access": {
+                "level": "INFO",
+                "filters": ["uvicorn_access"],
+            },
+            "uvicorn.error": {
+                "level": uvicorn.logging.TRACE_LOG_LEVEL,
+                "filters": ["uvicorn_error"],
             },
         },
         "root": {
-            "handlers": ["default"],
+            "handlers": _root_handlers(),
             "level": log_level,
         },
         "disable_existing_loggers": False,
     }
-    server_config = _ServerConfig(
-        app=functools.partial(_app.make_app, cfg, log_config),
+    if not cfg.log.access:
+        del log_config["loggers"]["uvicorn.access"]
+    if log_level > logging.INFO:
+        del log_config["loggers"]["uvicorn.error"]
+
+    server_config = uvicorn.Config(
+        app=functools.partial(_app.make_app, cfg),
         host=str(cfg.server.host),
         port=cfg.server.port,
         loop="none",
-        log_config=log_config,
+        log_config=cast("dict[str, object]", log_config),
         log_level=log_level,
         access_log=cfg.log.access,
         forwarded_allow_ips="127.0.0.1",
@@ -70,124 +126,33 @@ def run() -> None:
         timeout_graceful_shutdown=cfg.server.timeout_graceful_shutdown or None,
         factory=True,
     )
+    _preload.configure_logging_extra(log_level)
     server = uvicorn.Server(server_config)
-    with server_config.listen:
-        try:
-            asyncio.run(
-                server.serve(),
-                debug=cfg.log.level == "debug",
-                loop_factory=cfg.loop_factory,
-            )
-        except KeyboardInterrupt:
-            pass
-        except SystemExit:
-            if server.started:
-                raise
-            sys.exit(3)
-        except BaseException as e:
-            _logger.critical("ERROR", exc_info=e)
-            raise SystemExit(server.started or 3) from e
-
-
-def _log_filter(rec: logging.LogRecord) -> bool:
-    message: str = rec.msg
-    if not message.startswith("Handling state: "):
-        return True
-    if (
-        message == "Handling state: IdleClient"
-        or (
-            message != "Handling state: FromCache"
-            and _core.cache_action.get() != "cache-or-fetch"
+    try:
+        asyncio.run(
+            server.serve(),
+            debug=cfg.log.level == "debug",
+            loop_factory=cfg.loop_factory,
         )
-    ):
-        return False
-    for frame in inspect.stack(0):
-        match frame:
-            case [
-                types.FrameType(f_locals={"request": hishel.Request(url=url)}),
-                rec.pathname,
-                rec.lineno,
-                rec.funcName,
-                *_,
-            ]:
-                _logger.info("%s: %s", message[16:], url)
-                return False
-            case _:
-                pass
-    return _core.unreachable()
+    except KeyboardInterrupt:
+        pass
+    except SystemExit:
+        if server.started:
+            raise
+        sys.exit(3)
+    except BaseException as e:
+        logging.getLogger("mahoraga").critical("ERROR", exc_info=e)
+        raise SystemExit(server.started or 3) from e
 
 
-class _RotatingFileHandler(logging.handlers.RotatingFileHandler):
-    def _open(self) -> io.TextIOWrapper:
-        if self.mode != "a":
-            _core.unreachable()
-        return pathlib.Path(self.baseFilename).open(
-            mode="a",
-            encoding=self.encoding,
-            errors=self.errors,
-            newline="",
-        )
-
-
-class _ServerConfig(uvicorn.Config):
-    @override
-    def configure_logging(self) -> None:
-        super().configure_logging()
-        logging.getLogger("hishel").setLevel(logging.DEBUG)
-        logging.getLogger("hishel.core.spec").addFilter(
-            lambda rec: rec.msg != "Storing response in cache",
-        )
-        logging.getLogger("hishel.integrations.clients").addFilter(_log_filter)
-        if self.access_log:
-            logging.getLogger("uvicorn.access").setLevel(logging.INFO)
-        level = cast("int", self.log_level)
-        if level <= logging.INFO:
-            logger = logging.getLogger("uvicorn.error")
-            logger.setLevel(uvicorn.logging.TRACE_LOG_LEVEL)
-            logger.addFilter(
-                lambda rec: rec.levelno >= level or rec.msg.endswith((
-                    "HTTP connection made",
-                    "HTTP connection lost",
-                )),
-            )
-            if level <= logging.DEBUG:
-                warnings.simplefilter("always", ResourceWarning)
-        logging.captureWarnings(capture=True)
-        pooch.utils.LOGGER = logging.getLogger("pooch")
-
-        root = logging.getLogger()
-        [old] = root.handlers
-        if not isinstance(old, logging.handlers.QueueHandler):
-            _core.unreachable()
-        root.removeHandler(old)
-
-        log_dir = pathlib.Path("log")
-        log_dir.mkdir(exist_ok=True)
-        log_dir = log_dir.resolve(strict=True)
-        new = _RotatingFileHandler(
-            log_dir / "mahoraga.log",
-            maxBytes=20000 * 81,  # lines * chars
-            backupCount=10,
-            encoding="utf-8",
-        )
-        fmt = logging.Formatter(
-            "[{asctime}] {levelname:8} {message}",
-            datefmt="%Y-%m-%d %X",
-            style="{",
-        )
-        new.setFormatter(fmt)
-        root.addHandler(new)
-
-        if isinstance(sys.stdout, io.TextIOBase) and sys.stdout.isatty():
-            if rich.console.detect_legacy_windows():
-                new = logging.StreamHandler(sys.stdout)
-                new.setFormatter(fmt)
-            else:
-                new = rich.logging.RichHandler(log_time_format="[%Y-%m-%d %X]")
-            root.addHandler(new)
-
-        self.listen = logging.handlers.QueueListener(old.queue, *root.handlers)
+def _root_handlers() -> list[str]:
+    handlers = ["filesystem"]
+    if isinstance(sys.stdout, io.TextIOBase) and sys.stdout.isatty():
+        if rich.console.detect_legacy_windows():
+            handlers.append("console_legacy")
+        else:
+            handlers.append("console_rich")
+    return handlers
 
 
 hishel._core._spec.get_heuristic_freshness = lambda response: 600  # noqa: ARG005, SLF001  # ty: ignore[invalid-assignment]
-_logger = logging.getLogger("mahoraga")

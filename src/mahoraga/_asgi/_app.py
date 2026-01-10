@@ -19,7 +19,7 @@ import concurrent.futures
 import contextlib
 import importlib.metadata
 import logging.config
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Annotated, Any, cast
 
 import anysqlite
 import fastapi.openapi.docs
@@ -28,11 +28,20 @@ import fastapi.templating
 import hishel
 import httpx
 import jinja2
-import pooch.utils  # pyright: ignore[reportMissingTypeStubs]
+import pydantic
 import starlette.middleware.cors
 import starlette.staticfiles
 
-from mahoraga import __version__, _conda, _core, _jsdelivr, _pypi, _python, _uv
+from mahoraga import (
+    __version__,
+    _conda,
+    _core,
+    _jsdelivr,
+    _preload,
+    _pypi,
+    _python,
+    _uv,
+)
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -40,7 +49,7 @@ if TYPE_CHECKING:
 URL_FOR = "{{ url_for('get_npm_file', package='swagger-ui-dist@5', path=%r) }}"
 
 
-def make_app(cfg: _core.Config, log_config: dict[str, Any]) -> fastapi.FastAPI:
+def make_app(cfg: _core.Config) -> fastapi.FastAPI:
     @contextlib.asynccontextmanager
     async def lifespan(_: fastapi.FastAPI) -> AsyncIterator[_core.Context]:
         async with _core.AsyncClient(
@@ -58,7 +67,7 @@ def make_app(cfg: _core.Config, log_config: dict[str, Any]) -> fastapi.FastAPI:
         ) as client:
             with concurrent.futures.ProcessPoolExecutor(
                 initializer=_initializer,
-                initargs=(log_config,),
+                initargs=(cfg,),
                 max_tasks_per_child=1000,
             ) as process_pool:
                 if any(cfg.shard.values()):
@@ -126,6 +135,12 @@ def make_app(cfg: _core.Config, log_config: dict[str, Any]) -> fastapi.FastAPI:
         starlette.staticfiles.StaticFiles(packages=[("mahoraga", "_static")]),
         name="static",
     )
+    app.add_api_route(
+        "/log",
+        _log,
+        include_in_schema=False,
+        response_class=fastapi.responses.JSONResponse,
+    )
 
     # Private, only for building docs
     app.include_router(_jsdelivr.gh, prefix="/gh", include_in_schema=False)
@@ -159,11 +174,81 @@ class _JSONResponse(fastapi.responses.JSONResponse):
     media_type = None
 
 
+class _LogRecord(pydantic.BaseModel, logging.LogRecord):
+    args: Any
+    asctime: str = ""
+    created: float
+    exc_info: Any
+    exc_text: str | None
+    filename: str
+    funcName: str  # noqa: N815
+    levelname: str
+    levelno: int
+    lineno: int
+    module: str
+    msecs: float
+    message: str
+    msg: str
+    name: str
+    pathname: str
+    process: int | None
+    processName: str | None  # noqa: N815
+    relativeCreated: float  # noqa: N815
+    stack_info: str | None
+    thread: int | None
+    threadName: str | None  # noqa: N815
+    taskName: str | None  # noqa: N815
+
+    @pydantic.field_validator(
+        "args",
+        "exc_info",
+        "exc_text",
+        "process",
+        "processName",
+        "stack_info",
+        "thread",
+        "threadName",
+        "taskName",
+        mode="before",
+    )
+    @classmethod
+    def parse_none_str(cls, value: str) -> str | None:
+        return None if value == "None" else value
+
+
 async def _context(request: fastapi.Request) -> None:  # noqa: RUF029
     _core.context.set(cast("_core.Context", request.scope["state"]))
 
 
-def _initializer(cfg: dict[str, Any]) -> None:
-    logging.config.dictConfig(cfg)
-    logging.captureWarnings(capture=True)
-    pooch.utils.LOGGER = logging.getLogger("pooch")
+def _initializer(cfg: _core.Config) -> None:
+    log_level = cfg.log.levelno()
+    logging.config.dictConfig({
+        "version": 1,
+        "formatters": {
+            "plain": {
+                "format": "%(message)s",
+            },
+        },
+        "handlers": {
+            "default": {
+                "class": "mahoraga._preload.HTTPHandler",
+                "formatter": "plain",
+                "host": f"{cfg.server.host}:{cfg.server.port}",
+                "url": "/log",
+            },
+        },
+        "root": {
+            "handlers": ["default"],
+            "level": log_level,
+        },
+        "disable_existing_loggers": False,
+    })
+    _preload.configure_logging_extra(log_level)
+
+
+def _log(record: Annotated[_LogRecord, fastapi.Query()]) -> None:
+    for handler in _root.handlers:
+        handler.handle(record)
+
+
+_root = logging.getLogger()
