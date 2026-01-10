@@ -63,6 +63,7 @@ def run() -> None:
         log_config=log_config,
         log_level=log_level,
         access_log=cfg.log.access,
+        forwarded_allow_ips="127.0.0.1",
         limit_concurrency=cfg.server.limit_concurrency,
         backlog=cfg.server.backlog,
         timeout_keep_alive=cfg.server.keep_alive,
