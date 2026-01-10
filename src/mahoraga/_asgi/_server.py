@@ -15,29 +15,25 @@
 __all__ = ["run"]
 
 import asyncio
-import concurrent.futures
-import contextlib
+import functools
 import inspect
 import io
-import logging.config
 import logging.handlers
 import multiprocessing as mp
 import pathlib
 import sys
 import types
 import warnings
-from typing import Any, cast, override
+from typing import cast, override
 
-import anysqlite
 import hishel._core._spec  # pyright: ignore[reportMissingTypeStubs]
-import httpx
 import pooch.utils  # pyright: ignore[reportMissingTypeStubs]
 import rich.console
 import rich.logging
 import uvicorn.config
 import uvicorn.logging
 
-from mahoraga import __version__, _conda, _core
+from mahoraga import _core
 
 from . import _app
 
@@ -45,40 +41,39 @@ from . import _app
 def run() -> None:
     cfg = _core.Config()
     log_level = uvicorn.config.LOG_LEVELS[cfg.log.level]
+    log_config = {
+        "version": 1,
+        "handlers": {
+            "default": {
+                "class": "logging.handlers.QueueHandler",
+                "queue": mp.get_context("spawn").Queue(),
+            },
+        },
+        "root": {
+            "handlers": ["default"],
+            "level": log_level,
+        },
+        "disable_existing_loggers": False,
+    }
     server_config = _ServerConfig(
-        app=_app.make_app,
+        app=functools.partial(_app.make_app, cfg, log_config),
         host=str(cfg.server.host),
         port=cfg.server.port,
         loop="none",
-        log_config={
-            "version": 1,
-            "handlers": {
-                "default": {
-                    "class": "logging.handlers.QueueHandler",
-                    "queue": mp.get_context("spawn").Queue(),
-                },
-            },
-            "root": {
-                "handlers": ["default"],
-                "level": log_level,
-            },
-            "disable_existing_loggers": False,
-        },
+        log_config=log_config,
         log_level=log_level,
         access_log=cfg.log.access,
         limit_concurrency=cfg.server.limit_concurrency,
         backlog=cfg.server.backlog,
         timeout_keep_alive=cfg.server.keep_alive,
         timeout_graceful_shutdown=cfg.server.timeout_graceful_shutdown or None,
-        timeout_notify=3600,
-        callback_notify=_conda.split_repo,
         factory=True,
     )
     server = uvicorn.Server(server_config)
     with server_config.listen:
         try:
             asyncio.run(
-                _main(cfg, server),
+                server.serve(),
                 debug=cfg.log.level == "debug",
                 loop_factory=cfg.loop_factory,
             )
@@ -91,12 +86,6 @@ def run() -> None:
         except BaseException as e:
             _logger.critical("ERROR", exc_info=e)
             raise SystemExit(server.started or 3) from e
-
-
-def _initializer(cfg: dict[str, Any]) -> None:
-    logging.config.dictConfig(cfg)
-    logging.captureWarnings(capture=True)
-    pooch.utils.LOGGER = logging.getLogger("pooch")
 
 
 def _log_filter(rec: logging.LogRecord) -> bool:
@@ -125,45 +114,6 @@ def _log_filter(rec: logging.LogRecord) -> bool:
             case _:
                 pass
     return _core.unreachable()
-
-
-async def _main(
-    cfg: _core.Config,
-    server: uvicorn.Server,
-) -> None:
-    log_config = server.config.log_config
-    if not isinstance(log_config, dict):
-        _core.unreachable()
-
-    async with contextlib.AsyncExitStack() as stack:
-        _core.context.set({
-            "config": cfg,
-            "httpx_client": await stack.enter_async_context(
-                _core.AsyncClient(
-                    headers={"User-Agent": f"mahoraga/{__version__}"},
-                    timeout=httpx.Timeout(15, read=60, write=60),
-                    follow_redirects=False,
-                    limits=httpx.Limits(
-                        max_connections=cfg.server.limit_concurrency,
-                        keepalive_expiry=cfg.server.keep_alive,
-                    ),
-                    storage=hishel.AsyncSqliteStorage(
-                        connection=await anysqlite.connect(":memory:"),
-                        default_ttl=600.,
-                    ),
-                ),
-            ),
-            "locks": _core.WeakValueDictionary(),
-            "process_pool": stack.enter_context(
-                concurrent.futures.ProcessPoolExecutor(
-                    initializer=_initializer,
-                    initargs=(log_config,),
-                    max_tasks_per_child=1000,
-                ),
-            ),
-            "statistics": _core.Statistics(backup_servers=cfg.upstream.backup),
-        })
-        await server.serve()
 
 
 class _RotatingFileHandler(logging.handlers.RotatingFileHandler):

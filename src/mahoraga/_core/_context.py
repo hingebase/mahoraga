@@ -299,7 +299,7 @@ class _AsyncCacheTransport(hishel.httpx.AsyncCacheTransport):
         self.storage = self._cache_proxy.storage
 
 
-class _Context(TypedDict):
+class Context(TypedDict):
     config: _core.Config
     httpx_client: AsyncClient
     locks: WeakValueDictionary
@@ -307,7 +307,6 @@ class _Context(TypedDict):
     statistics: Statistics
 
 
-Context = contextvars.ContextVar[_Context]
 cache_action = contextvars.ContextVar[CacheAction](
     "cache_action",
     default="no-cache",

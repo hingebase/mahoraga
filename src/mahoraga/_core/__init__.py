@@ -17,6 +17,7 @@ __all__ = [
     "Address",
     "AsyncClient",
     "Config",
+    "Context",
     "GitHubRelease",
     "NPMBase",
     "Predicate",
@@ -38,6 +39,7 @@ __all__ = [
     "unreachable",
 ]
 
+import contextvars
 from typing import NoReturn
 
 from ._config import Address, Config, Predicate, Server
@@ -62,7 +64,7 @@ from ._stream import (
     stream,
 )
 
-context = Context("context")
+context = contextvars.ContextVar[Context]("context")
 
 
 def unreachable(message: str = "Unreachable") -> NoReturn:
