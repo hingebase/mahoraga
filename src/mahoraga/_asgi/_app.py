@@ -16,22 +16,27 @@ __all__ = ["make_app"]
 
 import importlib.metadata
 import logging
-from typing import Annotated, Any, cast
+from typing import TYPE_CHECKING, Annotated, Any, cast
 
+import fastapi.middleware.cors
 import fastapi.openapi.docs
 import fastapi.responses
 import fastapi.templating
 import jinja2
 import pydantic
-import starlette.middleware.cors
-import starlette.staticfiles
 
 from mahoraga import _conda, _core, _jsdelivr, _pypi, _python, _uv
+
+if TYPE_CHECKING:
+    from fastapi.staticfiles import StaticFiles
 
 URL_FOR = "{{ url_for('get_npm_file', package='swagger-ui-dist@5', path=%r) }}"
 
 
-def make_app(cfg: _core.Config) -> fastapi.FastAPI:
+def make_app(
+    cfg: _core.Config,
+    static_files: StaticFiles | None = None,
+) -> fastapi.FastAPI:
     meta = importlib.metadata.metadata("mahoraga")
     contact = None
     if urls := meta.get_all("Project-URL"):
@@ -56,7 +61,7 @@ def make_app(cfg: _core.Config) -> fastapi.FastAPI:
         },
     )
     app.add_middleware(
-        starlette.middleware.cors.CORSMiddleware,
+        fastapi.middleware.cors.CORSMiddleware,
         allow_origins=cfg.cors.allow_origins,
         allow_methods=cfg.cors.allow_methods,
         allow_headers=cfg.cors.allow_headers,
@@ -80,11 +85,8 @@ def make_app(cfg: _core.Config) -> fastapi.FastAPI:
         prefix="/uv",
         tags=["uv"],
     )
-    app.mount(
-        "/static",
-        starlette.staticfiles.StaticFiles(packages=[("mahoraga", "_static")]),
-        name="static",
-    )
+    if static_files:
+        app.mount("/static", static_files, name="static")
     app.add_api_route(
         "/log",
         _log,
