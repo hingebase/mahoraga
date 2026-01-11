@@ -89,7 +89,7 @@ class _Import(_core.Address):
 
     def cli_cmd(self) -> None:
         with contextlib.chdir(self.source.parent):
-            cfg = _core.Config()
+            cfg = _asgi.Config()
         cfg.server.host = self.host
         cfg.server.port = self.port
         cfg_file = _setup(cfg, self.destination)

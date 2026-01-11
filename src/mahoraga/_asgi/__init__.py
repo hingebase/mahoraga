@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ["run"]
+__all__ = ["Config", "run"]
 
 import contextlib
 from typing import TYPE_CHECKING
@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING
 import filelock
 
 from . import _server
+from ._server import Config
 
 if TYPE_CHECKING:
     from _typeshed import StrPath

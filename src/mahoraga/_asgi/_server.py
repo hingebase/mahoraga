@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ["run"]
+__all__ = ["Config", "run"]
 
 import asyncio
 import functools
@@ -52,7 +52,7 @@ except ImportError:
 
 
 def run() -> None:
-    cfg = _Config()
+    cfg = Config()
     log_level = cfg.log.levelno()
     log_config: _DictConfigArgs = {
         "version": 1,
@@ -137,7 +137,7 @@ def run() -> None:
     cfg.run(cast("dict[str, object]", log_config))
 
 
-class _Config(_core.Config, toml_file="mahoraga.toml"):
+class Config(_core.Config, toml_file="mahoraga.toml"):
     @override
     def model_post_init(self, context: object) -> None:
         self._started = False
