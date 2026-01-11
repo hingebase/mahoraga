@@ -16,7 +16,6 @@ __all__ = ["HTTPHandler", "configure_logging_extra"]
 
 import copy
 import dataclasses
-import http
 import inspect
 import logging.handlers
 import pathlib
@@ -31,6 +30,24 @@ from . import _core
 
 if TYPE_CHECKING:
     from io import TextIOWrapper
+
+
+class GranianAccess:
+    @staticmethod
+    def filter(record: logging.LogRecord) -> bool | logging.LogRecord:
+        match record.args:
+            case {"path": "/log", "status": 200}:
+                return False
+            case {
+                "path": path,
+                "query_string": bytes() as query_string,
+            } as args if query_string:
+                path = f"{path}?{query_string.decode('ascii')}"
+                record = copy.copy(record)
+                record.args = dict(args, path=path)
+                return record
+            case _:
+                return True
 
 
 # Cannot inherit from `logging.handlers.QueueHandler`,
@@ -108,11 +125,8 @@ class UvicornAccess:
                 _,
                 str() as path_with_query_string,
                 _,
-                int() as status_code,
-            ] if (
-                path_with_query_string.startswith("/log?")
-                and status_code == http.HTTPStatus.OK
-            ):
+                200,
+            ] if path_with_query_string.startswith("/log?"):
                 return False
             case _:
                 return True

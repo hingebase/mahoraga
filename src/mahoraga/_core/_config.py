@@ -76,6 +76,10 @@ class Address(pydantic.BaseModel):
 
 
 class Server(Address, **_model_config):
+    implementation: Annotated[
+        Literal["granian", "uvicorn"],
+        pydantic.Field(description="ASGI server implementation"),
+    ] = "uvicorn"
     limit_concurrency: Annotated[
         int,
         pydantic.Field(description="Maximum number of simultaneous connections"
@@ -83,9 +87,10 @@ class Server(Address, **_model_config):
         at.Ge(2),
     ] = 512
     backlog: Annotated[
-        pydantic.PositiveInt,
+        int,
         pydantic.Field(description="Maximum number of pending connections to "
                                    "allow"),
+        at.Ge(128),
     ] = 511
     keep_alive: Annotated[
         pydantic.PositiveInt,
@@ -98,8 +103,17 @@ class Server(Address, **_model_config):
                                    "shutdown"),
     ] = 0
 
+    def is_granian(self) -> bool:
+        return self.implementation == "granian"
+
+    def is_uvicorn(self) -> bool:
+        return self.implementation == "uvicorn"
+
     def rattler_client(self) -> rattler.Client:
         return _rattler_client(self.host, self.port)
+
+    def workers_kill_timeout(self) -> int | None:
+        return self.timeout_graceful_shutdown or None
 
 
 class _HttpUrl(pydantic.AnyUrl):
