@@ -51,7 +51,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+granian = [
+    "granian >=2.6.0",
+]
 typing = [
+    "granian >=2.6.0",
     "msgpack-types ==0.3.0",
     "types-requests >=2.32.4",
 ]
