@@ -15,21 +15,31 @@
 __all__ = ["Address", "Config", "Predicate", "Server"]
 
 import asyncio
+import concurrent.futures
+import contextlib
 import functools
 import ipaddress
 import itertools
+import logging.config
 import sys
 from typing import TYPE_CHECKING, Annotated, Literal, no_type_check, override
 
 import annotated_types as at
+import anysqlite
+import hishel
+import httpx
 import pydantic
 import pydantic_settings
 import rattler.networking
 import rattler.platform
 import uvicorn.config
 
+from mahoraga import __version__, _core, _preload
+
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import AsyncIterator, Iterator
+
+    from fastapi import FastAPI
 
 if sys.platform == "win32":
     import winloop as uvloop  # pyright: ignore[reportMissingImports]
@@ -273,11 +283,7 @@ class _Upstream(pydantic.BaseModel, **_model_config):
     }
 
 
-class Config(
-    pydantic_settings.BaseSettings,
-    toml_file="mahoraga.toml",
-    **_model_config,
-):
+class Config(pydantic_settings.BaseSettings, **_model_config):
     server: Server = Server()
     log: _Log = _Log()
     shard: dict[str, set[rattler.platform.PlatformLiteral]] = {}
@@ -285,12 +291,49 @@ class Config(
     upstream: _Upstream = _Upstream()
     eager_task_execution: bool = False
 
+    @contextlib.asynccontextmanager
+    async def lifespan(self, _: FastAPI) -> AsyncIterator[_core.Context]:
+        async with _core.AsyncClient(
+            headers={"User-Agent": f"mahoraga/{__version__}"},
+            timeout=httpx.Timeout(15, read=60),
+            follow_redirects=False,
+            limits=httpx.Limits(
+                max_connections=self.server.limit_concurrency,
+                keepalive_expiry=self.server.keep_alive,
+            ),
+            storage=hishel.AsyncSqliteStorage(
+                connection=await anysqlite.connect(":memory:"),
+                default_ttl=600.,
+            ),
+        ) as client:
+            with concurrent.futures.ProcessPoolExecutor(
+                initializer=_initializer,
+                initargs=(self,),
+                max_tasks_per_child=1000,
+            ) as process_pool:
+                self.on_startup(process_pool)
+                yield {
+                    "config": self,
+                    "httpx_client": client,
+                    "locks": _core.WeakValueDictionary(),
+                    "process_pool": process_pool,
+                    "statistics": _core.Statistics(
+                        backup_servers=self.upstream.backup,
+                    ),
+                }
+
     @no_type_check
     def loop_factory(self) -> asyncio.AbstractEventLoop:
         loop = uvloop.new_event_loop()
         if self.eager_task_execution:
             loop.set_task_factory(asyncio.eager_task_factory)
         return loop
+
+    def on_startup(
+        self,
+        executor: concurrent.futures.ProcessPoolExecutor,
+    ) -> None:
+        pass
 
     @override
     @classmethod
@@ -306,6 +349,32 @@ class Config(
             pydantic_settings.TomlConfigSettingsSource(settings_cls),
             init_settings,
         )
+
+
+def _initializer(cfg: Config) -> None:
+    log_level = cfg.log.levelno()
+    logging.config.dictConfig({
+        "version": 1,
+        "formatters": {
+            "plain": {
+                "format": "%(message)s",
+            },
+        },
+        "handlers": {
+            "default": {
+                "class": "mahoraga._preload.HTTPHandler",
+                "formatter": "plain",
+                "host": f"{cfg.server.host}:{cfg.server.port}",
+                "url": "/log",
+            },
+        },
+        "root": {
+            "handlers": ["default"],
+            "level": log_level,
+        },
+        "disable_existing_loggers": False,
+    })
+    _preload.configure_logging_extra(log_level)
 
 
 @functools.lru_cache(maxsize=1)

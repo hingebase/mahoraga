@@ -19,24 +19,25 @@ import functools
 import io
 import logging
 import sys
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, cast, override
 
 import hishel._core._spec  # pyright: ignore[reportMissingTypeStubs]
 import rich.console
 import uvicorn.logging
 
-from mahoraga import _core, _preload
+from mahoraga import _conda, _core, _preload
 
 from . import _app
 
 if TYPE_CHECKING:
+    from concurrent.futures import ProcessPoolExecutor
     from logging.config import (
         _DictConfigArgs,  # pyright: ignore[reportPrivateUsage]
     )
 
 
 def run() -> None:
-    cfg = _core.Config()
+    cfg = _Config()
     log_level = cfg.log.levelno()
     log_config: _DictConfigArgs = {
         "version": 1,
@@ -142,6 +143,14 @@ def run() -> None:
     except BaseException as e:
         logging.getLogger("mahoraga").critical("ERROR", exc_info=e)
         raise SystemExit(server.started or 3) from e
+
+
+class _Config(_core.Config, toml_file="mahoraga.toml"):
+    @override
+    def on_startup(self, executor: ProcessPoolExecutor) -> None:
+        if any(self.shard.values()):
+            loop = asyncio.get_running_loop()
+            loop.call_soon(_conda.split_repo, loop, self, executor)
 
 
 def _root_handlers() -> list[str]:

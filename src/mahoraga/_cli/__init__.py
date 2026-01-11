@@ -42,10 +42,6 @@ def main() -> None:
     )
 
 
-class _Config(_core.Config, toml_file=None):
-    pass
-
-
 class _New(_core.Server, alias_generator=None):
     """Create a new directory structure for Mahoraga.
 
@@ -62,7 +58,7 @@ class _New(_core.Server, alias_generator=None):
     ]
 
     def cli_cmd(self) -> None:
-        cfg = _Config(server=self)
+        cfg = _core.Config(server=self)
         cfg_file = _setup(cfg, self.root)
         click.echo(f"Done. Please edit {cfg_file} before starting the server.")
 

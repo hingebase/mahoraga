@@ -14,74 +14,24 @@
 
 __all__ = ["make_app"]
 
-import asyncio
-import concurrent.futures
-import contextlib
 import importlib.metadata
-import logging.config
-from typing import TYPE_CHECKING, Annotated, Any, cast
+import logging
+from typing import Annotated, Any, cast
 
-import anysqlite
 import fastapi.openapi.docs
 import fastapi.responses
 import fastapi.templating
-import hishel
-import httpx
 import jinja2
 import pydantic
 import starlette.middleware.cors
 import starlette.staticfiles
 
-from mahoraga import (
-    __version__,
-    _conda,
-    _core,
-    _jsdelivr,
-    _preload,
-    _pypi,
-    _python,
-    _uv,
-)
-
-if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+from mahoraga import _conda, _core, _jsdelivr, _pypi, _python, _uv
 
 URL_FOR = "{{ url_for('get_npm_file', package='swagger-ui-dist@5', path=%r) }}"
 
 
 def make_app(cfg: _core.Config) -> fastapi.FastAPI:
-    @contextlib.asynccontextmanager
-    async def lifespan(_: fastapi.FastAPI) -> AsyncIterator[_core.Context]:
-        async with _core.AsyncClient(
-            headers={"User-Agent": f"mahoraga/{__version__}"},
-            timeout=httpx.Timeout(15, read=60),
-            follow_redirects=False,
-            limits=httpx.Limits(
-                max_connections=cfg.server.limit_concurrency,
-                keepalive_expiry=cfg.server.keep_alive,
-            ),
-            storage=hishel.AsyncSqliteStorage(
-                connection=await anysqlite.connect(":memory:"),
-                default_ttl=600.,
-            ),
-        ) as client:
-            with concurrent.futures.ProcessPoolExecutor(
-                initializer=_initializer,
-                initargs=(cfg,),
-                max_tasks_per_child=1000,
-            ) as process_pool:
-                if any(cfg.shard.values()):
-                    loop = asyncio.get_running_loop()
-                    loop.call_soon(_conda.split_repo, loop, cfg, process_pool)
-                yield {
-                    "config": cfg,
-                    "httpx_client": client,
-                    "locks": _core.WeakValueDictionary(),
-                    "process_pool": process_pool,
-                    "statistics": _core.Statistics(
-                        backup_servers=cfg.upstream.backup,
-                    ),
-                }
     meta = importlib.metadata.metadata("mahoraga")
     contact = None
     if urls := meta.get_all("Project-URL"):
@@ -98,7 +48,7 @@ def make_app(cfg: _core.Config) -> fastapi.FastAPI:
         default_response_class=_JSONResponse,
         docs_url=None,
         redoc_url=None,
-        lifespan=lifespan,
+        lifespan=cfg.lifespan,
         contact=contact,
         license_info={
             "name": "License",
@@ -218,32 +168,6 @@ class _LogRecord(pydantic.BaseModel, logging.LogRecord):
 
 async def _context(request: fastapi.Request) -> None:  # noqa: RUF029
     _core.context.set(cast("_core.Context", request.scope["state"]))
-
-
-def _initializer(cfg: _core.Config) -> None:
-    log_level = cfg.log.levelno()
-    logging.config.dictConfig({
-        "version": 1,
-        "formatters": {
-            "plain": {
-                "format": "%(message)s",
-            },
-        },
-        "handlers": {
-            "default": {
-                "class": "mahoraga._preload.HTTPHandler",
-                "formatter": "plain",
-                "host": f"{cfg.server.host}:{cfg.server.port}",
-                "url": "/log",
-            },
-        },
-        "root": {
-            "handlers": ["default"],
-            "level": log_level,
-        },
-        "disable_existing_loggers": False,
-    })
-    _preload.configure_logging_extra(log_level)
 
 
 def _log(record: Annotated[_LogRecord, fastapi.Query()]) -> None:
