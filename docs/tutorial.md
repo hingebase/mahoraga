@@ -325,12 +325,12 @@ The frontend configuration depends on the library you directly use:
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
-        <link rel="stylesheet" href="{{ mahoraga_base_url }}/npm/@stlite/browser@0/build/stlite.css">
+        <link rel="stylesheet" href="{{ mahoraga_base_url }}/npm/@stlite/browser@1/build/stlite.css">
       </head>
       <body>
         <div id="root"></div>
         <script type="module">
-          import { mount } from "{{ mahoraga_base_url }}/npm/@stlite/browser@0/build/stlite.js";
+          import { mount } from "{{ mahoraga_base_url }}/npm/@stlite/browser@1/build/stlite.js";
           mount(
             {
               pyodideUrl: "{{ mahoraga_base_url }}/pyodide/v{{ pyodide_py_version }}/full/pyodide.js",
