@@ -204,7 +204,7 @@ def _parse_standalone_python_sha256(
     with cache_location.open("rb") as f:
         for line in f:
             if line.endswith(name):
-                return bytes.fromhex(line[:64]), None  # pyright: ignore[reportArgumentType]
+                return bytes.fromhex(line[:64]), None
     raise fastapi.HTTPException(404)
 
 

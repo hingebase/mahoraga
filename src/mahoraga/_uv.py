@@ -134,7 +134,7 @@ async def _get_distribution_metadata_from_manifest(
         raw = await _core.get(urls)
     except fastapi.HTTPException:
         return tag, None, None
-    return tag, bytes.fromhex(raw[:64]), None  # pyright: ignore[reportArgumentType]
+    return tag, bytes.fromhex(raw[:64]), None
 
 
 class _Checksums(pydantic.BaseModel, extra="ignore"):

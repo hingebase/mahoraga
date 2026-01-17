@@ -226,7 +226,7 @@ def _sha256_from_html(raw: bytes, filename: str) -> bytes:
     except ValueError:
         return b""
     i += len(pattern)
-    return bytes.fromhex(raw[i : i+64])  # noqa: E226  # pyright: ignore[reportArgumentType]
+    return bytes.fromhex(raw[i : i+64])  # noqa: E226
 
 
 def _sha256_and_size_from_json(
