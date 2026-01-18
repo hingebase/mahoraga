@@ -33,7 +33,7 @@ from mahoraga import _core
 from . import _models, _utils
 
 if TYPE_CHECKING:
-    from concurrent.futures import ProcessPoolExecutor
+    from distributed import Client, Future
 
 router = fastapi.APIRouter(route_class=_core.APIRoute)
 
@@ -97,12 +97,15 @@ async def get_sharded_repodata_with_label(
 def split_repo(
     loop: asyncio.AbstractEventLoop,
     cfg: _core.Config,
-    executor: ProcessPoolExecutor,
+    client: Client,
+    futures: set[asyncio.Future[Any] | Future[Any]],
 ) -> None:
-    loop.call_later(3600., split_repo, loop, cfg, executor)
+    loop.call_later(3600., split_repo, loop, cfg, client, futures)
     for channel, platforms in cfg.shard.items():
         for platform in platforms:
-            executor.submit(_worker, cfg, channel, platform)
+            fut = client.submit(_worker, cfg, channel, platform)  # pyright: ignore[reportUnknownMemberType]
+            futures.add(fut)
+            fut.add_done_callback(futures.discard)  # pyright: ignore[reportUnknownMemberType]
 
 
 def _packages(
