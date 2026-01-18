@@ -96,7 +96,7 @@ line-length = 79
 preview = true
 
 [tool.ruff.lint]
-ignore = ["INP001"]
+ignore = ["INP001", "RUF067"]
 select = ["ALL"]
 
 [tool.ty.rules]
