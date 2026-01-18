@@ -15,15 +15,13 @@
 __all__ = ["make_app"]
 
 import importlib.metadata
-import logging
-from typing import TYPE_CHECKING, Annotated, Any, cast
+from typing import TYPE_CHECKING, cast
 
 import fastapi.middleware.cors
 import fastapi.openapi.docs
 import fastapi.responses
 import fastapi.templating
 import jinja2
-import pydantic
 
 from mahoraga import _conda, _core, _jsdelivr, _pypi, _python, _uv
 
@@ -87,12 +85,6 @@ def make_app(
     )
     if static_files:
         app.mount("/static", static_files, name="static")
-    app.add_api_route(
-        "/log",
-        _log,
-        include_in_schema=False,
-        response_class=fastapi.responses.JSONResponse,
-    )
 
     # Private, only for building docs
     app.include_router(_jsdelivr.gh, prefix="/gh", include_in_schema=False)
@@ -126,55 +118,5 @@ class _JSONResponse(fastapi.responses.JSONResponse):
     media_type = None
 
 
-class _LogRecord(pydantic.BaseModel, logging.LogRecord):
-    args: Any
-    asctime: str = ""
-    created: float
-    exc_info: Any
-    exc_text: str | None
-    filename: str
-    funcName: str  # noqa: N815
-    levelname: str
-    levelno: int
-    lineno: int
-    module: str
-    msecs: float
-    message: str
-    msg: str
-    name: str
-    pathname: str
-    process: int | None
-    processName: str | None  # noqa: N815
-    relativeCreated: float  # noqa: N815
-    stack_info: str | None
-    thread: int | None
-    threadName: str | None  # noqa: N815
-    taskName: str | None  # noqa: N815
-
-    @pydantic.field_validator(
-        "args",
-        "exc_info",
-        "exc_text",
-        "process",
-        "processName",
-        "stack_info",
-        "thread",
-        "threadName",
-        "taskName",
-        mode="before",
-    )
-    @classmethod
-    def parse_none_str(cls, value: str) -> str | None:
-        return None if value == "None" else value
-
-
 async def _context(request: fastapi.Request) -> None:  # noqa: RUF029
     _core.context.set(cast("_core.Context", request.scope["state"]))
-
-
-def _log(record: Annotated[_LogRecord, fastapi.Query()]) -> None:
-    for handler in _root.handlers:
-        handler.handle(record)
-
-
-_root = logging.getLogger()

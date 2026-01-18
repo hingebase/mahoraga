@@ -19,6 +19,7 @@ import contextlib
 import functools
 import ipaddress
 import itertools
+import os
 import sys
 from typing import (
     TYPE_CHECKING,
@@ -31,6 +32,7 @@ from typing import (
 
 import annotated_types as at
 import anysqlite
+import dask.config
 import dask.system
 import distributed
 import hishel
@@ -45,6 +47,9 @@ from mahoraga import __version__, _core
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Iterator
+    from logging.config import (
+        _DictConfigArgs,  # pyright: ignore[reportPrivateUsage]
+    )
 
     from fastapi import FastAPI
 
@@ -52,6 +57,8 @@ if sys.platform == "win32":
     import winloop as uvloop  # pyright: ignore[reportMissingImports]
 else:
     import uvloop  # pyright: ignore[reportMissingImports]
+
+_DASK_DASHBOARD = 8787
 
 Predicate = functools.singledispatch(at.Predicate)
 
@@ -80,6 +87,14 @@ class Address(pydantic.BaseModel):
         pydantic.Field(description="The TCP port to serve on"),
         at.Le(65535),
     ] = 3450
+
+    @pydantic.field_validator("port")
+    @classmethod
+    def conflict(cls, port: int) -> int:
+        if port == _DASK_DASHBOARD:
+            message = "TCP port 8787 is occupied by Dask dashboard"
+            raise ValueError(message)
+        return port
 
 
 class Server(Address, **_model_config):
@@ -316,6 +331,41 @@ class Config(pydantic_settings.BaseSettings, **_model_config):
 
     @contextlib.asynccontextmanager
     async def lifespan(self, _: FastAPI) -> AsyncIterator[_core.Context]:
+        # Discard all Dask environment variables which have been read into the
+        # global config
+        for name in [name for name in os.environ if name.startswith("DASK_")]:
+            del os.environ[name]
+
+        # Configure subprocess logging before importing `distributed`
+        log_config: _DictConfigArgs = {
+            "version": 1,
+            "formatters": {
+                "plain": {
+                    "format": "%(message)s",
+                },
+            },
+            "handlers": {
+                "default": {
+                    "class": "mahoraga._preload.HTTPHandler",
+                    "formatter": "plain",
+                    "host": "127.0.0.1:8787",
+                    "url": "/log",
+                },
+            },
+            "root": {
+                "handlers": ["default"],
+                "level": self.log.levelno(),
+            },
+            "disable_existing_loggers": False,
+        }
+        os.environ["DASK_INTERNAL_INHERIT_CONFIG"] = dask.config.serialize(
+            {"distributed": {"logging": log_config}},
+        )
+
+        # FastAPI has not launched yet, collect worker logs with Tornado
+        dask.config.set({
+            "distributed.scheduler.http.routes": ["mahoraga._preload"],
+        })
         async with distributed.LocalCluster(
             n_workers=min(
                 sum(map(len, self.shard.values())),
@@ -324,6 +374,8 @@ class Config(pydantic_settings.BaseSettings, **_model_config):
             threads_per_worker=1,
             dashboard_address=cast("str", None),
             asynchronous=True,
+            preload="mahoraga._preload",
+            preload_argv=["--log-level", self.log.level],
         ) as cluster, distributed.Client(
             cluster,
             asynchronous=True,

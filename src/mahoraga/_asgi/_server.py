@@ -73,9 +73,6 @@ def run() -> None:
             "hishel_integrations_clients": {
                 "()": "mahoraga._preload.HishelIntegrationsClients",
             },
-            "uvicorn_access": {
-                "()": "mahoraga._preload.UvicornAccess",
-            },
             "uvicorn_error": {
                 "()": "mahoraga._preload.UvicornError",
                 "level": log_level,
@@ -113,9 +110,12 @@ def run() -> None:
             "hishel.integrations.clients": {
                 "filters": ["hishel_integrations_clients"],
             },
+            "tornado.access": {
+                "level": "CRITICAL",
+                "propagate": False,
+            },
             "uvicorn.access": {
                 "level": "INFO",
-                "filters": ["uvicorn_access"],
             },
             "uvicorn.error": {
                 "level": uvicorn.logging.TRACE_LOG_LEVEL,
