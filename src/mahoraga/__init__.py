@@ -17,5 +17,25 @@
 __all__ = []
 
 import importlib.metadata
+import multiprocessing as mp
+from typing import TYPE_CHECKING, cast
+
+import dask.config
+
+if TYPE_CHECKING:
+    from pydantic import JsonValue
 
 __version__ = importlib.metadata.version("mahoraga")
+
+if mp.parent_process() is None:
+    def _disable_dask_distributed_logging_config() -> None:
+        match cfg := cast("dict[str, JsonValue]", dask.config.config):
+            case {
+                "distributed": {"logging-file-config": _, **ori} | {**ori},
+            }:
+                ori["logging"] = {"version": 1}
+                cfg["distributed"] = ori
+            case _:
+                cfg["distributed"] = {"logging": {"version": 1}}
+
+    _disable_dask_distributed_logging_config()

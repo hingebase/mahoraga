@@ -15,17 +15,26 @@
 __all__ = ["Address", "Config", "Predicate", "Server"]
 
 import asyncio
-import concurrent.futures
 import contextlib
 import functools
 import ipaddress
 import itertools
-import logging.config
+import os
 import sys
-from typing import TYPE_CHECKING, Annotated, Literal, no_type_check, override
+from typing import (
+    TYPE_CHECKING,
+    Annotated,
+    Literal,
+    cast,
+    no_type_check,
+    override,
+)
 
 import annotated_types as at
 import anysqlite
+import dask.config
+import dask.system
+import distributed
 import hishel
 import httpx
 import pydantic
@@ -34,10 +43,13 @@ import rattler.networking
 import rattler.platform
 import uvicorn.config
 
-from mahoraga import __version__, _core, _preload
+from mahoraga import __version__, _core
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Iterator
+    from logging.config import (
+        _DictConfigArgs,  # pyright: ignore[reportPrivateUsage]
+    )
 
     from fastapi import FastAPI
 
@@ -45,6 +57,8 @@ if sys.platform == "win32":
     import winloop as uvloop  # pyright: ignore[reportMissingImports]
 else:
     import uvloop  # pyright: ignore[reportMissingImports]
+
+_DASK_DASHBOARD = 8787
 
 Predicate = functools.singledispatch(at.Predicate)
 
@@ -73,6 +87,14 @@ class Address(pydantic.BaseModel):
         pydantic.Field(description="The TCP port to serve on"),
         at.Le(65535),
     ] = 3450
+
+    @pydantic.field_validator("port")
+    @classmethod
+    def conflict(cls, port: int) -> int:
+        if port == _DASK_DASHBOARD:
+            message = "TCP port 8787 is occupied by Dask dashboard"
+            raise ValueError(message)
+        return port
 
 
 class Server(Address, **_model_config):
@@ -309,7 +331,65 @@ class Config(pydantic_settings.BaseSettings, **_model_config):
 
     @contextlib.asynccontextmanager
     async def lifespan(self, _: FastAPI) -> AsyncIterator[_core.Context]:
-        async with _core.AsyncClient(
+        # Discard all Dask environment variables which have been read into the
+        # global config
+        for name in [name for name in os.environ if name.startswith("DASK_")]:
+            del os.environ[name]
+
+        # Configure subprocess logging before importing `distributed`
+        log_config: _DictConfigArgs = {
+            "version": 1,
+            "formatters": {
+                "plain": {
+                    "format": "%(message)s",
+                },
+            },
+            "filters": {
+                "distributed_worker": {
+                    "()": "mahoraga._preload.DistributedWorker",
+                },
+            },
+            "handlers": {
+                "default": {
+                    "class": "mahoraga._preload.HTTPHandler",
+                    "formatter": "plain",
+                    "host": "127.0.0.1:8787",
+                    "url": "/log",
+                },
+            },
+            "loggers": {
+                "distributed.worker": {
+                    "filters": ["distributed_worker"],
+                },
+            },
+            "root": {
+                "handlers": ["default"],
+                "level": self.log.levelno(),
+            },
+            "disable_existing_loggers": False,
+        }
+        os.environ["DASK_INTERNAL_INHERIT_CONFIG"] = dask.config.serialize(
+            {"distributed": {"logging": log_config}},
+        )
+
+        # FastAPI has not launched yet, collect worker logs with Tornado
+        dask.config.set({
+            "distributed.scheduler.http.routes": ["mahoraga._preload"],
+        })
+        async with distributed.LocalCluster(
+            n_workers=min(
+                sum(map(len, self.shard.values())),
+                dask.system.CPU_COUNT or 1,
+            ),
+            threads_per_worker=1,
+            dashboard_address=cast("str", None),
+            asynchronous=True,
+            preload="mahoraga._preload",
+            preload_argv=["--log-level", self.log.level],
+        ) as cluster, distributed.Client(
+            cluster,
+            asynchronous=True,
+        ) as dask_client, _core.AsyncClient(
             headers={"User-Agent": f"mahoraga/{__version__}"},
             timeout=httpx.Timeout(15, read=60),
             follow_redirects=False,
@@ -321,22 +401,17 @@ class Config(pydantic_settings.BaseSettings, **_model_config):
                 connection=await anysqlite.connect(":memory:"),
                 default_ttl=600.,
             ),
-        ) as client:
-            with concurrent.futures.ProcessPoolExecutor(
-                initializer=_initializer,
-                initargs=(self,),
-                max_tasks_per_child=1000,
-            ) as process_pool:
-                self.on_startup(process_pool)
-                yield {
-                    "config": self,
-                    "httpx_client": client,
-                    "locks": _core.WeakValueDictionary(),
-                    "process_pool": process_pool,
-                    "statistics": _core.Statistics(
-                        backup_servers=self.upstream.backup,
-                    ),
-                }
+        ) as httpx_client:
+            yield {
+                "config": self,
+                "dask_client": dask_client,
+                "futures": set(),
+                "httpx_client": httpx_client,
+                "locks": _core.WeakValueDictionary(),
+                "statistics": _core.Statistics(
+                    backup_servers=self.upstream.backup,
+                ),
+            }
 
     @no_type_check
     def loop_factory(self) -> asyncio.AbstractEventLoop:
@@ -344,12 +419,6 @@ class Config(pydantic_settings.BaseSettings, **_model_config):
         if self.eager_task_execution:
             loop.set_task_factory(asyncio.eager_task_factory)
         return loop
-
-    def on_startup(
-        self,
-        executor: concurrent.futures.ProcessPoolExecutor,
-    ) -> None:
-        pass
 
     @override
     @classmethod
@@ -365,32 +434,6 @@ class Config(pydantic_settings.BaseSettings, **_model_config):
             pydantic_settings.TomlConfigSettingsSource(settings_cls),
             init_settings,
         )
-
-
-def _initializer(cfg: Config) -> None:
-    log_level = cfg.log.levelno()
-    logging.config.dictConfig({
-        "version": 1,
-        "formatters": {
-            "plain": {
-                "format": "%(message)s",
-            },
-        },
-        "handlers": {
-            "default": {
-                "class": "mahoraga._preload.HTTPHandler",
-                "formatter": "plain",
-                "host": f"{cfg.server.host}:{cfg.server.port}",
-                "url": "/log",
-            },
-        },
-        "root": {
-            "handlers": ["default"],
-            "level": log_level,
-        },
-        "disable_existing_loggers": False,
-    })
-    _preload.configure_logging_extra(log_level)
 
 
 @functools.lru_cache(maxsize=1)

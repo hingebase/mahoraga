@@ -46,10 +46,10 @@ from mahoraga import _core
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Awaitable
-    from concurrent.futures import ProcessPoolExecutor
     from ssl import SSLContext
 
     from _typeshed import StrPath, Unused
+    from distributed import Client, Future
     from httpx._types import CertTypes
 
 
@@ -301,9 +301,10 @@ class _AsyncCacheTransport(hishel.httpx.AsyncCacheTransport):
 
 class Context(TypedDict):
     config: _core.Config
+    dask_client: Client
+    futures: set[asyncio.Future[Any] | Future[Any]]
     httpx_client: AsyncClient
     locks: WeakValueDictionary
-    process_pool: ProcessPoolExecutor
     statistics: Statistics
 
 

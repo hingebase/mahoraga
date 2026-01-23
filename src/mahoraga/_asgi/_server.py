@@ -16,13 +16,14 @@ __all__ = ["Config", "run"]
 
 import asyncio
 import functools
+import inspect
 import io
 import logging
-import os
 import pathlib
 import sys
-from typing import TYPE_CHECKING, cast, override
+from typing import TYPE_CHECKING, Protocol, cast, override
 
+import dask.system
 import fastapi.staticfiles
 import hishel._core._spec  # pyright: ignore[reportMissingTypeStubs]
 import rich.console
@@ -34,7 +35,6 @@ from . import _app
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from concurrent.futures import ProcessPoolExecutor
     from logging.config import (
         _DictConfigArgs,  # pyright: ignore[reportPrivateUsage]
     )
@@ -64,6 +64,9 @@ def run() -> None:
             },
         },
         "filters": {
+            "distributed_scheduler": {
+                "()": "mahoraga._preload.DistributedScheduler",
+            },
             "granian_access": {
                 "()": "mahoraga._preload.GranianAccess",
             },
@@ -72,9 +75,6 @@ def run() -> None:
             },
             "hishel_integrations_clients": {
                 "()": "mahoraga._preload.HishelIntegrationsClients",
-            },
-            "uvicorn_access": {
-                "()": "mahoraga._preload.UvicornAccess",
             },
             "uvicorn_error": {
                 "()": "mahoraga._preload.UvicornError",
@@ -101,6 +101,9 @@ def run() -> None:
             },
         },
         "loggers": {
+            "distributed.scheduler": {
+                "filters": ["distributed_scheduler"],
+            },
             "granian.access": {
                 "filters": ["granian_access"],
             },
@@ -113,9 +116,12 @@ def run() -> None:
             "hishel.integrations.clients": {
                 "filters": ["hishel_integrations_clients"],
             },
+            "tornado.access": {
+                "level": "CRITICAL",
+                "propagate": False,
+            },
             "uvicorn.access": {
                 "level": "INFO",
-                "filters": ["uvicorn_access"],
             },
             "uvicorn.error": {
                 "level": uvicorn.logging.TRACE_LOG_LEVEL,
@@ -138,20 +144,20 @@ def run() -> None:
 
 
 class Config(_core.Config, toml_file="mahoraga.toml"):
-    @override
-    def model_post_init(self, context: object) -> None:
-        self._started = False
-
-    @override
-    def on_startup(self, executor: ProcessPoolExecutor) -> None:
-        loop = asyncio.get_running_loop()
-        loop.call_soon(self._on_startup, executor, loop)
-
     def run(self, log_config: dict[str, object]) -> None:
+        started = False
         static_files = fastapi.staticfiles.StaticFiles(
             packages=[("mahoraga", "_static")],
         )
         if self.server.is_uvicorn():
+            class UvicornServer(uvicorn.Server):
+                @override
+                async def main_loop(self) -> None:
+                    nonlocal started
+                    started = True
+                    _split_repo(self.lifespan)
+                    await super().main_loop()
+
             cfg = uvicorn.Config(
                 app=functools.partial(_app.make_app, self, static_files),
                 host=str(self.server.host),
@@ -166,7 +172,7 @@ class Config(_core.Config, toml_file="mahoraga.toml"):
                 timeout_graceful_shutdown=self.server.workers_kill_timeout(),
                 factory=True,
             )
-            server = uvicorn.Server(cfg)
+            server = UvicornServer(cfg)
         elif not granian:
             message = (
                 "server.implementation == 'granian' in mahoraga.toml, "
@@ -174,6 +180,16 @@ class Config(_core.Config, toml_file="mahoraga.toml"):
             )
             raise ValueError(message)
         else:
+            class Filter(logging.Filter):
+                @override
+                def filter(self, record: logging.LogRecord) -> bool:
+                    if record.msg == "Started worker-1":
+                        nonlocal started
+                        started = True
+                        logging.getLogger("_granian.workers").removeFilter(self)
+                        _granian_lifespan()
+                    return True
+
             middleware = cast(
                 "Callable[[ASGIApp], ASGIApp]",
                 granian.utils.proxies.wrap_asgi_with_proxy_headers,
@@ -183,7 +199,7 @@ class Config(_core.Config, toml_file="mahoraga.toml"):
                 address=str(self.server.host),
                 port=self.server.port,
                 interface=granian.constants.Interfaces.ASGI,
-                runtime_threads=os.process_cpu_count() or 1,
+                runtime_threads=dask.system.CPU_COUNT or 1,
                 http=granian.constants.HTTPModes.http1,
                 backlog=self.server.backlog,
                 backpressure=self.server.limit_concurrency,
@@ -200,6 +216,7 @@ class Config(_core.Config, toml_file="mahoraga.toml"):
                 static_path_mount=pathlib.Path(static_files.all_directories[0]),
             )
             server.workers_kill_timeout = self.server.workers_kill_timeout()
+            logging.getLogger("_granian.workers").addFilter(Filter())
         _preload.configure_logging_extra(self.log.levelno())
         try:
             asyncio.run(
@@ -210,22 +227,24 @@ class Config(_core.Config, toml_file="mahoraga.toml"):
         except KeyboardInterrupt:
             pass
         except SystemExit:
-            if getattr(server, "started", self._started):
+            if started:
                 raise
             sys.exit(3)
         except BaseException as e:
             logging.getLogger("mahoraga").critical("ERROR", exc_info=e)
-            started = getattr(server, "started", self._started)
             raise SystemExit(started) from e
 
-    def _on_startup(
-        self,
-        executor: ProcessPoolExecutor,
-        loop: asyncio.AbstractEventLoop,
-    ) -> None:
-        self._started = True
-        if any(self.shard.values()):
-            _conda.split_repo(loop, self, executor)
+
+class _Lifespan(Protocol):
+    state: _core.Context
+
+
+def _granian_lifespan() -> None:
+    for info in inspect.stack(0):
+        if lifespan := info.frame.f_locals.get("lifespan_handler"):
+            _split_repo(lifespan)
+            return
+    _core.unreachable()
 
 
 def _root_handlers() -> list[str]:
@@ -236,6 +255,20 @@ def _root_handlers() -> list[str]:
         else:
             handlers.append("console_rich")
     return handlers
+
+
+def _split_repo(lifespan: _Lifespan) -> None:
+    state = lifespan.state
+    cfg = state["config"]
+    if any(cfg.shard.values()):
+        loop = asyncio.get_running_loop()
+        loop.call_soon(
+            _conda.split_repo,
+            loop,
+            cfg,
+            state["dask_client"],
+            state["futures"],
+        )
 
 
 hishel._core._spec.get_heuristic_freshness = lambda response: 600  # noqa: ARG005, SLF001  # ty: ignore[invalid-assignment]

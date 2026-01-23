@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ["HTTPHandler", "configure_logging_extra"]
+__all__ = ["configure_logging_extra"]
 
 import copy
 import dataclasses
@@ -23,21 +23,45 @@ import types
 import warnings
 from typing import TYPE_CHECKING, Any, cast, override
 
+import click
 import hishel
 import pooch.utils  # pyright: ignore[reportMissingTypeStubs]
+import pydantic
+import tornado.web
+import uvicorn.config
 
 from . import _core
 
 if TYPE_CHECKING:
     from io import TextIOWrapper
 
+    from distributed import Worker
+    from tornado.routing import (
+        _RuleList,  # pyright: ignore[reportPrivateUsage]
+    )
+
+
+# https://github.com/dask/distributed/issues/8136
+class DistributedScheduler:
+    def filter(self, record: logging.LogRecord) -> bool:
+        if record.args != ("dashboard", "http://127.0.0.1:8787/status"):
+            return True
+        logging.getLogger("distributed.scheduler").removeFilter(self)
+        return False
+
+
+class DistributedWorker:
+    def filter(self, rec: logging.LogRecord) -> bool:
+        if rec.msg.startswith("         dashboard at:            127.0.0.1:"):
+            logging.getLogger("distributed.worker").removeFilter(self)
+            return False
+        return True
+
 
 class GranianAccess:
     @staticmethod
     def filter(record: logging.LogRecord) -> bool | logging.LogRecord:
         match record.args:
-            case {"path": "/log", "status": 200}:
-                return False
             case {
                 "path": path,
                 "query_string": bytes() as query_string,
@@ -116,22 +140,6 @@ class RotatingFileHandler(logging.handlers.RotatingFileHandler):
         )
 
 
-class UvicornAccess:
-    @staticmethod
-    def filter(record: logging.LogRecord) -> bool:
-        match record.args:
-            case [
-                _,
-                _,
-                str() as path_with_query_string,
-                _,
-                200,
-            ] if path_with_query_string.startswith("/log?"):
-                return False
-            case _:
-                return True
-
-
 @dataclasses.dataclass
 class UvicornError:
     level: int
@@ -148,3 +156,67 @@ def configure_logging_extra(log_level: int) -> None:
     pooch.utils.LOGGER = logging.getLogger("pooch")
     if log_level <= logging.DEBUG:
         warnings.simplefilter("always", ResourceWarning)
+
+
+@click.command(
+    params=[p for p in uvicorn.main.params if p.name == "log_level"],
+)
+def dask_setup(_: Worker, log_level: str) -> None:
+    configure_logging_extra(uvicorn.config.LOG_LEVELS[log_level])
+
+
+class _LogRecord(pydantic.BaseModel, logging.LogRecord):
+    args: Any
+    asctime: str = ""
+    created: float
+    exc_info: Any
+    exc_text: str | None
+    filename: str
+    funcName: str  # noqa: N815
+    levelname: str
+    levelno: int
+    lineno: int
+    module: str
+    msecs: float
+    message: str
+    msg: str
+    name: str
+    pathname: str
+    process: int | None
+    processName: str | None  # noqa: N815
+    relativeCreated: float  # noqa: N815
+    stack_info: str | None
+    thread: int | None
+    threadName: str | None  # noqa: N815
+    taskName: str | None  # noqa: N815
+
+    @pydantic.field_validator(
+        "args",
+        "exc_info",
+        "exc_text",
+        "process",
+        "processName",
+        "stack_info",
+        "thread",
+        "threadName",
+        "taskName",
+        mode="before",
+    )
+    @classmethod
+    def parse_none_str(cls, value: str) -> str | None:
+        return None if value == "None" else value
+
+
+class _WorkerLogHandler(tornado.web.RequestHandler):
+    def get(self) -> None:
+        record = _LogRecord.model_validate({
+            name: self.get_query_argument(name)
+            for name in _LogRecord.__pydantic_fields__
+            if name != "asctime"
+        })
+        for handler in _root.handlers:
+            handler.handle(record)
+
+
+routes: _RuleList = [("/log", _WorkerLogHandler, {})]
+_root = logging.getLogger()
