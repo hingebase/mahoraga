@@ -64,6 +64,9 @@ def run() -> None:
             },
         },
         "filters": {
+            "distributed_scheduler": {
+                "()": "mahoraga._preload.DistributedScheduler",
+            },
             "granian_access": {
                 "()": "mahoraga._preload.GranianAccess",
             },
@@ -98,6 +101,9 @@ def run() -> None:
             },
         },
         "loggers": {
+            "distributed.scheduler": {
+                "filters": ["distributed_scheduler"],
+            },
             "granian.access": {
                 "filters": ["granian_access"],
             },

@@ -344,12 +344,22 @@ class Config(pydantic_settings.BaseSettings, **_model_config):
                     "format": "%(message)s",
                 },
             },
+            "filters": {
+                "distributed_worker": {
+                    "()": "mahoraga._preload.DistributedWorker",
+                },
+            },
             "handlers": {
                 "default": {
                     "class": "mahoraga._preload.HTTPHandler",
                     "formatter": "plain",
                     "host": "127.0.0.1:8787",
                     "url": "/log",
+                },
+            },
+            "loggers": {
+                "distributed.worker": {
+                    "filters": ["distributed_worker"],
                 },
             },
             "root": {

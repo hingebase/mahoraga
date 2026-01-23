@@ -41,6 +41,23 @@ if TYPE_CHECKING:
     )
 
 
+# https://github.com/dask/distributed/issues/8136
+class DistributedScheduler:
+    def filter(self, record: logging.LogRecord) -> bool:
+        if record.args != ("dashboard", "http://127.0.0.1:8787/status"):
+            return True
+        logging.getLogger("distributed.scheduler").removeFilter(self)
+        return False
+
+
+class DistributedWorker:
+    def filter(self, rec: logging.LogRecord) -> bool:
+        if rec.msg.startswith("         dashboard at:            127.0.0.1:"):
+            logging.getLogger("distributed.worker").removeFilter(self)
+            return False
+        return True
+
+
 class GranianAccess:
     @staticmethod
     def filter(record: logging.LogRecord) -> bool | logging.LogRecord:
