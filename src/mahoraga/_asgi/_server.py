@@ -16,11 +16,12 @@ __all__ = ["Config", "run"]
 
 import asyncio
 import functools
+import inspect
 import io
 import logging
 import pathlib
 import sys
-from typing import TYPE_CHECKING, cast, override
+from typing import TYPE_CHECKING, Protocol, cast, override
 
 import dask.system
 import fastapi.staticfiles
@@ -37,7 +38,6 @@ if TYPE_CHECKING:
     from logging.config import (
         _DictConfigArgs,  # pyright: ignore[reportPrivateUsage]
     )
-    from socket import socket
 
     from starlette.types import ASGIApp
 
@@ -146,13 +146,11 @@ class Config(_core.Config, toml_file="mahoraga.toml"):
         if self.server.is_uvicorn():
             class UvicornServer(uvicorn.Server):
                 @override
-                async def startup(
-                    self,
-                    sockets: list[socket] | None = None,
-                ) -> None:
-                    await super().startup(sockets)
+                async def main_loop(self) -> None:
                     nonlocal started
-                    started = self.started
+                    started = True
+                    _split_repo(self.lifespan)
+                    await super().main_loop()
 
             cfg = uvicorn.Config(
                 app=functools.partial(_app.make_app, self, static_files),
@@ -183,6 +181,7 @@ class Config(_core.Config, toml_file="mahoraga.toml"):
                         nonlocal started
                         started = True
                         logging.getLogger("_granian.workers").removeFilter(self)
+                        _granian_lifespan()
                     return True
 
             middleware = cast(
@@ -230,6 +229,18 @@ class Config(_core.Config, toml_file="mahoraga.toml"):
             raise SystemExit(started) from e
 
 
+class _Lifespan(Protocol):
+    state: _core.Context
+
+
+def _granian_lifespan() -> None:
+    for info in inspect.stack(0):
+        if lifespan := info.frame.f_locals.get("lifespan_handler"):
+            _split_repo(lifespan)
+            return
+    _core.unreachable()
+
+
 def _root_handlers() -> list[str]:
     handlers = ["filesystem"]
     if isinstance(sys.stdout, io.TextIOBase) and sys.stdout.isatty():
@@ -238,6 +249,20 @@ def _root_handlers() -> list[str]:
         else:
             handlers.append("console_rich")
     return handlers
+
+
+def _split_repo(lifespan: _Lifespan) -> None:
+    state = lifespan.state
+    cfg = state["config"]
+    if any(cfg.shard.values()):
+        loop = asyncio.get_running_loop()
+        loop.call_soon(
+            _conda.split_repo,
+            loop,
+            cfg,
+            state["dask_client"],
+            state["futures"],
+        )
 
 
 hishel._core._spec.get_heuristic_freshness = lambda response: 600  # noqa: ARG005, SLF001  # ty: ignore[invalid-assignment]
