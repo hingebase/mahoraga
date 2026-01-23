@@ -193,7 +193,7 @@ async def _get_standalone_python_sha256_and_size(
         None,
         _parse_standalone_python_sha256,
         cache_location,
-        f"  {name}\n".encode("ascii"),
+        f"  {name}\n".encode("ascii", "replace"),
     )
 
 

@@ -66,7 +66,7 @@ class GranianAccess:
                 "path": path,
                 "query_string": bytes() as query_string,
             } as args if query_string:
-                path = f"{path}?{query_string.decode('ascii')}"
+                path = f"{path}?{query_string.decode('ascii', 'replace')}"
                 record = copy.copy(record)
                 record.args = dict(args, path=path)
                 return record
