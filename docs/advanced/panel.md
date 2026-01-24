@@ -93,7 +93,7 @@ URLs in Panel with a runtime configurable prefix, i.e. the Mahoraga URL.
         <div id="simple_app"></div>
         <script type="py" config='{
           "interpreter": "{{ mahoraga_base_url }}/pyodide/v{{ pyodide_py_version }}/full/pyodide.mjs",
-          "packages": ["bokeh"]
+          "packages": ["bokeh", "micropip"]
         }'>
             import micropip
             class _Transaction(micropip.transaction.Transaction):

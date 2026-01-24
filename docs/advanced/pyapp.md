@@ -27,6 +27,7 @@ Make an empty directory, `cd` to it, and then build the online version of PyApp:
     ``` sh
     export PYAPP_PROJECT_NAME=mahoraga
     export PYAPP_PROJECT_VERSION={{ mahoraga_version }}
+    export PYAPP_PROJECT_FEATURES=granian
     export PYAPP_DISTRIBUTION_SOURCE={{ mahoraga_base_url }}/python-build-standalone/{{ python_build_standalone_tag }}/cpython-{{ python_version }}+{{ python_build_standalone_tag }}-x86_64_v3-unknown-linux-gnu-install_only_stripped.tar.gz
     export PYAPP_FULL_ISOLATION=1
     export PYAPP_UV_ENABLED=1
@@ -48,6 +49,7 @@ Make an empty directory, `cd` to it, and then build the online version of PyApp:
     ``` sh
     export PYAPP_PROJECT_NAME=mahoraga
     export PYAPP_PROJECT_VERSION={{ mahoraga_version }}
+    export PYAPP_PROJECT_FEATURES=granian
     export PYAPP_DISTRIBUTION_SOURCE={{ mahoraga_base_url }}/python-build-standalone/{{ python_build_standalone_tag }}/cpython-{{ python_version }}+{{ python_build_standalone_tag }}-aarch64-apple-darwin-install_only_stripped.tar.gz
     export PYAPP_FULL_ISOLATION=1
     export PYAPP_UV_ENABLED=1
@@ -64,6 +66,7 @@ Make an empty directory, `cd` to it, and then build the online version of PyApp:
     ``` sh
     export PYAPP_PROJECT_NAME=mahoraga
     export PYAPP_PROJECT_VERSION={{ mahoraga_version }}
+    export PYAPP_PROJECT_FEATURES=granian
     export PYAPP_DISTRIBUTION_SOURCE={{ mahoraga_base_url }}/python-build-standalone/{{ python_build_standalone_tag }}/cpython-{{ python_version }}+{{ python_build_standalone_tag }}-x86_64-apple-darwin-install_only_stripped.tar.gz
     export PYAPP_FULL_ISOLATION=1
     export PYAPP_UV_ENABLED=1
@@ -80,6 +83,7 @@ Make an empty directory, `cd` to it, and then build the online version of PyApp:
     ``` powershell title="PowerShell"
     $Env:PYAPP_PROJECT_NAME = "mahoraga"
     $Env:PYAPP_PROJECT_VERSION = "{{ mahoraga_version }}"
+    $Env:PYAPP_PROJECT_FEATURES = "granian"
     $Env:PYAPP_DISTRIBUTION_SOURCE = "{{ mahoraga_base_url }}/python/{{ python_version }}/python-{{ python_version }}-embed-amd64.zip"
     $Env:PYAPP_FULL_ISOLATION = "1"
     $Env:PYAPP_UV_ENABLED = "1"

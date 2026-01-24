@@ -83,4 +83,4 @@
 [8]: https://docs.conda.io/projects/conda/en/stable/
 [9]: https://mamba.readthedocs.io/en/latest/
 [10]: https://conda.org/learn/ceps/cep-0016/
-[11]: https://github.com/hingebase/mahoraga/blob/v{{ mahoraga_version }}/src/mahoraga/_cli/mahoraga.toml.jinja#L48-L58
+[11]: https://github.com/hingebase/mahoraga/blob/v{{ mahoraga_version }}/src/mahoraga/_cli/mahoraga.toml.jinja#L51-L74
