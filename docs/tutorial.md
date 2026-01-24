@@ -4,6 +4,9 @@ It's recommended to install Mahoraga with [uv][1]:
 ``` sh
 uv tool install -U mahoraga
 ```
+!!! note
+
+    Installing Mahoraga requires uv version 0.9.0 or later.
 ## Server Configuration
 Before starting Mahoraga, you need to initialize a directory (for example
 `~/.mahoraga`) to hold its configuration and data:
@@ -41,9 +44,6 @@ fetching some packages from Mahoraga. Then if everything goes well, press
     ```
     uvw tool run mahoraga run
     ```
-    !!! note
-
-        Command `uvw` requires uv version 0.7.9 or later.
 
 For better performance, you can set up another server (for example [Nginx][11])
 in front of Mahoraga. Packages cached on disk can be served within that server,
@@ -56,28 +56,51 @@ following Nginx configuration files in `~/.mahoraga/nginx`:
 
 !!! note
 
-    The `nginx` package from Anaconda is outdated and unmaintained.
-    Please install nginx with the system-level package manager for your
-    operating system, or compile it from source.
+    For Linux and macOS, Nginx is available in conda-forge and can be installed
+    by [Pixi][5]:
+    ``` sh
+    pixi global install nginx
+    ```
 To start the Nginx server, simply run `nginx -c ~/.mahoraga/nginx/nginx.conf`.
 When configuring the clients, make sure they don't communicate with Mahoraga
 directly, but through Nginx.
 ## Client Configuration
 !!! note
 
-    Mahoraga serves on `http://127.0.0.1:3450` by default. Replace it with the
+    Mahoraga serves on `{{ mahoraga_base_url }}` by default. Replace it with the
     actual URL exposed to your clients.
 ### uv
 !!! note
 
-    Mirror configuration requires uv version 0.8.5 or later.
-[uv][1] can be configured to grab PyPI packages and Python itself from Mahoraga,
-via either environment variables or a config file:
+    Mirror configuration requires uv version 0.9.10 or later.
+To install or update [uv][1] on a client machine, download and run the
+standalone installer:
+=== "Linux/macOS"
+
+    ``` sh
+    curl -LsSf {{ mahoraga_base_url }}/uv/uv-installer.sh |
+        env UV_DOWNLOAD_URL="{{ mahoraga_base_url }}/uv" sh
+    ```
+
+=== "Windows"
+
+    ``` powershell title="PowerShell"
+    $Env:UV_DOWNLOAD_URL = "{{ mahoraga_base_url }}/uv"
+    irm {{ mahoraga_base_url }}/uv/uv-installer.ps1 | iex
+    ```
+
+!!! note
+
+    `uv self update` is unsupported due to
+    [this issue^:octicons-link-external-16:^][13].
+uv can be configured to grab PyPI packages and Python itself from Mahoraga,
+via either environment variables or a [config file][15]:
 === ".profile"
 
     ``` sh
-    export UV_PYTHON_INSTALL_MIRROR=http://127.0.0.1:3450/python-build-standalone
-    export UV_DEFAULT_INDEX=http://127.0.0.1:3450/pypi/simple
+    export UV_PYTHON_DOWNLOADS_JSON_URL={{ mahoraga_base_url }}/uv/python-downloads.json
+    export UV_PYTHON_INSTALL_MIRROR={{ mahoraga_base_url }}/python-build-standalone
+    export UV_DEFAULT_INDEX={{ mahoraga_base_url }}/pypi/simple
     export UV_HTTP_TIMEOUT=60
     ```
     !!! note
@@ -87,8 +110,9 @@ via either environment variables or a config file:
 === "profile.ps1"
 
     ``` powershell
-    $Env:UV_PYTHON_INSTALL_MIRROR = "http://127.0.0.1:3450/python-build-standalone"
-    $Env:UV_DEFAULT_INDEX = "http://127.0.0.1:3450/pypi/simple"
+    $Env:UV_PYTHON_DOWNLOADS_JSON_URL = "{{ mahoraga_base_url }}/uv/python-downloads.json"
+    $Env:UV_PYTHON_INSTALL_MIRROR = "{{ mahoraga_base_url }}/python-build-standalone"
+    $Env:UV_DEFAULT_INDEX = "{{ mahoraga_base_url }}/pypi/simple"
     $Env:UV_HTTP_TIMEOUT = "60"
     ```
     !!! note
@@ -98,10 +122,11 @@ via either environment variables or a config file:
 === "uv.toml"
 
     ``` toml
-    python-install-mirror = "http://127.0.0.1:3450/python-build-standalone"
+    python-downloads-json-url = "{{ mahoraga_base_url }}/uv/python-downloads.json"
+    python-install-mirror = "{{ mahoraga_base_url }}/python-build-standalone"
 
     [[index]]
-    url = "http://127.0.0.1:3450/pypi/simple"
+    url = "{{ mahoraga_base_url }}/pypi/simple"
     default = true
 
     # Mahoraga inherits upstream response headers.
@@ -116,10 +141,11 @@ via either environment variables or a config file:
 
     ``` toml
     [tool.uv]
-    python-install-mirror = "http://127.0.0.1:3450/python-build-standalone"
+    python-downloads-json-url = "{{ mahoraga_base_url }}/uv/python-downloads.json"
+    python-install-mirror = "{{ mahoraga_base_url }}/python-build-standalone"
 
     [[tool.uv.index]]
-    url = "http://127.0.0.1:3450/pypi/simple"
+    url = "{{ mahoraga_base_url }}/pypi/simple"
     default = true
 
     # Mahoraga inherits upstream response headers.
@@ -130,40 +156,66 @@ via either environment variables or a config file:
 
         Timeout can only be set via environment variable.
 
-To receive latest Python updates, you should always update uv to latest version.
-However, `uv self update` cannot make use of Mahoraga. You can update uv by
-either `uv tool install -U uv` or [Pixi][5].
+Upgrading or downgrading uv to a specific version is not directly supported,
+however a small shell trick can work:
+=== "Linux/macOS"
+
+    ``` sh
+    alias uv='uvx uv@0.9.10'
+    ```
+
+=== "Windows"
+
+    ``` powershell title="PowerShell"
+    function uv {
+        uvx 'uv@0.9.10' @args
+    }
+    ```
+
 ### Pixi
 !!! note
 
     Mirror configuration requires Pixi version 0.43.1 or later.
-Pixi mirror configuration can be done in a single command:
-=== "Packages only"
-
-    ``` sh
-    pixi config set -g mirrors '{
-        "https://conda.anaconda.org/": ["http://127.0.0.1:3450/conda/"],
-        "https://pypi.org/simple/": ["http://127.0.0.1:3450/pypi/simple/"]
-    }'
-    ```
-
-=== "Packages and PyPI mappings (Experimental)"
-
-    ``` sh
-    pixi config set -g mirrors '{
-        "https://conda.anaconda.org/": ["http://127.0.0.1:3450/conda/"],
-        "https://pypi.org/simple/": ["http://127.0.0.1:3450/pypi/simple/"],
-        "https://raw.githubusercontent.com/prefix-dev/parselmouth/main/files/": ["http://127.0.0.1:3450/parselmouth/"],
-        "https://conda-mapping.prefix.dev/": ["http://127.0.0.1:3450/parselmouth/"]
-    }'
-    ```
-
 It's recommended to enable [sharded repodata][6] in [Mahoraga configuration][7]
-if you use Pixi or [rattler-build][8].  
-Similar to uv, `pixi self-update` cannot utilize Mahoraga. Furthermore,
-`pixi global` prevents any tool to be exposed as `pixi`, so you'll need to give
-it an alias if you update Pixi in this way. Alternatively,
-`pixi exec --force-reinstall pixi` works as of now.
+if you use [Pixi][5] or any other tools for the Conda ecosystem.  
+There is no mirror for the standalone installer of Pixi as of now. Instead, we
+provide a Python script which can be executed by uv:
+``` sh
+uv run {{ mahoraga_base_url }}/static/get_pixi.py {{ mahoraga_base_url }}
+```
+By default, the script installs the latest version of Pixi to `PIXI_HOME`
+[^:octicons-link-external-16:^][14], replacing any existed version. To specify a
+version, pass it via CLI arguments:
+``` sh
+-v '0.43.1'  # Exact version
+-v '0.43.*'  # Latest revision of a specific minor version
+-v '>=0.43.1,<1'  # Version range
+```
+The script respects environment variables `PIXI_HOME` and `PIXI_CACHE_DIR`
+[^:octicons-link-external-16:^][14] if present.
+
+Once Pixi is installed, run the following command to configure it:
+=== "Stable"
+
+    ``` sh
+    pixi config set -g mirrors '{
+        "https://conda.anaconda.org/": ["{{ mahoraga_base_url }}/conda/"],
+        "https://pypi.org/simple/": ["{{ mahoraga_base_url }}/pypi/simple/"]
+    }'
+    ```
+
+=== "Experimental PyPI mappings support"
+
+    ``` sh
+    pixi config set -g mirrors '{
+        "https://conda.anaconda.org/": ["{{ mahoraga_base_url }}/conda/"],
+        "https://pypi.org/simple/": ["{{ mahoraga_base_url }}/pypi/simple/"],
+        "https://raw.githubusercontent.com/prefix-dev/parselmouth/main/files/": ["{{ mahoraga_base_url }}/parselmouth/"],
+        "https://conda-mapping.prefix.dev/": ["{{ mahoraga_base_url }}/parselmouth/"]
+    }'
+    ```
+
+After that, you can install Conda packages like [rattler-build][8] with Pixi.
 ### rattler-build
 !!! note
 
@@ -216,7 +268,7 @@ The frontend configuration depends on the library you directly use:
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <script type="text/javascript" src="http://127.0.0.1:3450/pyodide/v{{ pyodide_py_version }}/full/pyodide.js"></script>
+        <script type="text/javascript" src="{{ mahoraga_base_url }}/pyodide/v{{ pyodide_py_version }}/full/pyodide.js"></script>
       </head>
       <body>
         <script type="text/javascript">
@@ -234,7 +286,7 @@ The frontend configuration depends on the library you directly use:
                 micropip.package_manager.Transaction = _Transaction
             `);
             const micropip = pyodide.pyimport("micropip");
-            micropip.set_index_urls("http://127.0.0.1:3450/pypi/simple/{package_name}/?micropip=1");
+            micropip.set_index_urls("{{ mahoraga_base_url }}/pypi/simple/{package_name}/?micropip=1");
             await micropip.install(["your_package"]);
             pyodide.runPython(`# Your Python code here`);
           }
@@ -252,13 +304,13 @@ The frontend configuration depends on the library you directly use:
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <script type="module" src="http://127.0.0.1:3450/npm/@pyscript/core@0/dist/core.js"></script>
-        <link rel="stylesheet" href="http://127.0.0.1:3450/npm/@pyscript/core@0/dist/core.css">
+        <script type="module" src="{{ mahoraga_base_url }}/npm/@pyscript/core@0/dist/core.js"></script>
+        <link rel="stylesheet" href="{{ mahoraga_base_url }}/npm/@pyscript/core@0/dist/core.css">
       </head>
       <body>
         <script type="py" config='{
-          "index_urls": ["http://127.0.0.1:3450/pypi/simple/{package_name}/?micropip=1"],
-          "interpreter": "http://127.0.0.1:3450/pyodide/v{{ pyodide_py_version }}/full/pyodide.mjs",
+          "index_urls": ["{{ mahoraga_base_url }}/pypi/simple/{package_name}/?micropip=1"],
+          "interpreter": "{{ mahoraga_base_url }}/pyodide/v{{ pyodide_py_version }}/full/pyodide.mjs",
           "packages": ["your_package"]
         }'># Your Python code here</script>
       </body>
@@ -273,18 +325,18 @@ The frontend configuration depends on the library you directly use:
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
-        <link rel="stylesheet" href="http://127.0.0.1:3450/npm/@stlite/browser@0/build/stlite.css">
+        <link rel="stylesheet" href="{{ mahoraga_base_url }}/npm/@stlite/browser@1/build/stlite.css">
       </head>
       <body>
         <div id="root"></div>
         <script type="module">
-          import { mount } from "http://127.0.0.1:3450/npm/@stlite/browser@0/build/stlite.js";
+          import { mount } from "{{ mahoraga_base_url }}/npm/@stlite/browser@1/build/stlite.js";
           mount(
             {
-              pyodideUrl: "http://127.0.0.1:3450/pyodide/v{{ pyodide_py_version }}/full/pyodide.js",
+              pyodideUrl: "{{ mahoraga_base_url }}/pyodide/v{{ pyodide_py_version }}/full/pyodide.js",
               requirements: [
-                "http://127.0.0.1:3450/pypi/packages/py3/b/blinker/blinker-{{ blinker_version }}-py3-none-any.whl",
-                "http://127.0.0.1:3450/pypi/packages/py3/t/tenacity/tenacity-{{ tenacity_version }}-py3-none-any.whl",
+                "{{ mahoraga_base_url }}/pypi/packages/py3/b/blinker/blinker-{{ blinker_version }}-py3-none-any.whl",
+                "{{ mahoraga_base_url }}/pypi/packages/py3/t/tenacity/tenacity-{{ tenacity_version }}-py3-none-any.whl",
               ],
               entrypoint: "your_app.py",
               files: {
@@ -304,13 +356,13 @@ The next generation of the official Python installer for Windows,
 === "Windows 10 21H2 (Windows Server 2022) or later"
 
     ``` powershell
-    curl -O http://127.0.0.1:3450/python/pymanager/python-manager-{{ pymanager_version }}.msix
+    curl -O {{ mahoraga_base_url }}/python/pymanager/python-manager-{{ pymanager_version }}.msix
     ```
 
 === "Legacy versions"
 
     ``` powershell
-    curl -O http://127.0.0.1:3450/python/pymanager/python-manager-{{ pymanager_version }}.msi
+    curl -O {{ mahoraga_base_url }}/python/pymanager/python-manager-{{ pymanager_version }}.msi
     ```
 
 !!! note
@@ -324,9 +376,12 @@ The next generation of the official Python installer for Windows,
 [4]: https://docs.python.org/dev/using/windows.html#python-install-manager
 [5]: https://pixi.sh/latest/
 [6]: https://conda.org/learn/ceps/cep-0016/
-[7]: #server-configuration
+[7]: https://github.com/hingebase/mahoraga/blob/v{{ mahoraga_version }}/src/mahoraga/_cli/mahoraga.toml.jinja#L51-L74
 [8]: https://rattler.build/latest/
 [9]: #pixi
 [10]: https://pyodide.org/en/stable/
 [11]: https://nginx.org/
 [12]: https://nginx.org/en/docs/http/ngx_http_core_module.html#http
+[13]: https://github.com/astral-sh/uv/issues/16519
+[14]: https://pixi.sh/latest/reference/environment_variables/#configurable-environment-variables
+[15]: https://docs.astral.sh/uv/reference/storage/#configuration-directories

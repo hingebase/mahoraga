@@ -1,4 +1,4 @@
-# Copyright 2025 hingebase
+# Copyright 2025-2026 hingebase
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ __all__ = [
     "urls",
 ]
 
+import asyncio
 import itertools
 import posixpath
 from typing import TYPE_CHECKING
@@ -39,16 +40,14 @@ if TYPE_CHECKING:
 async def fetch_repo_data(
     channel: str,
     platform: rattler.platform.PlatformLiteral,
+    cfg: _core.Config | None = None,
     *,
-    client: rattler.Client | None = None,
     label: str | None = None,
 ) -> rattler.SparseRepoData:
-    if not client:
+    if not cfg:
         ctx = _core.context.get()
-        client = ctx["config"].server.rattler_client()
-    if label:
-        channel = f"{channel}/label/{label}"
-    channels = [rattler.Channel(channel)]
+        cfg = ctx["config"]
+    channels = _channels(channel, label, cfg)
     platforms = [rattler.Platform(platform)]
     try:
         [repodata] = await _fetch_repo_data(
@@ -56,7 +55,7 @@ async def fetch_repo_data(
             platforms=platforms,
             cache_path="repodata-cache",
             callback=None,
-            client=client,
+            client=cfg.server.rattler_client(),
         )
     except rattler.exceptions.FetchRepoDataError:
         [repodata] = await rattler.fetch_repo_data(
@@ -77,9 +76,8 @@ async def fetch_repo_data_and_load_matching_records(
     *,
     label: str | None = None,
 ) -> list[rattler.RepoDataRecord]:
-    if label:
-        channel = f"{channel}/label/{label}"
-    channels = [rattler.Channel(channel)]
+    loop = asyncio.get_running_loop()
+    channels = _channels(channel, label)
     platforms = [rattler.Platform(platform)]
     specs = [rattler.MatchSpec(spec, strict=True)]
     try:
@@ -93,12 +91,14 @@ async def fetch_repo_data_and_load_matching_records(
     except rattler.exceptions.FetchRepoDataError:
         pass
     else:
-        with repodata:
-            if records := repodata.load_matching_records(
-                specs,
-                package_format_selection,
-            ):
-                return records
+        if records := await loop.run_in_executor(
+            None,
+            _load_matching_records_and_close,
+            repodata,
+            specs,
+            package_format_selection,
+        ):
+            return records
     ctx = _core.context.get()
     [repodata] = await _fetch_repo_data(
         channels=channels,
@@ -107,14 +107,25 @@ async def fetch_repo_data_and_load_matching_records(
         callback=None,
         client=ctx["config"].server.rattler_client(),
     )
-    with repodata:
-        return repodata.load_matching_records(specs, package_format_selection)
+    return await loop.run_in_executor(
+        None,
+        _load_matching_records_and_close,
+        repodata,
+        specs,
+        package_format_selection,
+    )
 
 
-def prefix(channel: str) -> str:
-    if channel == "emscripten-forge-dev":
-        return "prefix.dev/emscripten-forge-dev"
-    return f"conda.anaconda.org/{channel}"
+def prefix(channel: str, cfg: _core.Config | None = None) -> str:
+    if not cfg:
+        ctx = _core.context.get()
+        cfg = ctx["config"]
+    key = channel.split("/label/", maxsplit=1)[0]
+    try:
+        url = cfg.upstream.conda.channel_alias[key]
+    except KeyError:
+        return f"https://conda.anaconda.org/{channel}"
+    return posixpath.join(str(url), channel)
 
 
 def urls(
@@ -125,21 +136,58 @@ def urls(
 ) -> list[str]:
     ctx = _core.context.get()
     cfg = ctx["config"].upstream.conda
-    if label:
+    try:
+        url = cfg.channel_alias[channel]
+    except KeyError:
+        if label:
+            return [
+                posixpath.join(
+                    str(url),
+                    channel, "label", label,
+                    platform,
+                    name,
+                )
+                for url in itertools.chain(
+                    cfg.default,
+                    _getitem(cfg.with_label, channel),
+                )
+            ]
         return [
-            posixpath.join(str(url), channel, "label", label, platform, name)
+            posixpath.join(str(url), channel, platform, name)
             for url in itertools.chain(
                 cfg.default,
                 _getitem(cfg.with_label, channel),
+                _getitem(cfg.without_label, channel),
             )
         ]
+    if label:
+        return [
+            posixpath.join(str(url), channel, "label", label, platform, name),
+        ]
+    return [posixpath.join(str(url), channel, platform, name)]
+
+
+def _channels(
+    channel: str,
+    label: str | None,
+    cfg: _core.Config | None = None,
+) -> list[rattler.Channel]:
+    if not cfg:
+        ctx = _core.context.get()
+        cfg = ctx["config"]
+    try:
+        url = cfg.upstream.conda.channel_alias[channel]
+    except KeyError:
+        if label:
+            channel = f"{channel}/label/{label}"
+        return [rattler.Channel(channel)]
+    if label:
+        channel = f"{channel}/label/{label}"
     return [
-        posixpath.join(str(url), channel, platform, name)
-        for url in itertools.chain(
-            cfg.default,
-            _getitem(cfg.with_label, channel),
-            _getitem(cfg.without_label, channel),
-        )
+        rattler.Channel(
+            channel,
+            rattler.ChannelConfig(str(url)),  # Currently root_dir is unused
+        ),
     ]
 
 
@@ -153,17 +201,17 @@ async def _fetch_repo_data(  # noqa: PLR0913
     fetch_options: rattler.networking.FetchRepoDataOptions | None = None,
 ) -> list[rattler.SparseRepoData]:
     fetch_options = fetch_options or rattler.networking.FetchRepoDataOptions()
-    repo_data_list = await rattler.rattler.py_fetch_repo_data(  # pyright: ignore[]
-        [channel._channel for channel in channels],  # noqa: SLF001  # pyright: ignore[]
-        [platform._inner for platform in platforms],  # noqa: SLF001  # pyright: ignore[]
+    repo_data_list = await rattler.rattler.py_fetch_repo_data(  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
+        [channel._channel for channel in channels],  # noqa: SLF001  # pyright: ignore[reportPrivateUsage, reportUnknownMemberType]
+        [platform._inner for platform in platforms],  # noqa: SLF001  # pyright: ignore[reportPrivateUsage, reportUnknownMemberType]
         cache_path,
         callback,
-        client._client if client else None,  # noqa: SLF001  # pyright: ignore[]
-        fetch_options._into_py(),  # noqa: SLF001  # pyright: ignore[]
+        client and client._client,  # noqa: SLF001  # pyright: ignore[reportPrivateUsage, reportUnknownMemberType]
+        fetch_options._into_py(),  # noqa: SLF001  # pyright: ignore[reportPrivateUsage, reportUnknownMemberType]
     )
     return [
-        rattler.SparseRepoData._from_py_sparse_repo_data(repo_data)  # noqa: SLF001  # pyright: ignore[]
-        for repo_data in repo_data_list  # pyright: ignore[reportUnknownVariableType]
+        rattler.SparseRepoData._from_py_sparse_repo_data(  # noqa: SLF001  # pyright: ignore[reportPrivateUsage, reportUnknownMemberType]
+            repo_data) for repo_data in repo_data_list  # pyright: ignore[reportUnknownArgumentType, reportUnknownVariableType]
     ]
 
 
@@ -176,6 +224,15 @@ def _getitem[T](mapping: Mapping[str, str | list[T]], key: str) -> Sequence[T]:
         seen.add(value)
         value = mapping.get(value, ())
     return value
+
+
+def _load_matching_records_and_close(
+    repodata: rattler.SparseRepoData,
+    specs: list[rattler.MatchSpec],
+    package_format_selection: rattler.PackageFormatSelection,
+) -> list[rattler.RepoDataRecord]:
+    with repodata:
+        return repodata.load_matching_records(specs, package_format_selection)
 
 
 _fetch_options = rattler.networking.FetchRepoDataOptions(

@@ -1,4 +1,4 @@
-# Copyright 2025 hingebase
+# Copyright 2025-2026 hingebase
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,23 +15,26 @@
 __all__ = ["make_app"]
 
 import importlib.metadata
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
+import fastapi.middleware.cors
 import fastapi.openapi.docs
 import fastapi.responses
 import fastapi.templating
 import jinja2
-import starlette.middleware.cors
-import starlette.staticfiles
 
-from mahoraga import _conda, _core, _jsdelivr, _pypi, _python
+from mahoraga import _conda, _core, _jsdelivr, _pypi, _python, _uv
+
+if TYPE_CHECKING:
+    from fastapi.staticfiles import StaticFiles
 
 URL_FOR = "{{ url_for('get_npm_file', package='swagger-ui-dist@5', path=%r) }}"
 
 
-def make_app() -> fastapi.FastAPI:
-    ctx = _core.context.get()
-    cfg = ctx["config"]
+def make_app(
+    cfg: _core.Config,
+    static_files: StaticFiles | None = None,
+) -> fastapi.FastAPI:
     meta = importlib.metadata.metadata("mahoraga")
     contact = None
     if urls := meta.get_all("Project-URL"):
@@ -44,9 +47,11 @@ def make_app() -> fastapi.FastAPI:
         title="Mahoraga",
         summary=meta["Summary"],
         version=meta["Version"],
+        dependencies=[fastapi.Depends(_context)],
         default_response_class=_JSONResponse,
         docs_url=None,
         redoc_url=None,
+        lifespan=cfg.lifespan,
         contact=contact,
         license_info={
             "name": "License",
@@ -54,7 +59,7 @@ def make_app() -> fastapi.FastAPI:
         },
     )
     app.add_middleware(
-        starlette.middleware.cors.CORSMiddleware,
+        fastapi.middleware.cors.CORSMiddleware,
         allow_origins=cfg.cors.allow_origins,
         allow_methods=cfg.cors.allow_methods,
         allow_headers=cfg.cors.allow_headers,
@@ -73,19 +78,15 @@ def make_app() -> fastapi.FastAPI:
     app.include_router(_jsdelivr.pyodide, prefix="/pyodide", tags=["pyodide"])
     app.include_router(_pypi.router, prefix="/pypi", tags=["pypi"])
     app.include_router(_python.router, tags=["python"])
-    app.mount(
-        "/static",
-        starlette.staticfiles.StaticFiles(packages=[("mahoraga", "_static")]),
-        name="static",
+    app.include_router(
+        _uv.router,  # Must be included after python
+        prefix="/uv",
+        tags=["uv"],
     )
+    if static_files:
+        app.mount("/static", static_files, name="static")
 
     # Private, only for building docs
-    app.add_api_route(
-        "/favicon.ico",
-        _favicon,
-        include_in_schema=False,
-        response_class=fastapi.responses.RedirectResponse,
-    )
     app.include_router(_jsdelivr.gh, prefix="/gh", include_in_schema=False)
 
     res = fastapi.openapi.docs.get_swagger_ui_html(
@@ -93,7 +94,7 @@ def make_app() -> fastapi.FastAPI:
         title=app.title,
         swagger_js_url=URL_FOR % "swagger-ui-bundle.js",
         swagger_css_url=URL_FOR % "swagger-ui.css",
-        swagger_favicon_url="{{ url_for('_favicon') }}",
+        swagger_favicon_url="https://hingebase.github.io/mahoraga/favicon.svg",
         oauth2_redirect_url=URL_FOR % "oauth2-redirect.html",
         init_oauth=app.swagger_ui_init_oauth,
         swagger_ui_parameters=app.swagger_ui_parameters,
@@ -117,10 +118,5 @@ class _JSONResponse(fastapi.responses.JSONResponse):
     media_type = None
 
 
-async def _favicon(request: fastapi.Request) -> str:  # noqa: RUF029
-    url = request.url_for(
-        "get_scoped_npm_file",
-        package="svg@0",
-        path="filled/temple_buddhist.svg",
-    )
-    return str(url)
+async def _context(request: fastapi.Request) -> None:  # noqa: RUF029
+    _core.context.set(cast("_core.Context", request.scope["state"]))

@@ -1,4 +1,4 @@
-# Copyright 2025 hingebase
+# Copyright 2025-2026 hingebase
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,6 +26,9 @@ import asyncio
 import collections
 import contextlib
 import contextvars
+import dataclasses
+import inspect
+import logging
 import time
 import weakref
 from typing import TYPE_CHECKING, Any, TypedDict, overload, override
@@ -33,7 +36,7 @@ from typing import TYPE_CHECKING, Any, TypedDict, overload, override
 import aiohttp
 import anyio
 import cyares.aiohttp
-import hishel
+import hishel.httpx
 import httpx
 import httpx_aiohttp
 import pydantic_settings
@@ -44,14 +47,14 @@ from mahoraga import _core
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Awaitable
-    from concurrent.futures import ProcessPoolExecutor
     from ssl import SSLContext
 
-    from _typeshed import StrPath
+    from _typeshed import StrPath, Unused
+    from distributed import Client, Future
     from httpx._types import CertTypes
 
 
-class _HttpxAiohttpClient(httpx.AsyncClient):
+class AsyncClient(hishel.httpx.AsyncCacheClient):
     @override
     def _init_transport(
         self,
@@ -62,10 +65,9 @@ class _HttpxAiohttpClient(httpx.AsyncClient):
         http2: bool = False,
         limits: httpx.Limits = DEFAULT_LIMITS,
         transport: httpx.AsyncBaseTransport | None = None,
+        **kwargs: Unused,
     ) -> httpx.AsyncBaseTransport:
-        if transport is not None:
-            return transport
-        return _AiohttpTransport(
+        next_transport = transport or _AiohttpTransport(
             verify=verify,
             cert=cert,
             trust_env=trust_env,
@@ -73,19 +75,25 @@ class _HttpxAiohttpClient(httpx.AsyncClient):
             http2=http2,
             limits=limits,
         )
+        return _AsyncCacheTransport(
+            next_transport=next_transport,
+            storage=self.storage,
+            policy=self.policy,
+        )
 
-
-class AsyncClient(hishel.AsyncCacheClient, _HttpxAiohttpClient):
     @override
     def _transport_for_url(self, url: httpx.URL) -> httpx.AsyncBaseTransport:
         t = super()._transport_for_url(url)
-        if isinstance(t, hishel.AsyncCacheTransport):
+        if isinstance(t, hishel.httpx.AsyncCacheTransport):
             match cache_action.get():
                 case "no-cache":
-                    return t._transport  # noqa: SLF001  # pyright: ignore[reportPrivateUsage]
+                    return t.next_transport
                 case "force-cache-only" | "use-cache-only":
-                    return hishel.AsyncCacheTransport(
-                        _not_implemented, t._storage, t._controller)  # noqa: SLF001  # pyright: ignore[reportPrivateUsage]
+                    return hishel.httpx.AsyncCacheTransport(
+                        _not_implemented,
+                        t.storage,
+                        t._cache_proxy.policy,  # noqa: SLF001  # pyright: ignore[reportPrivateUsage]
+                    )
                 case "cache-or-fetch":
                     pass
         return t
@@ -109,7 +117,8 @@ class AsyncClient(hishel.AsyncCacheClient, _HttpxAiohttpClient):
             kwargs["follow_redirects"] = True
         cm = super().stream(method, url, **kwargs)
         ctx = _core.context.get()
-        concurrent_requests = ctx["statistics_concurrent_requests"]
+        s = ctx["statistics"]
+        concurrent_requests = s.concurrent_requests
         concurrent_requests[h] += 1
         async with contextlib.AsyncExitStack() as stack:
             tic = time.monotonic()
@@ -119,10 +128,9 @@ class AsyncClient(hishel.AsyncCacheClient, _HttpxAiohttpClient):
                 toc = time.monotonic()
                 concurrent_requests[h] -= 1
                 if seconds := round(toc - tic):
+                    s.total_seconds[h] += seconds
                     schedule_exit(stack)
                     async with ctx["locks"]["statistics.json"]:
-                        s = Statistics()
-                        s.total_seconds[h] += seconds
                         await _json.write_text(
                             s.model_dump_json(exclude=_exclude),
                             encoding="utf-8",
@@ -135,7 +143,7 @@ def schedule_exit(stack: contextlib.AsyncExitStack) -> None:
 
 
 class Statistics(pydantic_settings.BaseSettings, json_file_encoding="utf-8"):
-    backup_servers: set[str] = set()
+    backup_servers: set[str]
     concurrent_requests: collections.Counter[str] = collections.Counter()
     total_seconds: collections.Counter[str] = collections.Counter()
 
@@ -157,14 +165,9 @@ class Statistics(pydantic_settings.BaseSettings, json_file_encoding="utf-8"):
         dotenv_settings: pydantic_settings.PydanticBaseSettingsSource,
         file_secret_settings: pydantic_settings.PydanticBaseSettingsSource,
     ) -> tuple[pydantic_settings.PydanticBaseSettingsSource, ...]:
-        ctx = _core.context.get()
         json_settings = pydantic_settings.JsonConfigSettingsSource(
             settings_cls, "statistics.json")
-        json_settings.init_kwargs.update(  # pyright: ignore[reportUnknownMemberType]
-            backup_servers=ctx["config"].upstream.backup,
-            concurrent_requests=ctx["statistics_concurrent_requests"],
-        )
-        return (json_settings,)
+        return (init_settings, json_settings)
 
 
 class WeakValueDictionary(weakref.WeakValueDictionary[str, asyncio.Lock]):
@@ -227,22 +230,93 @@ class _AiohttpTransport(httpx_aiohttp.AiohttpTransport):
                 loop=asyncio.get_running_loop(),
             ),
         )
-        return aiohttp.ClientSession(connector=connector)
+        if _logger.isEnabledFor(logging.INFO):
+            trace_config = aiohttp.TraceConfig()
+            trace_config.on_connection_create_start.append(
+                lambda _session, _context, _params: _on_signal("Creating"),
+            )
+            trace_config.on_connection_reuseconn.append(
+                lambda _session, _context, _params: _on_signal("Reusing"),
+            )
+            trace_configs = [trace_config]
+        else:
+            trace_configs = None
+        return aiohttp.ClientSession(
+            connector=connector,
+            trace_configs=trace_configs,
+        )
 
 
-class _Context(TypedDict):
+async def _on_signal(verb: str) -> None:  # noqa: RUF029
+    for info in inspect.stack(0):
+        match info.frame.f_locals:
+            case {"req": aiohttp.ClientRequest(url=url)}:
+                _logger.info("%s TCP connection: %s", verb, url)
+                return
+            case _:
+                pass
+    _core.unreachable()
+
+
+class _AsyncCacheProxy(hishel.AsyncCacheProxy):
+    @override
+    async def _get_key_for_request(self, request: hishel.Request) -> str:
+        if headers := request.headers.get_list("accept"):
+            for header in headers:
+                if header.startswith("application/vnd.pypi.simple.v1+"):
+                    project = request.url.rsplit("/", 2)[1]
+                    return f"{project}|{header}"
+        return await super()._get_key_for_request(request)
+
+    @override
+    async def _handle_idle_state(
+        self,
+        state: hishel.IdleClient,
+        request: hishel.Request,
+    ) -> hishel.AnyState:
+        stored_entries = [
+            dataclasses.replace(
+                pair,
+                request=dataclasses.replace(pair.request, url=request.url),
+            )
+            for pair in await self.storage.get_entries(
+                await self._get_key_for_request(request),
+            )
+        ]
+        return state.next(request, stored_entries)
+
+
+class _AsyncCacheTransport(hishel.httpx.AsyncCacheTransport):
+    @override
+    def __init__(
+        self,
+        next_transport: httpx.AsyncBaseTransport,
+        storage: hishel.AsyncBaseStorage | None = None,
+        policy: hishel.CachePolicy | None = None,
+    ) -> None:
+        self.next_transport = next_transport
+        self._cache_proxy = _AsyncCacheProxy(
+            request_sender=self.request_sender,
+            storage=storage,
+            policy=policy,
+        )
+        self.storage = self._cache_proxy.storage
+
+
+class Context(TypedDict):
     config: _core.Config
+    dask_client: Client
+    futures: set[asyncio.Future[Any] | Future[Any]]
     httpx_client: AsyncClient
     locks: WeakValueDictionary
-    process_pool: ProcessPoolExecutor
-    statistics_concurrent_requests: collections.Counter[str]
+    statistics: Statistics
 
 
-Context = contextvars.ContextVar[_Context]
 cache_action = contextvars.ContextVar[CacheAction](
     "cache_action",
     default="no-cache",
 )
 _exclude = {"backup_servers", "concurrent_requests"}
 _json = anyio.Path("statistics.json")
+_logger = logging.getLogger("mahoraga")
 _not_implemented = httpx.AsyncBaseTransport()

@@ -4,14 +4,14 @@ build-backend = "uv_build"
 
 [project]
 name = "mahoraga"
-version = "0.3.0"
+version = "0.4.0"
 description = "Reverse proxy for Python mirrors"
 readme = "README.md"
 requires-python = ">=3.14"
 license = "Apache-2.0"
 keywords = ["conda", "pypi", "mirror"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Environment :: Console",
     "Framework :: FastAPI",
     "Framework :: Pydantic :: 2",
@@ -32,41 +32,46 @@ dependencies = [
     "aiohttp >=3.13.0",
     "anyio >=4.10.0",
     "cyares[aiohttp,idna] >=0.1.4",
-    "fastapi >=0.118.3",
+    "distributed >=2026.1.1",
     "filelock >=3.20.0",
-    "hishel >=0.1.4",
+    "hishel[fastapi,httpx,requests] >=1.1.5",
     "httptools >=0.7.1",
     "httpx-aiohttp >=0.1.9",
     "jinja2 >=3.1.5",
     "kiss-headers >=2.4.0",
-    "msgpack >=1.1.2",
-    "packaging >=20.9.0",
+    "packaging >=26.0.0",
     "pooch >=1.8.1",
     "pydantic >=2.12.1",
     "pydantic-extra-types[semver] >=2.10.2",
     "pydantic-settings >=2.7.0",
     "pyodide-lock >=0.1.0",
     "py-rattler >=0.16.0",
-    "requests >=2.32.5",
     "rich >=14.2.0",
     "uvicorn >=0.38.0",
     "uvloop >=0.22.1; sys_platform != 'win32' and sys_platform != 'cygwin' and platform_python_implementation != 'PyPy'",
-    "winloop >=0.2.0; sys_platform == 'win32' and platform_python_implementation != 'PyPy'",
+    "winloop >=0.3.1; sys_platform == 'win32' and platform_python_implementation != 'PyPy'",
 ]
 
 [project.optional-dependencies]
+granian = [
+    "granian >=2.6.0",
+]
 typing = [
+    "granian >=2.6.0",
     "msgpack-types ==0.3.0",
     "types-requests >=2.32.4",
 ]
 
 [dependency-groups]
 dev = [
+    "defusedxml >=0.7.1",
     "mkdocs-macros-plugin >=1.0.4",
-    "mkdocs-material >=9.6.20,!=9.6.21,!=9.6.22",  # https://github.com/squidfunk/mkdocs-material/issues/8478
+    "mkdocs-material ==9.6.20",  # https://github.com/squidfunk/mkdocs-material/issues/8478
+    "mkdocs-minify-html-plugin >=0.3.9",
     "mkdocs-minify-plugin >=0.7.0",
     "pooch >=1.8.0",
     "pydantic-settings >=2.3.0",
+    "pygit2 >=1.19.0",
     "pyodide-lock >=0.1.0",
 ]
 
@@ -77,6 +82,7 @@ email = "zcliu@pku.edu.cn"
 [project.urls]
 Homepage = "https://hingebase.github.io/mahoraga/"
 "Source Code" = "https://github.com/hingebase/mahoraga"
+"Release Notes" = "https://hingebase.github.io/mahoraga/changelog.html"
 Documentation = "https://hingebase.github.io/mahoraga/"
 "Issue Tracker" = "https://github.com/hingebase/mahoraga/issues"
 
@@ -92,7 +98,7 @@ line-length = 79
 preview = true
 
 [tool.ruff.lint]
-ignore = ["INP001"]
+ignore = ["INP001", "RUF067"]
 select = ["ALL"]
 
 [tool.ty.rules]

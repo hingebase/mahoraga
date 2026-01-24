@@ -10,16 +10,17 @@ permissions: read-all
 jobs:
   pypi:
     name: Publish to PyPI
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     environment:
       name: pypi
       url: https://pypi.org/project/mahoraga
     permissions:
       id-token: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: false
       - run: uv build
+      - uses: astral-sh/attest-action@v0.0.4
       - run: uv publish --trusted-publishing always

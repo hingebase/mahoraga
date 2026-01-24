@@ -1,4 +1,4 @@
-# Copyright 2025 hingebase
+# Copyright 2025-2026 hingebase
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,5 +17,25 @@
 __all__ = []
 
 import importlib.metadata
+import multiprocessing as mp
+from typing import TYPE_CHECKING, cast
+
+import dask.config
+
+if TYPE_CHECKING:
+    from pydantic import JsonValue
 
 __version__ = importlib.metadata.version("mahoraga")
+
+if mp.parent_process() is None:
+    def _disable_dask_distributed_logging_config() -> None:
+        match cfg := cast("dict[str, JsonValue]", dask.config.config):
+            case {
+                "distributed": {"logging-file-config": _, **ori} | {**ori},
+            }:
+                ori["logging"] = {"version": 1}
+                cfg["distributed"] = ori
+            case _:
+                cfg["distributed"] = {"logging": {"version": 1}}
+
+    _disable_dask_distributed_logging_config()

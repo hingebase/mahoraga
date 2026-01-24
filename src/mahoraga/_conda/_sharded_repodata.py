@@ -1,4 +1,4 @@
-# Copyright 2025 hingebase
+# Copyright 2025-2026 hingebase
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import json
 import logging
 import pathlib
 import shutil
-from typing import Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 import fastapi.responses
 import msgpack
@@ -32,21 +32,29 @@ from mahoraga import _core
 
 from . import _models, _utils
 
+if TYPE_CHECKING:
+    from distributed import Client, Future
+
 router = fastapi.APIRouter(route_class=_core.APIRoute)
 
 
-@router.get("/{channel}/{platform}/repodata_shards.msgpack.zst")
+@router.get(
+    "/{channel}/{platform}/repodata_shards.msgpack.zst",
+    dependencies=_core.hourly,
+)
 async def get_sharded_repodata_index(
     channel: str,
     platform: rattler.platform.PlatformLiteral,
 ) -> fastapi.Response:
     return fastapi.responses.FileResponse(
         f"channels/{channel}/{platform}/repodata_shards.msgpack.zst",
-        headers={"Cache-Control": "public, max-age=3600"},
     )
 
 
-@router.get("/{channel}/label/{label}/{platform}/repodata_shards.msgpack.zst")
+@router.get(
+    "/{channel}/label/{label}/{platform}/repodata_shards.msgpack.zst",
+    dependencies=_core.hourly,
+)
 async def get_sharded_repodata_index_with_label(
     channel: str,
     label: str,
@@ -54,11 +62,13 @@ async def get_sharded_repodata_index_with_label(
 ) -> fastapi.Response:
     return fastapi.responses.FileResponse(
         f"channels/{channel}/label/{label}/{platform}/repodata_shards.msgpack.zst",
-        headers={"Cache-Control": "public, max-age=3600"},
     )
 
 
-@router.get("/{channel}/{platform}/shards/{name}")
+@router.get(
+    "/{channel}/{platform}/shards/{name}",
+    dependencies=_core.immutable,
+)
 async def get_sharded_repodata(
     channel: str,
     platform: rattler.platform.PlatformLiteral,
@@ -66,11 +76,13 @@ async def get_sharded_repodata(
 ) -> fastapi.Response:
     return fastapi.responses.FileResponse(
         f"channels/{channel}/{platform}/shards/{name}",
-        headers={"Cache-Control": "public, max-age=31536000, immutable"},
     )
 
 
-@router.get("/{channel}/label/{label}/{platform}/shards/{name}")
+@router.get(
+    "/{channel}/label/{label}/{platform}/shards/{name}",
+    dependencies=_core.immutable,
+)
 async def get_sharded_repodata_with_label(
     channel: str,
     label: str,
@@ -79,18 +91,21 @@ async def get_sharded_repodata_with_label(
 ) -> fastapi.Response:
     return fastapi.responses.FileResponse(
         f"channels/{channel}/label/{label}/{platform}/shards/{name}",
-        headers={"Cache-Control": "public, max-age=31536000, immutable"},
     )
 
 
-async def split_repo() -> None:  # noqa: RUF029
-    ctx = _core.context.get()
-    cfg = ctx["config"]
-    if any(cfg.shard.values()):
-        executor = ctx["process_pool"]
-        for channel, platforms in cfg.shard.items():
-            for platform in platforms:
-                executor.submit(_worker, cfg, channel, platform)
+def split_repo(
+    loop: asyncio.AbstractEventLoop,
+    cfg: _core.Config,
+    client: Client,
+    futures: set[asyncio.Future[Any] | Future[Any]],
+) -> None:
+    loop.call_later(3600., split_repo, loop, cfg, client, futures)
+    for channel, platforms in cfg.shard.items():
+        for platform in platforms:
+            fut = client.submit(_worker, cfg, channel, platform)  # pyright: ignore[reportUnknownMemberType]
+            futures.add(fut)
+            fut.add_done_callback(futures.discard)  # pyright: ignore[reportUnknownMemberType]
 
 
 def _packages(
@@ -141,7 +156,8 @@ def _sha256(
     }
     with pooch.utils.temporary_file(root) as tmp:  # pyright: ignore[reportUnknownMemberType]
         with pathlib.Path(tmp).open("w+b") as f:
-            with compression.zstd.ZstdFile(f, "w", level=19) as g:
+            # https://github.com/conda/rattler/blob/py-rattler-v0.18.0/crates/rattler_index/src/lib.rs#L826
+            with compression.zstd.ZstdFile(f, "w") as g:
                 msgpack.dump(shard, g)
             f.seek(0)
             h = hashlib.file_digest(f, "sha256")
@@ -160,8 +176,8 @@ def _split_repo(
     root.mkdir(parents=True, exist_ok=True)
     json_file = root.with_name("run_exports.json.zst")
     try:
-        new = pooch.retrieve(  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
-            f"https://{_utils.prefix(channel)}/{platform}/run_exports.json.zst",
+        new = pooch.retrieve(  # pyright: ignore[reportUnknownMemberType]
+            f"{_utils.prefix(channel, cfg)}/{platform}/run_exports.json.zst",
             known_hash=None,
             path=root.parent,
         )
@@ -181,11 +197,7 @@ def _split_repo(
         with f:
             run_exports = json.load(f)
     with asyncio.run(
-        _utils.fetch_repo_data(
-            channel,
-            platform,
-            client=cfg.server.rattler_client(),
-        ),
+        _utils.fetch_repo_data(channel, platform, cfg),
         debug=cfg.log.level == "debug",
         loop_factory=cfg.loop_factory,
     ) as repodata:

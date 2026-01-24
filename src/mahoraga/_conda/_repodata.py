@@ -1,4 +1,4 @@
-# Copyright 2025 hingebase
+# Copyright 2025-2026 hingebase
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -87,10 +87,7 @@ async def get_differential_repodata(
     platform: rattler.platform.PlatformLiteral,
     headers: Annotated[_models.JLAPHeaders, fastapi.Header()],
 ) -> fastapi.Response:
-    return await _core.stream(
-        f"https://{_utils.prefix(channel)}/{platform}/repodata.jlap",
-        headers=_to_dict(headers),
-    )
+    return await _get_differential_repodata(channel, platform, headers)
 
 
 @router.get("/{channel}/label/{label}/{platform}/repodata.jlap")
@@ -100,10 +97,8 @@ async def get_differential_repodata_with_label(
     platform: rattler.platform.PlatformLiteral,
     headers: Annotated[_models.JLAPHeaders, fastapi.Header()],
 ) -> fastapi.Response:
-    return await _core.stream(
-        f"https://conda.anaconda.org/{channel}/label/{label}/{platform}/repodata.jlap",
-        headers=_to_dict(headers),
-    )
+    channel = f"{channel}/label/{label}"
+    return await _get_differential_repodata(channel, platform, headers)
 
 
 async def _check_repodata_availability(
@@ -116,7 +111,7 @@ async def _check_repodata_availability(
     name = posixpath.basename(request.url.path)
     try:
         response = await client.head(
-            f"https://{_utils.prefix(channel)}/{platform}/{name}",
+            f"{_utils.prefix(channel, ctx['config'])}/{platform}/{name}",
             follow_redirects=True,
         )
     except httpx.HTTPError:
@@ -125,6 +120,17 @@ async def _check_repodata_availability(
         response.content,
         response.status_code,
         response.headers,
+    )
+
+
+async def _get_differential_repodata(
+    channel: str,
+    platform: rattler.platform.PlatformLiteral,
+    headers: _models.JLAPHeaders,
+) -> fastapi.Response:
+    return await _core.stream(
+        f"{_utils.prefix(channel)}/{platform}/repodata.jlap",
+        headers=_to_dict(headers),
     )
 
 

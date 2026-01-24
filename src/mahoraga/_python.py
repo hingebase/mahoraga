@@ -1,4 +1,4 @@
-# Copyright 2025 hingebase
+# Copyright 2025-2026 hingebase
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ __all__ = ["router"]
 
 import asyncio
 import contextlib
+import contextvars
 import http
 import logging
 import mimetypes
@@ -84,7 +85,10 @@ async def get_embedded_python(
     return await _core.stream(urls, media_type=media_type)
 
 
-@router.get("/python-build-standalone/{tag}/{name}")
+@router.get(
+    "/python-build-standalone/{tag}/{name}",
+    dependencies=_core.immutable,
+)
 async def get_standalone_python(
     tag: Annotated[
         str,
@@ -98,9 +102,6 @@ async def get_standalone_python(
         if await _core.cached_or_locked(cache_location, stack):
             return fastapi.responses.FileResponse(
                 cache_location,
-                headers={
-                    "Cache-Control": "public, max-age=31536000, immutable",
-                },
                 media_type=media_type,
             )
         ctx = _core.context.get()
@@ -121,26 +122,24 @@ async def get_standalone_python(
     return _core.unreachable()
 
 
-async def _get_standalone_python_github_release(
-    tag: str,
-    name: str,
-) -> tuple[bytes, int | None]:
-    release = await _core.GitHubRelease.fetch(
-        f"python-build-standalone/{tag}.json",
-        owner="astral-sh",
-        repo="python-build-standalone",
-        tag_name=tag,
-    )
-    for asset in release.assets:
-        if asset.name == name:
-            break
-    else:
-        raise requests.RequestException
-    if digest := asset.digest:
-        if digest.startswith("sha256:"):
-            return bytes.fromhex(digest[7:]), asset.size
-        _logger.warning("GitHub returning non-SHA256 digest: %r", digest)
-    raise requests.RequestException
+@router.get("/uv/python-downloads.json")
+async def get_uv_python_downloads_json() -> fastapi.Response:
+    ctx = contextvars.copy_context()
+    lock = ctx[_core.context]["locks"]["python-downloads.json"]
+    ctx.run(_core.cache_action.set, "cache-or-fetch")
+    async with contextlib.AsyncExitStack() as stack:
+        await stack.enter_async_context(lock)
+        return await asyncio.create_task(
+            _core.stream(
+                "https://api.github.com/repos/astral-sh/uv/contents/crates/uv-python/download-metadata.json",
+                headers={
+                    "Accept": "application/vnd.github.raw+json",
+                    "X-GitHub-Api-Version": "2022-11-28",
+                },
+                stack=stack,
+            ),
+            context=ctx,
+        )
 
 
 async def _get_standalone_python_sha256_and_size(
@@ -148,11 +147,24 @@ async def _get_standalone_python_sha256_and_size(
     name: str,
 ) -> tuple[bytes, int | None]:
     try:
-        return await _get_standalone_python_github_release(tag, name)
+        release = await _core.GitHubRelease.fetch(
+            f"python-build-standalone/{tag}.json",
+            owner="astral-sh",
+            repo="python-build-standalone",
+            tag_name=tag,
+        )
     except requests.RequestException:
         pass
-    except (OSError, pydantic.ValidationError):
+    except OSError, pydantic.ValidationError:
         _logger.exception("Failed to get GitHub release metadata")
+    else:
+        for asset in release.assets:
+            if asset.name == name:
+                if sha256 := asset.sha256():
+                    return sha256, asset.size
+                break
+        else:
+            raise fastapi.HTTPException(404)
     cache_location = pathlib.Path("python-build-standalone", tag, "SHA256SUMS")
     loop = asyncio.get_running_loop()
     async with _core.cached_or_locked(cache_location) as cached:
@@ -163,26 +175,25 @@ async def _get_standalone_python_sha256_and_size(
                 posixpath.join(str(url), tag, "SHA256SUMS")
                 for url in ctx["config"].upstream.python_build_standalone
             ]
-            async with contextlib.aclosing(_core.load_balance(urls)) as it:
-                async for url in it:
-                    with contextlib.suppress(Exception):
-                        await loop.run_in_executor(
-                            None,
-                            pooch.retrieve,  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
-                            url,
-                            None,
-                            fname,
-                            dir_,
-                        )
-                        break
-                else:
-                    status_code = http.HTTPStatus.GATEWAY_TIMEOUT
-                    raise fastapi.HTTPException(status_code)
+            for url in _core.load_balance(urls):
+                with contextlib.suppress(Exception):
+                    await loop.run_in_executor(
+                        None,
+                        pooch.retrieve,  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
+                        url,
+                        None,
+                        fname,
+                        dir_,
+                    )
+                    break
+            else:
+                status_code = http.HTTPStatus.GATEWAY_TIMEOUT
+                raise fastapi.HTTPException(status_code)
     return await loop.run_in_executor(
         None,
         _parse_standalone_python_sha256,
         cache_location,
-        f"  {name}\n".encode("ascii"),
+        f"  {name}\n".encode("ascii", "replace"),
     )
 
 
@@ -193,7 +204,7 @@ def _parse_standalone_python_sha256(
     with cache_location.open("rb") as f:
         for line in f:
             if line.endswith(name):
-                return bytes.fromhex(line[:64]), None  # pyright: ignore[reportArgumentType]
+                return bytes.fromhex(line[:64]), None
     raise fastapi.HTTPException(404)
 
 

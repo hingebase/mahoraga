@@ -1,4 +1,4 @@
-# Copyright 2025 hingebase
+# Copyright 2025-2026 hingebase
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -37,7 +37,7 @@ from . import _utils
 router = fastapi.APIRouter(route_class=_core.APIRoute)
 
 
-@router.get("/{name}")
+@router.get("/{name}", dependencies=_core.immutable)
 async def get_pyodide_package(
     name: Annotated[
         str,
@@ -52,13 +52,12 @@ async def get_pyodide_package(
     except packaging.version.InvalidVersion:
         return fastapi.Response(status_code=404)
     cache_location = pathlib.Path("pyodide", name)
+    media_type, _ = mimetypes.guess_type(name)
     async with contextlib.AsyncExitStack() as stack:
         if await _core.cached_or_locked(cache_location, stack):
             return fastapi.responses.FileResponse(
                 cache_location,
-                headers={
-                    "Cache-Control": "public, max-age=31536000, immutable",
-                },
+                media_type=media_type,
             )
         release = await _core.GitHubRelease.fetch(
             f"pyodide/{version}.json",
@@ -75,17 +74,16 @@ async def get_pyodide_package(
             "Accept": "application/octet-stream",
             "X-GitHub-Api-Version": "2022-11-28",
         }
-        if digest := asset.digest:
-            if digest.startswith("sha256:"):
-                return await _core.stream(
-                    asset.url,
-                    headers=headers,
-                    stack=stack,
-                    cache_location=cache_location,
-                    sha256=bytes.fromhex(digest[7:]),
-                    size=asset.size,
-                )
-            _logger.warning("GitHub returning non-SHA256 digest: %r", digest)
+        if sha256 := asset.sha256():
+            return await _core.stream(
+                asset.url,
+                headers=headers,
+                media_type=media_type,
+                stack=stack,
+                cache_location=cache_location,
+                sha256=sha256,
+                size=asset.size,
+            )
         return await _core.stream(asset.url, headers=headers, stack=stack)
     return _core.unreachable()
 
@@ -101,30 +99,50 @@ async def get_pyodide_dev_file(
     return await _core.stream(urls, media_type=media_type)
 
 
-@router.get("/{version}/full/package.json")
-@router.get("/{version}/full/pyodide.asm.js")
-@router.get("/{version}/full/pyodide.asm.wasm")
-@router.get("/{version}/full/pyodide.js")
-@router.get("/{version}/full/pyodide.js.map")
-@router.get("/{version}/full/pyodide.mjs")
-@router.get("/{version}/full/pyodide.mjs.map")
-@router.get("/{version}/full/pyodide-lock.json")
-@router.get("/{version}/full/python_stdlib.zip")
-@router.get("/{version}/debug/package.json")
-@router.get("/{version}/debug/pyodide.js.map")
-@router.get("/{version}/debug/pyodide.mjs")
-@router.get("/{version}/debug/pyodide.mjs.map")
-@router.get("/{version}/debug/pyodide-lock.json")
-@router.get("/{version}/debug/python_stdlib.zip")
+@router.get("/{version}/full/package.json", dependencies=_core.immutable)
+@router.get("/{version}/full/pyodide.asm.js", dependencies=_core.immutable)
+@router.get("/{version}/full/pyodide.asm.wasm", dependencies=_core.immutable)
+@router.get("/{version}/full/pyodide.js", dependencies=_core.immutable)
+@router.get("/{version}/full/pyodide.js.map", dependencies=_core.immutable)
+@router.get("/{version}/full/pyodide.mjs", dependencies=_core.immutable)
+@router.get("/{version}/full/pyodide.mjs.map", dependencies=_core.immutable)
+@router.get("/{version}/full/pyodide-lock.json", dependencies=_core.immutable)
+@router.get("/{version}/full/python_stdlib.zip", dependencies=_core.immutable)
+@router.get("/{version}/debug/package.json", dependencies=_core.immutable)
+@router.get("/{version}/debug/pyodide.js.map", dependencies=_core.immutable)
+@router.get("/{version}/debug/pyodide.mjs", dependencies=_core.immutable)
+@router.get("/{version}/debug/pyodide.mjs.map", dependencies=_core.immutable)
+@router.get("/{version}/debug/pyodide-lock.json", dependencies=_core.immutable)
+@router.get("/{version}/debug/python_stdlib.zip", dependencies=_core.immutable)
 async def get_pyodide_core_file(
     version: Annotated[str, fastapi.Path(pattern=r"^v")],
     request: fastapi.Request,
 ) -> fastapi.Response:
-    return await _get_npm_file(version, posixpath.basename(request.url.path))
+    version = version.lstrip("v")
+    package = f"pyodide@{version}"
+    name = posixpath.basename(request.url.path)
+    cache_location = pathlib.Path("npm", package, name)
+    async with contextlib.AsyncExitStack() as stack:
+        if await _core.cached_or_locked(cache_location, stack):
+            return fastapi.responses.FileResponse(cache_location)
+        return await _utils.get_npm_file(
+            f"https://data.jsdelivr.com/v1/packages/npm/{package}",
+            package,
+            name,
+            cache_location,
+            stack,
+        )
+    return _core.unreachable()
 
 
-@router.get("/{version}/full/python_cli_entry.mjs")
-@router.get("/{version}/debug/python_cli_entry.mjs")
+@router.get(
+    "/{version}/full/python_cli_entry.mjs",
+    dependencies=_core.immutable,
+)
+@router.get(
+    "/{version}/debug/python_cli_entry.mjs",
+    dependencies=_core.immutable,
+)
 async def get_python_cli_entry(
     version: Annotated[str, fastapi.Path(pattern=r"^v")],
 ) -> fastapi.Response:
@@ -132,12 +150,7 @@ async def get_python_cli_entry(
     cache_location = pathlib.Path("pyodide", version, "full", member)
     async with _core.cached_or_locked(cache_location) as cached:
         if cached:
-            return fastapi.responses.FileResponse(
-                cache_location,
-                headers={
-                    "Cache-Control": "public, max-age=31536000, immutable",
-                },
-            )
+            return fastapi.responses.FileResponse(cache_location)
         for name in "pyodide-core", "xbuildenv", "pyodide":
             tarball = pathlib.Path("pyodide", f"{name}-{version[1:]}.tar.bz2")
             if response := await _utils.extract_from_tarball(
@@ -150,7 +163,7 @@ async def get_python_cli_entry(
     return await _core.stream(urls, media_type="text/javascript")
 
 
-@router.get("/{version}/{build}/{path:path}")
+@router.get("/{version}/{build}/{path:path}", dependencies=_core.immutable)
 async def get_pyodide_file(
     version: Annotated[str, fastapi.Path(pattern=r"^v")],
     build: Literal["full", "debug"],
@@ -164,12 +177,7 @@ async def get_pyodide_file(
     cache_location = pathlib.Path("pyodide", version, "full", path)
     async with contextlib.AsyncExitStack() as stack:
         if await _core.cached_or_locked(cache_location, stack):
-            return fastapi.responses.FileResponse(
-                cache_location,
-                headers={
-                    "Cache-Control": "public, max-age=31536000, immutable",
-                },
-            )
+            return fastapi.responses.FileResponse(cache_location)
         version = version.lstrip("v")
         tarball = pathlib.Path("pyodide", f"pyodide-{version}.tar.bz2")
         if response := await _utils.extract_from_tarball(
@@ -199,28 +207,6 @@ async def get_pyodide_file(
             stack=stack,
             cache_location=cache_location,
             sha256=bytes.fromhex(spec.sha256),
-        )
-    return _core.unreachable()
-
-
-async def _get_npm_file(version: str, name: str) -> fastapi.Response:
-    version = version.lstrip("v")
-    package = f"pyodide@{version}"
-    cache_location = pathlib.Path("npm", package, name)
-    async with contextlib.AsyncExitStack() as stack:
-        if await _core.cached_or_locked(cache_location, stack):
-            return fastapi.responses.FileResponse(
-                cache_location,
-                headers={
-                    "Cache-Control": "public, max-age=31536000, immutable",
-                },
-            )
-        return await _utils.get_npm_file(
-            f"https://data.jsdelivr.com/v1/packages/npm/{package}",
-            package,
-            name,
-            cache_location,
-            stack,
         )
     return _core.unreachable()
 
@@ -256,21 +242,20 @@ async def _get_pyodide_lock(
             dir_, fname = os.path.split(cache_location)
             loop = asyncio.get_running_loop()
             urls = _utils.urls("npm", package, "pyodide-lock.json")
-            async with contextlib.aclosing(_core.load_balance(urls)) as it:
-                async for url in it:
-                    with contextlib.suppress(Exception):
-                        await loop.run_in_executor(
-                            None,
-                            pooch.retrieve,  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
-                            url,
-                            known_hash,
-                            fname,
-                            dir_,
-                        )
-                        break
-                else:
-                    status_code = http.HTTPStatus.GATEWAY_TIMEOUT
-                    raise fastapi.HTTPException(status_code)
+            for url in _core.load_balance(urls):
+                with contextlib.suppress(Exception):
+                    await loop.run_in_executor(
+                        None,
+                        pooch.retrieve,  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
+                        url,
+                        known_hash,
+                        fname,
+                        dir_,
+                    )
+                    break
+            else:
+                status_code = http.HTTPStatus.GATEWAY_TIMEOUT
+                raise fastapi.HTTPException(status_code)
 
 
 _logger = logging.getLogger("mahoraga")

@@ -10,6 +10,7 @@ nav:
   - Advanced:
       - advanced/panel.md
       - advanced/pyapp.md
+  - changelog.md
 
 exclude_docs: |
   __pycache__
@@ -18,7 +19,7 @@ exclude_docs: |
 
 theme:
   name: material
-  favicon: https://cdn.jsdelivr.net/npm/@material-design-icons/svg@0/filled/temple_buddhist.svg
+  favicon: favicon.svg
   features:
     - content.action.edit
     - content.action.view
@@ -66,12 +67,9 @@ plugins:
       cache_safe: true
       css_files:
         - stylesheets/extra.css
-      htmlmin_opts:
-        reduce_boolean_attributes: true
-        remove_comments: true
       minify_css: true
-      minify_html: true
       minify_js: true
+  - minify_html
   - offline
   - privacy:
       assets: false

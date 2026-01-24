@@ -1,4 +1,4 @@
-# Copyright 2025 hingebase
+# Copyright 2025-2026 hingebase
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ __all__ = [
     "Address",
     "AsyncClient",
     "Config",
+    "Context",
     "GitHubRelease",
     "NPMBase",
     "Predicate",
@@ -29,12 +30,16 @@ __all__ = [
     "cached_or_locked",
     "context",
     "get",
+    "headers",
+    "hourly",
+    "immutable",
     "load_balance",
     "schedule_exit",
     "stream",
     "unreachable",
 ]
 
+import contextvars
 from typing import NoReturn
 
 from ._config import Address, Config, Predicate, Server
@@ -47,17 +52,19 @@ from ._context import (
     cached_or_locked,
     schedule_exit,
 )
-from ._metadata import GitHubRelease, NPMBase
+from ._metadata import GitHubRelease, NPMBase, headers
 from ._stream import (
     APIRoute,
     Response,
     StreamingResponse,
     get,
+    hourly,
+    immutable,
     load_balance,
     stream,
 )
 
-context = Context("context")
+context = contextvars.ContextVar[Context]("context")
 
 
 def unreachable(message: str = "Unreachable") -> NoReturn:

@@ -1,4 +1,4 @@
-# Copyright 2025 hingebase
+# Copyright 2025-2026 hingebase
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -42,10 +42,6 @@ def main() -> None:
     )
 
 
-class _Config(_core.Config, toml_file=None):
-    pass
-
-
 class _New(_core.Server, alias_generator=None):
     """Create a new directory structure for Mahoraga.
 
@@ -62,7 +58,7 @@ class _New(_core.Server, alias_generator=None):
     ]
 
     def cli_cmd(self) -> None:
-        cfg = _Config(server=self)
+        cfg = _core.Config(server=self)
         cfg_file = _setup(cfg, self.root)
         click.echo(f"Done. Please edit {cfg_file} before starting the server.")
 
@@ -93,7 +89,7 @@ class _Import(_core.Address):
 
     def cli_cmd(self) -> None:
         with contextlib.chdir(self.source.parent):
-            cfg = _core.Config()
+            cfg = _asgi.Config()
         cfg.server.host = self.host
         cfg.server.port = self.port
         cfg_file = _setup(cfg, self.destination)
@@ -122,7 +118,8 @@ class _Run(pydantic.BaseModel, validate_default=True):
 class _Version(pydantic.BaseModel):
     """Show Mahoraga version and exit."""
 
-    def cli_cmd(self) -> None:  # noqa: PLR6301
+    def cli_cmd(self) -> None:
+        del self
         click.echo(f"Mahoraga v{__version__}")
 
 

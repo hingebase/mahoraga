@@ -1,4 +1,4 @@
-# Copyright 2025 hingebase
+# Copyright 2025-2026 hingebase
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,214 +12,263 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ["run"]
+__all__ = ["Config", "run"]
 
 import asyncio
-import collections
-import concurrent.futures
-import contextlib
+import functools
+import inspect
 import io
-import logging.config
-import logging.handlers
-import multiprocessing as mp
+import logging
 import pathlib
 import sys
-import warnings
-from typing import TYPE_CHECKING, Any, override
+from typing import TYPE_CHECKING, Protocol, cast, override
 
-import hishel._controller
-import hishel._utils
-import httpx
-import pooch.utils  # pyright: ignore[reportMissingTypeStubs]
+import dask.system
+import fastapi.staticfiles
+import hishel._core._spec  # pyright: ignore[reportMissingTypeStubs]
 import rich.console
-import rich.logging
-import uvicorn.config
+import uvicorn.logging
 
-from mahoraga import __version__, _conda, _core
+from mahoraga import _conda, _core, _preload
 
 from . import _app
 
 if TYPE_CHECKING:
-    from httpcore import Request
+    from collections.abc import Callable
+    from logging.config import (
+        _DictConfigArgs,  # pyright: ignore[reportPrivateUsage]
+    )
+
+    from starlette.types import ASGIApp
+
+try:
+    import granian.constants
+    import granian.http
+    import granian.log
+    import granian.server.embed
+    import granian.utils.proxies
+except ImportError:
+    granian = None
 
 
 def run() -> None:
-    cfg = _core.Config()
-    log_level = uvicorn.config.LOG_LEVELS[cfg.log.level]
-    server_config = _ServerConfig(
-        app=_app.make_app,
-        host=str(cfg.server.host),
-        port=cfg.server.port,
-        loop="none",
-        log_config={
-            "version": 1,
-            "handlers": {
-                "default": {
-                    "class": "logging.handlers.QueueHandler",
-                    "queue": mp.get_context("spawn").Queue(),
-                },
+    cfg = Config()
+    log_level = cfg.log.levelno()
+    log_config: _DictConfigArgs = {
+        "version": 1,
+        "formatters": {
+            "default": {
+                "format": "[{asctime}] {levelname:8} {message}",
+                "datefmt": "%Y-%m-%d %X",
+                "style": "{",
             },
-            "root": {
-                "handlers": ["default"],
+        },
+        "filters": {
+            "distributed_scheduler": {
+                "()": "mahoraga._preload.DistributedScheduler",
+            },
+            "granian_access": {
+                "()": "mahoraga._preload.GranianAccess",
+            },
+            "hishel_core_spec": {
+                "()": "mahoraga._preload.HishelCoreSpec",
+            },
+            "hishel_integrations_clients": {
+                "()": "mahoraga._preload.HishelIntegrationsClients",
+            },
+            "uvicorn_error": {
+                "()": "mahoraga._preload.UvicornError",
                 "level": log_level,
             },
-            "disable_existing_loggers": False,
         },
-        log_level=log_level,
-        access_log=cfg.log.access,
-        limit_concurrency=cfg.server.limit_concurrency,
-        backlog=cfg.server.backlog,
-        timeout_keep_alive=cfg.server.keep_alive,
-        timeout_graceful_shutdown=cfg.server.timeout_graceful_shutdown or None,
-        timeout_notify=3600,
-        callback_notify=_conda.split_repo,
-        factory=True,
-    )
-    server = uvicorn.Server(server_config)
-    with server_config.listen:
+        "handlers": {
+            "console_legacy": {
+                "class": "logging.StreamHandler",
+                "formatter": "default",
+                "stream": "ext://sys.stdout",
+            },
+            "console_rich": {
+                "class": "rich.logging.RichHandler",
+                "log_time_format": "[%Y-%m-%d %X]",
+            },
+            "filesystem": {
+                "class": "mahoraga._preload.RotatingFileHandler",
+                "formatter": "default",
+                "filename": "log/mahoraga.log",
+                "maxBytes": 20000 * 81,  # lines * chars
+                "backupCount": 10,
+                "encoding": "utf-8",
+            },
+        },
+        "loggers": {
+            "distributed.scheduler": {
+                "filters": ["distributed_scheduler"],
+            },
+            "granian.access": {
+                "filters": ["granian_access"],
+            },
+            "hishel": {
+                "level": "DEBUG",
+            },
+            "hishel.core.spec": {
+                "filters": ["hishel_core_spec"],
+            },
+            "hishel.integrations.clients": {
+                "filters": ["hishel_integrations_clients"],
+            },
+            "tornado.access": {
+                "level": "CRITICAL",
+                "propagate": False,
+            },
+            "uvicorn.access": {
+                "level": "INFO",
+            },
+            "uvicorn.error": {
+                "level": uvicorn.logging.TRACE_LOG_LEVEL,
+                "filters": ["uvicorn_error"],
+            },
+        },
+        "root": {
+            "handlers": _root_handlers(),
+            "level": log_level,
+        },
+        "disable_existing_loggers": False,
+    }
+    if cfg.server.is_uvicorn() or not cfg.log.access:
+        del log_config["loggers"]["granian.access"]
+    if cfg.server.is_granian() or not cfg.log.access:
+        del log_config["loggers"]["uvicorn.access"]
+    if cfg.server.is_granian() or log_level > logging.INFO:
+        del log_config["loggers"]["uvicorn.error"]
+    cfg.run(cast("dict[str, object]", log_config))
+
+
+class Config(_core.Config, toml_file="mahoraga.toml"):
+    def run(self, log_config: dict[str, object]) -> None:
+        started = False
+        static_files = fastapi.staticfiles.StaticFiles(
+            packages=[("mahoraga", "_static")],
+        )
+        if self.server.is_uvicorn():
+            class UvicornServer(uvicorn.Server):
+                @override
+                async def main_loop(self) -> None:
+                    nonlocal started
+                    started = True
+                    _split_repo(self.lifespan)
+                    await super().main_loop()
+
+            cfg = uvicorn.Config(
+                app=functools.partial(_app.make_app, self, static_files),
+                host=str(self.server.host),
+                port=self.server.port,
+                loop="none",
+                log_config=log_config,
+                access_log=self.log.access,
+                forwarded_allow_ips="127.0.0.1",
+                limit_concurrency=self.server.limit_concurrency,
+                backlog=self.server.backlog,
+                timeout_keep_alive=self.server.keep_alive,
+                timeout_graceful_shutdown=self.server.workers_kill_timeout(),
+                factory=True,
+            )
+            server = UvicornServer(cfg)
+        elif not granian:
+            message = (
+                "server.implementation == 'granian' in mahoraga.toml, "
+                "but granian was not installed"
+            )
+            raise ValueError(message)
+        else:
+            class Filter(logging.Filter):
+                @override
+                def filter(self, record: logging.LogRecord) -> bool:
+                    if record.msg == "Started worker-1":
+                        nonlocal started
+                        started = True
+                        logging.getLogger("_granian.workers").removeFilter(self)
+                        _granian_lifespan()
+                    return True
+
+            middleware = cast(
+                "Callable[[ASGIApp], ASGIApp]",
+                granian.utils.proxies.wrap_asgi_with_proxy_headers,
+            )
+            server = granian.server.embed.Server(
+                target=lambda: middleware(_app.make_app(self)),
+                address=str(self.server.host),
+                port=self.server.port,
+                interface=granian.constants.Interfaces.ASGI,
+                runtime_threads=dask.system.CPU_COUNT or 1,
+                http=granian.constants.HTTPModes.http1,
+                backlog=self.server.backlog,
+                backpressure=self.server.limit_concurrency,
+                http1_settings=granian.http.HTTP1Settings(
+                    header_read_timeout=60000,
+                ),
+                log_level=granian.log.LogLevels.notset,
+                log_dictconfig=log_config,
+                log_access=self.log.access,
+                log_access_format=(
+                    '%(addr)s - "%(method)s %(path)s %(protocol)s" %(status)d'
+                ),
+                factory=True,
+                static_path_mount=pathlib.Path(static_files.all_directories[0]),
+            )
+            server.workers_kill_timeout = self.server.workers_kill_timeout()
+            logging.getLogger("_granian.workers").addFilter(Filter())
+        _preload.configure_logging_extra(self.log.levelno())
         try:
             asyncio.run(
-                _main(cfg, server),
-                debug=cfg.log.level == "debug",
-                loop_factory=cfg.loop_factory,
+                server.serve(),
+                debug=self.log.level == "debug",
+                loop_factory=self.loop_factory,
             )
         except KeyboardInterrupt:
             pass
         except SystemExit:
-            if server.started:
+            if started:
                 raise
             sys.exit(3)
         except BaseException as e:
-            _logger.critical("ERROR", exc_info=e)
-            raise SystemExit(server.started or 3) from e
+            logging.getLogger("mahoraga").critical("ERROR", exc_info=e)
+            raise SystemExit(started) from e
 
 
-async def _event_hook(request: httpx.Request) -> None:  # noqa: RUF029
-    async def trace(event_name: str, _info: dict[str, Any]) -> None:  # noqa: RUF029
-        _logger.debug("%s: %s", event_name, request.url)
-    request.extensions["trace"] = trace
+class _Lifespan(Protocol):
+    state: _core.Context
 
 
-def _initializer(cfg: dict[str, Any]) -> None:
-    logging.config.dictConfig(cfg)
-    logging.captureWarnings(capture=True)
-    pooch.utils.LOGGER = logging.getLogger("pooch")
+def _granian_lifespan() -> None:
+    for info in inspect.stack(0):
+        if lifespan := info.frame.f_locals.get("lifespan_handler"):
+            _split_repo(lifespan)
+            return
+    _core.unreachable()
 
 
-async def _main(
-    cfg: _core.Config,
-    server: uvicorn.Server,
-) -> None:
-    if cfg.log.level == "debug":
-        event_hooks = {"request": [_event_hook]}
-    else:
-        event_hooks = None
-
-    log_config = server.config.log_config
-    if not isinstance(log_config, dict):
-        _core.unreachable()
-
-    async with contextlib.AsyncExitStack() as stack:
-        _core.context.set({
-            "config": cfg,
-            "httpx_client": await stack.enter_async_context(
-                _core.AsyncClient(
-                    headers={"User-Agent": f"mahoraga/{__version__}"},
-                    timeout=httpx.Timeout(15, read=60, write=60),
-                    follow_redirects=False,
-                    limits=httpx.Limits(
-                        max_connections=cfg.server.limit_concurrency,
-                        keepalive_expiry=cfg.server.keep_alive,
-                    ),
-                    event_hooks=event_hooks,
-                    storage=hishel.AsyncInMemoryStorage(capacity=1024),
-                    controller=hishel.Controller(
-                        allow_heuristics=True,
-                        key_generator=_key_generator,
-                    ),
-                ),
-            ),
-            "locks": _core.WeakValueDictionary(),
-            "process_pool": stack.enter_context(
-                concurrent.futures.ProcessPoolExecutor(
-                    initializer=_initializer,
-                    initargs=(log_config,),
-                    max_tasks_per_child=1000,
-                ),
-            ),
-            "statistics_concurrent_requests": collections.Counter(),
-        })
-        await server.serve()
+def _root_handlers() -> list[str]:
+    handlers = ["filesystem"]
+    if isinstance(sys.stdout, io.TextIOBase) and sys.stdout.isatty():
+        if rich.console.detect_legacy_windows():
+            handlers.append("console_legacy")
+        else:
+            handlers.append("console_rich")
+    return handlers
 
 
-class _RotatingFileHandler(logging.handlers.RotatingFileHandler):
-    def _open(self) -> io.TextIOWrapper:
-        if self.mode != "a":
-            _core.unreachable()
-        return pathlib.Path(self.baseFilename).open(
-            mode="a",
-            encoding=self.encoding,
-            errors=self.errors,
-            newline="",
+def _split_repo(lifespan: _Lifespan) -> None:
+    state = lifespan.state
+    cfg = state["config"]
+    if any(cfg.shard.values()):
+        loop = asyncio.get_running_loop()
+        loop.call_soon(
+            _conda.split_repo,
+            loop,
+            cfg,
+            state["dask_client"],
+            state["futures"],
         )
 
 
-class _ServerConfig(uvicorn.Config):
-    @override
-    def configure_logging(self) -> None:
-        super().configure_logging()
-        logging.getLogger("hishel.controller").setLevel(logging.DEBUG)
-        if self.access_log:
-            logging.getLogger("uvicorn.access").setLevel(logging.INFO)
-        if self.log_level == logging.DEBUG:
-            warnings.simplefilter("always", ResourceWarning)
-        logging.captureWarnings(capture=True)
-        pooch.utils.LOGGER = logging.getLogger("pooch")
-
-        root = logging.getLogger()
-        [old] = root.handlers
-        if not isinstance(old, logging.handlers.QueueHandler):
-            _core.unreachable()
-        root.removeHandler(old)
-
-        log_dir = pathlib.Path("log")
-        log_dir.mkdir(exist_ok=True)
-        log_dir = log_dir.resolve(strict=True)
-        new = _RotatingFileHandler(
-            log_dir / "mahoraga.log",
-            maxBytes=20000 * 81,  # lines * chars
-            backupCount=10,
-            encoding="utf-8",
-        )
-        fmt = logging.Formatter(
-            "[{asctime}] {levelname:8} {message}",
-            datefmt="%Y-%m-%d %X",
-            style="{",
-        )
-        new.setFormatter(fmt)
-        root.addHandler(new)
-
-        if isinstance(sys.stdout, io.TextIOBase) and sys.stdout.isatty():
-            if rich.console.detect_legacy_windows():
-                new = logging.StreamHandler(sys.stdout)
-                new.setFormatter(fmt)
-            else:
-                new = rich.logging.RichHandler(log_time_format="[%Y-%m-%d %X]")
-            root.addHandler(new)
-
-        self.listen = logging.handlers.QueueListener(old.queue, *root.handlers)
-
-
-def _key_generator(request: Request, body: bytes | None = b"") -> str:
-    for k, v in request.headers:
-        if (
-            k.lower() == b"accept"
-            and v.startswith(b"application/vnd.pypi.simple.v1+")
-        ):
-            project = request.url.target.rsplit(b"/", 2)[1]
-            return (b"%b|%b" % (project, v)).decode("ascii")
-    return hishel._utils.generate_key(request, body or b"")  # noqa: SLF001
-
-
-hishel._controller.get_heuristic_freshness = lambda response, clock: 600  # noqa: ARG005, SLF001  # ty: ignore[invalid-assignment]
-_logger = logging.getLogger("mahoraga")
+hishel._core._spec.get_heuristic_freshness = lambda response: 600  # noqa: ARG005, SLF001  # ty: ignore[invalid-assignment]

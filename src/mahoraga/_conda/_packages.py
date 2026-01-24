@@ -1,4 +1,4 @@
-# Copyright 2025 hingebase
+# Copyright 2025-2026 hingebase
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ from . import _utils
 router = fastapi.APIRouter(route_class=_core.APIRoute)
 
 
-@router.get("/{channel}/{platform}/{name}")
+@router.get("/{channel}/{platform}/{name}", dependencies=_core.immutable)
 async def get_conda_package(
     channel: str,
     platform: rattler.platform.PlatformLiteral,
@@ -39,7 +39,10 @@ async def get_conda_package(
     return await _proxy_cache(channel, platform, name)
 
 
-@router.get("/{channel}/label/{label}/{platform}/{name}")
+@router.get(
+    "/{channel}/label/{label}/{platform}/{name}",
+    dependencies=_core.immutable,
+)
 async def get_conda_package_with_label(
     channel: str,
     label: str,
@@ -68,16 +71,10 @@ async def _proxy_cache(
             "channels", channel, "label", label, platform, name)
     else:
         cache_location = pathlib.Path("channels", channel, platform, name)
-    ctx = _core.context.get()
-    lock = ctx["locks"][str(cache_location)]
     async with contextlib.AsyncExitStack() as stack:
-        await stack.enter_async_context(lock)
-        if cache_location.is_file():
+        if await _core.cached_or_locked(cache_location, stack):
             return fastapi.responses.FileResponse(
                 cache_location,
-                headers={
-                    "Cache-Control": "public, max-age=31536000, immutable",
-                },
                 media_type=media_type,
             )
         pkg_name, version, build = name.removesuffix(suffix).rsplit("-", 2)

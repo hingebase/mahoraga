@@ -2,7 +2,7 @@
 # This file is not managed by the CLI and should be edited by hand.
 
 # Improve server performance by starting a task as soon as it is constructed.
-# For detail, see https://docs.python.org/3/library/asyncio-task.html#asyncio.eager_task_factory
+# For details, see https://docs.python.org/3/library/asyncio-task.html#asyncio.eager_task_factory
 eager-task-execution = {{ eager_task_execution | lower }}
 
 # HTTP server configuration.
@@ -16,6 +16,9 @@ eager-task-execution = {{ eager_task_execution | lower }}
 # or specify multiple host/port pairs.
 host = "127.0.0.1"
 port = {{ 0x3450 if server.port == 3450 else 3450 }}
+
+# ASGI server implementation. Can be "granian" or "uvicorn".
+implementation = "{{ server.implementation }}"
 
 # Maximum number of simultaneous connections to allow.
 limit-concurrency = {{ server.limit_concurrency }}
@@ -48,17 +51,30 @@ access = {{ log.access | lower }}
 # Conda sharded repodata configuration.
 # Keys should be channel names, and values should be lists of platform names.
 # Sharded repodata are generated every hour for all channel/platform pairs.
-# For detail, see https://conda.org/learn/ceps/cep-0016/
+# For details, see https://conda.org/learn/ceps/cep-0016/
 [shard]
 conda-forge = [
-    # "linux-64",
-    # "noarch",
-    # "osx-arm64",
-    # "win-64",
+    {%- for platform in shard["conda-forge"] %}
+    "{{ platform }}",
+    {%- endfor %}
+    {%- for platform in ["linux-64", "noarch", "osx-arm64", "win-64"] %}
+    {%- if platform not in shard["conda-forge"] %}
+    # "{{ platform }}",
+    {%- endif %}
+    {%- endfor %}
 ]
+{%- for key, value in shard | dictsort %}
+{%- if key != "conda-forge" %}
+{{ key }} = [
+    {%- for platform in value %}
+    "{{ platform }}",
+    {%- endfor %}
+]
+{%- endif %}
+{%- endfor %}
 
 # Cross-origin resource sharing (CORS) configuration.
-# For detail, see https://fastapi.tiangolo.com/tutorial/cors/
+# For details, see https://fastapi.tiangolo.com/tutorial/cors/
 [cors]
 allow-origins = [
     {%- for origin in cors.allow_origins %}
@@ -76,7 +92,11 @@ allow-headers = [
     {%- endfor %}
 ]
 allow-credentials = {{ cors.allow_credentials | lower }}
+{%- if cors.allow_origin_regex %}
+allow-origin-regex = "{{ cors.allow_origin_regex }}"
+{%- else %}
 # allow-origin-regex = ""
+{%- endif %}
 expose-headers = [
     {%- for header in cors.expose_headers %}
     "{{ header }}",
@@ -106,7 +126,7 @@ python = [
 ]
 
 # Mirrors for https://github.com/astral-sh/python-build-standalone/
-# For detail, see https://docs.astral.sh/uv/reference/settings/#python-install-mirror
+# For details, see https://docs.astral.sh/uv/reference/settings/#python-install-mirror
 # There is no need to use a file:// URL; just copy or link your files to the
 # `python-build-standalone` folder (create one if not exist) next to this file.
 python-build-standalone = [
@@ -165,11 +185,19 @@ default = [
 {%- endif %}
 {%- endfor %}
 
+# Conda channels which don't live in the default mirrors.
+# Keys should be channel names, and values should be corresponding URLs except
+# for the channel name part. Currently only one URL is allowed per channel.
+[upstream.conda.channel-alias]
+{%- for key, value in upstream.conda.channel_alias | dictsort %}
+{{ key }} = "{{ value }}"
+{%- endfor %}
+
 # Upstream PyPI mirror servers.
 # The PyPI index API have two variants: HTML and JSON.
 # Mirrors only support the HTML API should be listed in the html section,
 # and those with both HTML and JSON API should be listed in the json section.
-# For detail, see https://docs.pypi.org/api/index-api/
+# For details, see https://docs.pypi.org/api/index-api/
 [upstream.pypi]
 html = [
     {%- for url in upstream.pypi.html %}
@@ -178,6 +206,19 @@ html = [
 ]
 json = [
     {%- for url in upstream.pypi.json_ %}
+    "{{ url }}",
+    {%- endfor %}
+]
+
+# Mirrors for uv GitHub releases.
+[upstream.uv]
+latest = [
+    {%- for url in upstream.uv.latest %}
+    "{{ url }}",
+    {%- endfor %}
+]
+tag = [
+    {%- for url in upstream.uv.tag %}
     "{{ url }}",
     {%- endfor %}
 ]

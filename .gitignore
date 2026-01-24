@@ -12,6 +12,7 @@ wheels/
 # MkDocs build
 .cache
 site
+docs/favicon.svg
 docs/requirements.txt
 
 # Exclude uv.lock which contains private addresses
