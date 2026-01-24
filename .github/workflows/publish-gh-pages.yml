@@ -10,7 +10,7 @@ permissions: read-all
 jobs:
   gh-pages:
     name: Publish to GitHub Pages
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

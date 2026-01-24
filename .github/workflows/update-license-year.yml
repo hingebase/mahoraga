@@ -11,7 +11,7 @@ on:
 
 jobs:
   update-license-year:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
       - uses: actions/checkout@v6
       - uses: FantasticFiasco/action-update-license-year@v3
