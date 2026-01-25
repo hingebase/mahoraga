@@ -70,7 +70,7 @@ dev = [
     "mkdocs-minify-html-plugin >=0.3.9",
     "mkdocs-minify-plugin >=0.7.0",
     "pooch >=1.8.0",
-    "pydantic-settings >=2.3.0",
+    "pydantic-settings >=2.7.0",
     "pygit2 >=1.19.0",
     "pyodide-lock >=0.1.0",
 ]
