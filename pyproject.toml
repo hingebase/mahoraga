@@ -30,7 +30,7 @@ classifiers = [
 ]
 dependencies = [
     "aiohttp >=3.13.0",
-    "anyio >=4.10.0",
+    "cyares[aiohttp,anyio,idna] >=0.4.0",
     "distributed >=2026.1.1",
     "filelock >=3.20.0",
     "hishel[fastapi,httpx,requests] >=1.1.5",

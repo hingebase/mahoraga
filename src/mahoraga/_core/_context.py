@@ -35,6 +35,7 @@ from typing import TYPE_CHECKING, Any, TypedDict, overload, override
 
 import aiohttp
 import anyio
+import cyares.aiohttp
 import hishel.httpx
 import httpx
 import httpx_aiohttp
@@ -225,6 +226,9 @@ class _AiohttpTransport(httpx_aiohttp.AiohttpTransport):
             keepalive_timeout=self.limits.keepalive_expiry,
             ssl=self.ssl_context,
             local_addr=(self.local_address, 0) if self.local_address else None,
+            resolver=cyares.aiohttp.CyAresResolver(
+                loop=asyncio.get_running_loop(),
+            ),
         )
         if _logger.isEnabledFor(logging.INFO):
             trace_config = aiohttp.TraceConfig()
