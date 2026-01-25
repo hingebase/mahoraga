@@ -13,8 +13,6 @@ nav:
   - changelog.md
 
 exclude_docs: |
-  __pycache__
-  _macros.py
   requirements.*
 
 theme:
@@ -62,7 +60,7 @@ markdown_extensions:
 
 plugins:
   - macros:
-      module_name: docs/_macros
+      module_name: scripts/_mkdocs_macros
   - minify:
       cache_safe: true
       css_files:

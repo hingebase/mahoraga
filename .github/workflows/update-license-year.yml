@@ -19,6 +19,6 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           path: |
             src/**/*.py
-            docs/_macros.py
+            scripts/*.py
           commitTitle: 📄 Update license year
           prTitle: Happy New Year
