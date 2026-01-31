@@ -113,6 +113,11 @@ server {
         {{ cache_or_fetch }}
     }
 
+    location = /static/panel_support.py {
+        {{ use_cache_only }}
+        proxy_pass http://mahoraga;
+    }
+
     location @fetch {
         internal;
         proxy_pass http://mahoraga;
