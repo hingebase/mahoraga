@@ -156,7 +156,7 @@ def _sha256(
     }
     with pooch.utils.temporary_file(root) as tmp:  # pyright: ignore[reportUnknownMemberType]
         with pathlib.Path(tmp).open("w+b") as f:
-            # https://github.com/conda/rattler/blob/py-rattler-v0.18.0/crates/rattler_index/src/lib.rs#L826
+            # https://github.com/conda/rattler/blob/py-rattler-v0.22.0/crates/rattler_index/src/lib.rs#L835
             with compression.zstd.ZstdFile(f, "w") as g:
                 msgpack.dump(shard, g)
             f.seek(0)
