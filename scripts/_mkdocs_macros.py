@@ -102,7 +102,6 @@ def on_post_build(env: MacrosPlugin) -> None:
             jsmin.JavascriptMinify(g, f).minify()  # pyright: ignore[reportUnknownMemberType]
             f.truncate()
     if os.getenv("GH_TOKEN"):
-        (site_dir / ".nojekyll").touch()
         subprocess.run(  # noqa: S603
             ["/usr/bin/chmod", "-R", "a=r,u+w,a+X", site_dir],
             check=True,
