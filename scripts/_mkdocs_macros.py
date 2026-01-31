@@ -300,6 +300,6 @@ def _retrieve(url: str, params: _Params | None = None) -> str:
     return pooch.retrieve(  # pyright: ignore[reportUnknownMemberType]
         url,
         known_hash=None,
-        path=pooch.os_cache("pooch") / time.strftime("%Y.%m.%d"),  # pyright: ignore[reportUnknownMemberType]
-        downloader=pooch.HTTPDownloader(headers=headers, params=params),
+        path=pooch.os_cache("pooch") / time.strftime("%Y.%m.%d"),
+        downloader=pooch.HTTPDownloader(headers=headers, params=params),  # pyright: ignore[reportArgumentType]
     )

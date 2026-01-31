@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # /// script
-# dependencies = ["py-rattler >=0.20.0"]
+# dependencies = ["py-rattler >=0.22.0"]
 # requires-python = ">=3.14"
 # ///
 
@@ -48,7 +48,7 @@ async def _install_pixi(
         }),
     ])
     records = await rattler.solve(
-        channels=["conda-forge"],
+        sources=["conda-forge"],
         specs=specs,
         gateway=rattler.Gateway(cache_dir, client=client),
         virtual_packages=rattler.VirtualPackage.detect(),
