@@ -5,7 +5,7 @@
 [![PyPI - Version](https://img.shields.io/pypi/v/mahoraga)](https://pypi.org/project/mahoraga)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/mahoraga)
 ![Apache-2.0 License](https://img.shields.io/pypi/l/mahoraga)  
-![basedpyright](https://img.shields.io/badge/basedpyright-checked-42b983)
+![basedpyright](https://img.shields.io/endpoint?url=https://docs.basedpyright.com/latest/badge.json)
 ![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)
 ![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)
 
