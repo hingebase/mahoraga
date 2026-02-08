@@ -97,7 +97,7 @@ def _fetch[T: pydantic.BaseModel](
         known_hash=None,
         fname=fname,
         path=path,
-        downloader=pooch.HTTPDownloader(**kwargs),
+        downloader=pooch.HTTPDownloader(**kwargs),  # pyright: ignore[reportArgumentType]
     )
     json_data = cache_location.read_text(encoding="utf-8")
     try:

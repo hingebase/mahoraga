@@ -102,7 +102,6 @@ def on_post_build(env: MacrosPlugin) -> None:
             jsmin.JavascriptMinify(g, f).minify()  # pyright: ignore[reportUnknownMemberType]
             f.truncate()
     if os.getenv("GH_TOKEN"):
-        (site_dir / ".nojekyll").touch()
         subprocess.run(  # noqa: S603
             ["/usr/bin/chmod", "-R", "a=r,u+w,a+X", site_dir],
             check=True,
@@ -300,6 +299,6 @@ def _retrieve(url: str, params: _Params | None = None) -> str:
     return pooch.retrieve(  # pyright: ignore[reportUnknownMemberType]
         url,
         known_hash=None,
-        path=pooch.os_cache("pooch") / time.strftime("%Y.%m.%d"),  # pyright: ignore[reportUnknownMemberType]
-        downloader=pooch.HTTPDownloader(headers=headers, params=params),
+        path=pooch.os_cache("pooch") / time.strftime("%Y.%m.%d"),
+        downloader=pooch.HTTPDownloader(headers=headers, params=params),  # pyright: ignore[reportArgumentType]
     )

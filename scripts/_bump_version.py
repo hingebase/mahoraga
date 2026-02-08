@@ -55,7 +55,8 @@ class _Main(
     ]
 
     def cli_cmd(self) -> None:
-        version = subprocess.run(  # noqa: S603
+        # ruff: disable[S603]
+        version = subprocess.run(
             [
                 os.getenv("UV", "uv"),
                 "version",
@@ -69,7 +70,7 @@ class _Main(
         ).stdout.strip()
         if git := shutil.which("git"):
             # https://git-scm.com/book/en/v2/Git-Tools-Signing-Your-Work
-            subprocess.run(  # noqa: S603
+            subprocess.run(
                 [
                     git,
                     "commit",
@@ -80,9 +81,10 @@ class _Main(
                 check=True,
             )
             tag = f"v{version}"
-            subprocess.run([git, "tag", "-s", tag, "-m", tag], check=True)  # noqa: S603
-            subprocess.run([git, "log", "--show-signature", "-1"], check=True)  # noqa: S603
-            subprocess.run([git, "tag", "-v", tag], check=True)  # noqa: S603
+            subprocess.run([git, "tag", "-s", tag, "-m", tag], check=True)
+            subprocess.run([git, "log", "--show-signature", "-1"], check=True)
+            subprocess.run([git, "tag", "-v", tag], check=True)
+        # ruff: enable[S603]
 
 
 if __name__ == "__main__":
