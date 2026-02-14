@@ -213,7 +213,9 @@ class Config(_core.Config, toml_file="mahoraga.toml"):
                     '%(addr)s - "%(method)s %(path)s %(protocol)s" %(status)d'
                 ),
                 factory=True,
-                static_path_mount=pathlib.Path(static_files.all_directories[0]),
+                static_path_mount=list(
+                    map(pathlib.Path, static_files.all_directories),
+                ),
             )
             server.workers_kill_timeout = self.server.workers_kill_timeout()
             logging.getLogger("_granian.workers").addFilter(Filter())
