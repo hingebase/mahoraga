@@ -44,7 +44,7 @@ dependencies = [
     "pydantic-extra-types[semver] >=2.10.2",
     "pydantic-settings >=2.7.0",
     "pyodide-lock >=0.1.0",
-    "py-rattler >=0.16.0",
+    "py-rattler ==0.22.0",  # Last version with JLAP support
     "rich >=14.2.0",
     "uvicorn >=0.38.0",
     "uvloop >=0.22.1; sys_platform != 'win32' and sys_platform != 'cygwin' and platform_python_implementation != 'PyPy'",

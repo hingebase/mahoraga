@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # /// script
-# dependencies = ["py-rattler >=0.22.0"]
+# dependencies = ["py-rattler ==0.22.0"]
 # requires-python = ">=3.14"
 # ///
 
