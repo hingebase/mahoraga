@@ -98,8 +98,12 @@ line-length = 79
 preview = true
 
 [tool.ruff.lint]
-ignore = ["INP001", "RUF067"]
 select = ["ALL"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/**/__init__.py" = ["RUF067"]
+"src/mahoraga/_static/panel_support.py" = ["INP001"]
+"scripts/**/*.py" = ["INP001"]
 
 [tool.ty.rules]
 division-by-zero = "warn"
