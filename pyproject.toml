@@ -32,19 +32,19 @@ dependencies = [
     "aiohttp >=3.13.0",
     "anyio >=4.10.0",
     "distributed >=2026.1.1",
-    "filelock >=3.20.0",
+    "filelock >=3.24.0",
     "hishel[fastapi,httpx,requests] >=1.1.5",
     "httptools >=0.7.1",
     "httpx-aiohttp >=0.1.9",
     "jinja2 >=3.1.5",
     "kiss-headers >=2.4.0",
     "packaging >=26.0.0",
-    "pooch >=1.8.1",
+    "pooch >=1.9.0",
     "pydantic >=2.12.1",
     "pydantic-extra-types[semver] >=2.10.2",
     "pydantic-settings >=2.7.0",
     "pyodide-lock >=0.1.0",
-    "py-rattler >=0.16.0",
+    "py-rattler ==0.22.0",  # Last version with JLAP support
     "rich >=14.2.0",
     "uvicorn >=0.38.0",
     "uvloop >=0.22.1; sys_platform != 'win32' and sys_platform != 'cygwin' and platform_python_implementation != 'PyPy'",
@@ -53,10 +53,10 @@ dependencies = [
 
 [project.optional-dependencies]
 granian = [
-    "granian >=2.6.0",
+    "granian >=2.7.0",
 ]
 typing = [
-    "granian >=2.6.0",
+    "granian >=2.7.0",
     "msgpack-types ==0.3.0",
     "types-requests >=2.32.4",
 ]
@@ -69,7 +69,7 @@ dev = [
     "mkdocs-material ==9.6.20",  # https://github.com/squidfunk/mkdocs-material/issues/8478
     "mkdocs-minify-html-plugin >=0.3.9",
     "mkdocs-minify-plugin >=0.7.0",
-    "pooch >=1.8.0",
+    "pooch >=1.9.0",
     "pydantic-settings >=2.7.0",
     "pygit2 >=1.19.0",
     "pyodide-lock >=0.1.0",
