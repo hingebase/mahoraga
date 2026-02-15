@@ -182,6 +182,7 @@ class _Conda(pydantic.BaseModel, **_model_config):
             "https://mirror.nju.edu.cn/anaconda/cloud/",
             "https://mirror.nyist.edu.cn/anaconda/cloud/",
             "https://mirrors.cqupt.edu.cn/anaconda/cloud/",
+            "https://mirrors.hit.edu.cn/anaconda/cloud/",
             "https://mirrors.lzu.edu.cn/anaconda/cloud/",
             "https://mirrors.pku.edu.cn/anaconda/cloud/",
             "https://mirrors.sustech.edu.cn/anaconda/cloud/",
@@ -192,6 +193,7 @@ class _Conda(pydantic.BaseModel, **_model_config):
             "https://mirror.nju.edu.cn/anaconda/cloud/",
             "https://mirror.nyist.edu.cn/anaconda/cloud/",
             "https://mirrors.cqupt.edu.cn/anaconda/cloud/",
+            "https://mirrors.hit.edu.cn/anaconda/cloud/",
             "https://mirrors.lzu.edu.cn/anaconda/cloud/",
             "https://mirrors.pku.edu.cn/anaconda/cloud/",
             "https://mirrors.sustech.edu.cn/anaconda/cloud/",
@@ -306,7 +308,7 @@ class _Upstream(pydantic.BaseModel, **_model_config):
         "https://mirror.nju.edu.cn/github-release/astral-sh/python-build-standalone/",
         "https://mirrors.lzu.edu.cn/github-release/astral-sh/python-build-standalone/",
         "https://cdn.npmmirror.com/binaries/python-build-standalone/",
-        "https://pycdn-2025-03-02.oss-cn-shanghai.aliyuncs.com/mirror/astral-sh/python-build-standalone/",
+        "https://mirrors.ustc.edu.cn/github-release/astral-sh/python-build-standalone/",
         "https://github.com/astral-sh/python-build-standalone/releases/download/",
     ])
     uv: _Uv = _Uv()
@@ -315,7 +317,6 @@ class _Upstream(pydantic.BaseModel, **_model_config):
         "conda.anaconda.org",
         "github.com",
         "prefix.dev",
-        "pycdn-2025-03-02.oss-cn-shanghai.aliyuncs.com",
         "pypi.org",
         "www.python.org",
     }
