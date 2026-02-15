@@ -18,7 +18,7 @@ import asyncio
 import logging
 import os
 import pathlib
-from typing import TYPE_CHECKING, Any, Literal, Self
+from typing import TYPE_CHECKING, Literal, Self
 
 import pooch  # pyright: ignore[reportMissingTypeStubs]
 import pydantic
@@ -89,7 +89,7 @@ def _fetch[T: pydantic.BaseModel](
     klass: type[T],
     url: str,
     cache_location: pathlib.Path,
-    **kwargs: Any,  # noqa: ANN401
+    **kwargs: object,
 ) -> T:
     path, fname = os.path.split(cache_location)
     pooch.retrieve(  # pyright: ignore[reportUnknownMemberType]
