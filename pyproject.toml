@@ -1,5 +1,5 @@
 [build-system]
-requires = ["uv-build >=0.9.0"]
+requires = ["uv-build >=0.10.4"]  # https://github.com/astral-sh/uv/pull/18020
 build-backend = "uv_build"
 
 [project]
