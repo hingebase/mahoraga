@@ -186,7 +186,10 @@ class Config(_core.Config, toml_file="mahoraga.toml"):
                     if record.msg == "Started worker-1":
                         nonlocal started
                         started = True
-                        logging.getLogger("_granian.workers").removeFilter(self)
+                        asyncio.get_running_loop().call_soon(
+                            logging.getLogger("_granian.serve").removeFilter,
+                            self,
+                        )
                         _granian_lifespan()
                     return True
 
@@ -218,7 +221,7 @@ class Config(_core.Config, toml_file="mahoraga.toml"):
                 ),
             )
             server.workers_kill_timeout = self.server.workers_kill_timeout()
-            logging.getLogger("_granian.workers").addFilter(Filter())
+            logging.getLogger("_granian.serve").addFilter(Filter())
         _preload.configure_logging_extra(self.log.levelno())
         try:
             asyncio.run(

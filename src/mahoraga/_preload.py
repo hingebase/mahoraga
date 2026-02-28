@@ -46,6 +46,8 @@ class DistributedScheduler:
     def filter(self, record: logging.LogRecord) -> bool:
         if record.args != ("dashboard", "http://127.0.0.1:8787/status"):
             return True
+        # It's safe to remove the filter immediately since the iteration of
+        # `logger.filters` will be stopped by `return False`
         logging.getLogger("distributed.scheduler").removeFilter(self)
         return False
 
