@@ -279,6 +279,7 @@ class _Uv(pydantic.BaseModel):
         "https://mirror.nyist.edu.cn/github-release/astral-sh/uv/",
         "https://mirrors.ustc.edu.cn/github-release/astral-sh/uv/",
         "https://github.com/astral-sh/uv/releases/download/",
+        "https://releases.astral.sh/github/uv/releases/download/",
     ])
 
 
@@ -310,6 +311,7 @@ class _Upstream(pydantic.BaseModel, **_model_config):
         "https://cdn.npmmirror.com/binaries/python-build-standalone/",
         "https://mirrors.ustc.edu.cn/github-release/astral-sh/python-build-standalone/",
         "https://github.com/astral-sh/python-build-standalone/releases/download/",
+        "https://releases.astral.sh/github/python-build-standalone/releases/download/",
     ])
     uv: _Uv = _Uv()
     backup: set[str] = {
@@ -318,6 +320,7 @@ class _Upstream(pydantic.BaseModel, **_model_config):
         "github.com",
         "prefix.dev",
         "pypi.org",
+        "releases.astral.sh",
         "www.python.org",
     }
 
