@@ -32,7 +32,7 @@ from mahoraga import _core
 from . import _models
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
+    from collections.abc import AsyncIterator
 
 router = fastapi.APIRouter(route_class=_core.APIRoute)
 
@@ -246,7 +246,7 @@ def _sha256_and_size_from_json(
 async def _stream(
     response: httpx.Response,
     stack: contextlib.AsyncExitStack,
-) -> AsyncGenerator[bytes]:
+) -> AsyncIterator[bytes]:
     async with stack:
         yield b""
         async for chunk in response.aiter_bytes():

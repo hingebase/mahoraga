@@ -30,6 +30,7 @@ import pathlib
 import shutil
 from collections.abc import (
     AsyncGenerator,
+    AsyncIterator,
     Callable,
     Coroutine,
     Generator,
@@ -275,7 +276,7 @@ async def _stream(
     cache_location: StrPath | None = None,
     sha256: bytes | None = None,
     size: int | None = None,
-) -> AsyncGenerator[bytes]:
+) -> AsyncIterator[bytes]:
     last = b""
     scope = anyio.CancelScope(shield=True)
     async with contextlib.AsyncExitStack() as stack:
