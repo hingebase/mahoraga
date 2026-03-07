@@ -254,6 +254,7 @@ class _PyPI(pydantic.BaseModel):
         "https://mirrors.aliyun.com/pypi/web/",
         "https://mirrors.cloud.tencent.com/pypi/",
         "https://mirrors.huaweicloud.com/repository/pypi/",
+        "https://mirrors.hust.edu.cn/pypi/web/",
         "https://mirrors.pku.edu.cn/pypi/web/",
         "https://mirrors.sustech.edu.cn/pypi/web/",
     ])
