@@ -105,6 +105,9 @@ select = ["ALL"]
 "src/mahoraga/_static/panel_support.py" = ["INP001"]
 "scripts/**/*.py" = ["INP001"]
 
+[tool.tombi.lint.rules]
+tables-out-of-order = "off"
+
 [tool.ty.rules]
 division-by-zero = "warn"
 possibly-unresolved-reference = "warn"
