@@ -38,7 +38,7 @@ async def get_compressed_mapping() -> fastapi.Response:
                 "https://api.github.com/repos/prefix-dev/parselmouth/contents/files/compressed_mapping.json",
                 headers={
                     "Accept": "application/vnd.github.raw+json",
-                    "X-GitHub-Api-Version": "2022-11-28",
+                    "X-GitHub-Api-Version": "2026-03-10",
                 },
                 stack=stack,
             ),

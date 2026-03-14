@@ -285,7 +285,7 @@ def _open(requirements: pathlib.Path) -> io.TextIOWrapper:
 def _retrieve(url: str, params: _Params | None = None) -> str:
     headers = {
         "Accept": "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
+        "X-GitHub-Api-Version": "2026-03-10",
     }
     if gh_token := os.getenv("GH_TOKEN"):
         headers["Authorization"] = f"Bearer {gh_token}"
