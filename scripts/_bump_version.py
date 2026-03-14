@@ -56,7 +56,7 @@ class _Main(
 
     def cli_cmd(self) -> None:
         # ruff: disable[S603]
-        version = subprocess.run(
+        version = subprocess.check_output(
             [
                 os.getenv("UV", "uv"),
                 "version",
@@ -64,10 +64,8 @@ class _Main(
                 "--no-sync",
                 "--short",
             ],
-            capture_output=True,
-            check=True,
             encoding="ascii",
-        ).stdout.strip()
+        ).strip()
         if git := shutil.which("git"):
             # https://git-scm.com/book/en/v2/Git-Tools-Signing-Your-Work
             subprocess.run(
