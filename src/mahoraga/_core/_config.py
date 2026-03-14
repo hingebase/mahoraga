@@ -8,9 +8,9 @@
 
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied. See the License for the specific language governing
+# permissions and limitations under the License.
 
 __all__ = ["Address", "Config", "Predicate", "Server"]
 
@@ -336,8 +336,8 @@ class Config(pydantic_settings.BaseSettings, **_model_config):
 
     @contextlib.asynccontextmanager
     async def lifespan(self, _: FastAPI) -> AsyncIterator[_core.Context]:
-        # Discard all Dask environment variables which have been read into the
-        # global config
+        # Discard all Dask environment variables which have been read
+        # into the global config
         for name in [name for name in os.environ if name.startswith("DASK_")]:
             del os.environ[name]
 

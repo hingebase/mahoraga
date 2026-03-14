@@ -8,9 +8,9 @@
 
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied. See the License for the specific language governing
+# permissions and limitations under the License.
 
 __all__ = ["configure_logging_extra"]
 
@@ -46,8 +46,8 @@ class DistributedScheduler:
     def filter(self, record: logging.LogRecord) -> bool:
         if record.args != ("dashboard", "http://127.0.0.1:8787/status"):
             return True
-        # It's safe to remove the filter immediately since the iteration of
-        # `logger.filters` will be stopped by `return False`
+        # It's safe to remove the filter immediately since the iteration
+        # of `logger.filters` will be stopped by `return False`
         logging.getLogger("distributed.scheduler").removeFilter(self)
         return False
 
