@@ -72,7 +72,7 @@ async def get_pyodide_package(
             return fastapi.Response(status_code=404)
         headers = {
             "Accept": "application/octet-stream",
-            "X-GitHub-Api-Version": "2022-11-28",
+            "X-GitHub-Api-Version": "2026-03-10",
         }
         if sha256 := asset.sha256():
             return await _core.stream(

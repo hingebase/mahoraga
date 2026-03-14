@@ -1,5 +1,5 @@
 [build-system]
-requires = ["uv-build >=0.9.0"]
+requires = ["uv-build >=0.10.4,<0.11.0"]  # https://github.com/astral-sh/uv/pull/18020
 build-backend = "uv_build"
 
 [project]
@@ -46,7 +46,7 @@ dependencies = [
     "pyodide-lock >=0.1.0",
     "py-rattler ==0.22.0",  # Last version with JLAP support
     "rich >=14.2.0",
-    "uvicorn >=0.38.0",
+    "uvicorn >=0.41.0",
     "uvloop >=0.22.1; sys_platform != 'win32' and sys_platform != 'cygwin' and platform_python_implementation != 'PyPy'",
     "winloop >=0.3.1; sys_platform == 'win32' and platform_python_implementation != 'PyPy'",
 ]
@@ -72,7 +72,6 @@ dev = [
     "pooch >=1.9.0",
     "pydantic-settings >=2.7.0",
     "pygit2 >=1.19.0",
-    "pyodide-lock >=0.1.0",
 ]
 
 [[project.authors]]

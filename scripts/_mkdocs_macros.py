@@ -30,7 +30,6 @@ import pooch  # pyright: ignore[reportMissingTypeStubs]
 import pydantic
 import pydantic_settings
 import pygit2
-import pyodide_lock
 import requests
 
 if TYPE_CHECKING:
@@ -80,12 +79,6 @@ def define_env(env: MacrosPlugin) -> None:
         privacy.config.assets = True
         requests.get = _get  # ty: ignore[invalid-assignment]
     _coloring(svg)
-    lock_file = pooch.retrieve(  # pyright: ignore[reportUnknownMemberType]
-        f"https://cdn.jsdelivr.net/pyodide/v{env.variables['pyodide_py_version']}/full/pyodide-lock.json",
-        known_hash=None,
-    )
-    lock_spec = pyodide_lock.PyodideLockSpec.from_json(pathlib.Path(lock_file))
-    env.variables["bokeh_version"] = lock_spec.packages["bokeh"].version
 
 
 def on_post_build(env: MacrosPlugin) -> None:
@@ -292,7 +285,7 @@ def _open(requirements: pathlib.Path) -> io.TextIOWrapper:
 def _retrieve(url: str, params: _Params | None = None) -> str:
     headers = {
         "Accept": "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
+        "X-GitHub-Api-Version": "2026-03-10",
     }
     if gh_token := os.getenv("GH_TOKEN"):
         headers["Authorization"] = f"Bearer {gh_token}"

@@ -50,7 +50,7 @@ URLs in Panel with a runtime configurable prefix, i.e. the Mahoraga URL.
             `);
             const micropip = pyodide.pyimport("micropip");
             micropip.set_index_urls("{{ mahoraga_base_url }}/pypi/simple/{package_name}/?micropip=1");
-            await micropip.install(["panel =={{ panel_version }}"]);
+            await micropip.install(["bokeh =={{ bokeh_version }}", "panel =={{ panel_version }}"]);
             await pyodide.runPythonAsync(`
                 from pyodide.http import pyfetch
                 response = await pyfetch("{{ mahoraga_base_url }}/static/panel_support.py")
@@ -93,7 +93,7 @@ URLs in Panel with a runtime configurable prefix, i.e. the Mahoraga URL.
         <div id="simple_app"></div>
         <script type="py" config='{
           "interpreter": "{{ mahoraga_base_url }}/pyodide/v{{ pyodide_py_version }}/full/pyodide.mjs",
-          "packages": ["bokeh", "micropip"]
+          "packages": ["micropip"]
         }'>
             import micropip
             class _Transaction(micropip.transaction.Transaction):
@@ -102,7 +102,7 @@ URLs in Panel with a runtime configurable prefix, i.e. the Mahoraga URL.
                     self.search_pyodide_lock_first = True
             micropip.package_manager.Transaction = _Transaction
             micropip.set_index_urls("{{ mahoraga_base_url }}/pypi/simple/{package_name}/?micropip=1")
-            await micropip.install(["panel =={{ panel_version }}"])
+            await micropip.install(["bokeh =={{ bokeh_version }}", "panel =={{ panel_version }}"])
 
             from pyodide.http import pyfetch
             response = await pyfetch("{{ mahoraga_base_url }}/static/panel_support.py")

@@ -134,7 +134,7 @@ async def get_uv_python_downloads_json() -> fastapi.Response:
                 "https://api.github.com/repos/astral-sh/uv/contents/crates/uv-python/download-metadata.json",
                 headers={
                     "Accept": "application/vnd.github.raw+json",
-                    "X-GitHub-Api-Version": "2022-11-28",
+                    "X-GitHub-Api-Version": "2026-03-10",
                 },
                 stack=stack,
             ),

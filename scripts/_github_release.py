@@ -63,7 +63,7 @@ def main() -> None:
             headers={
                 "Accept": "application/vnd.github+json",
                 "Authorization": f"Bearer {gh_token}",
-                "X-GitHub-Api-Version": "2022-11-28",
+                "X-GitHub-Api-Version": "2026-03-10",
             },
             # https://requests.readthedocs.io/en/latest/user/advanced/#timeouts
             timeout=(3.05, 27),
