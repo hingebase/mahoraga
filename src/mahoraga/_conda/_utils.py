@@ -27,14 +27,11 @@ from typing import TYPE_CHECKING
 import rattler.exceptions
 import rattler.networking
 import rattler.platform
-import rattler.rattler
 
 from mahoraga import _core
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Mapping, Sequence
-
-    from _typeshed import StrPath
+    from collections.abc import Mapping, Sequence
 
 
 async def fetch_repo_data(
@@ -50,7 +47,7 @@ async def fetch_repo_data(
     channels = _channels(channel, label, cfg)
     platforms = [rattler.Platform(platform)]
     try:
-        [repodata] = await _fetch_repo_data(
+        [repodata] = await rattler.fetch_repo_data(
             channels=channels,
             platforms=platforms,
             cache_path="repodata-cache",
@@ -100,7 +97,7 @@ async def fetch_repo_data_and_load_matching_records(
         ):
             return records
     ctx = _core.context.get()
-    [repodata] = await _fetch_repo_data(
+    [repodata] = await rattler.fetch_repo_data(
         channels=channels,
         platforms=platforms,
         cache_path="repodata-cache",
@@ -189,32 +186,6 @@ def _channels(
             rattler.ChannelConfig(str(url)),  # Currently root_dir is unused
         ),
     ]
-
-
-async def _fetch_repo_data(  # noqa: PLR0913
-    *,
-    channels: list[rattler.Channel],
-    platforms: list[rattler.Platform],
-    cache_path: StrPath,
-    callback: Callable[[int, int], None] | None,
-    client: rattler.Client | None = None,
-    fetch_options: rattler.networking.FetchRepoDataOptions | None = None,
-) -> list[rattler.SparseRepoData]:
-    fetch_options = fetch_options or rattler.networking.FetchRepoDataOptions()
-    # ruff: disable[SLF001]
-    repo_data_list = await rattler.rattler.py_fetch_repo_data(  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]
-        [channel._channel for channel in channels],  # pyright: ignore[reportPrivateUsage, reportUnknownMemberType]
-        [platform._inner for platform in platforms],  # pyright: ignore[reportPrivateUsage, reportUnknownMemberType]
-        cache_path,
-        callback,
-        client and client._client,  # pyright: ignore[reportPrivateUsage, reportUnknownMemberType]
-        fetch_options._into_py(),  # pyright: ignore[reportPrivateUsage, reportUnknownMemberType]
-    )
-    return [
-        rattler.SparseRepoData._from_py_sparse_repo_data(  # pyright: ignore[reportPrivateUsage, reportUnknownMemberType]
-            repo_data) for repo_data in repo_data_list  # pyright: ignore[reportUnknownArgumentType, reportUnknownVariableType]
-    ]
-    # ruff: enable[SLF001]
 
 
 def _getitem[T](mapping: Mapping[str, str | list[T]], key: str) -> Sequence[T]:
