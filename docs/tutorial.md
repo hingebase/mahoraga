@@ -184,17 +184,21 @@ provide a Python script which can be executed by uv:
 uv run {{ mahoraga_base_url }}/static/get_pixi.py {{ mahoraga_base_url }}
 ```
 By default, the script installs the latest version of Pixi to `PIXI_HOME`
-[^:octicons-link-external-16:^][14], replacing any existed version. To specify a
-version, pass it via CLI arguments:
+[^:octicons-link-external-16:^][14], replacing any existed version, and prepend
+`$PIXI_HOME/bin` to your `PATH`. To specify a version, pass it via CLI
+arguments:
 ``` sh
 -v '0.43.1'  # Exact version
 -v '0.43.*'  # Latest revision of a specific minor version
 -v '>=0.43.1,<1'  # Version range
 ```
-The script respects environment variables `PIXI_HOME` and `PIXI_CACHE_DIR`
+The script respects environment variables `PIXI_HOME`, `PIXI_NO_PATH_UPDATE`
+[^:octicons-link-external-16:^][16] and `PIXI_CACHE_DIR`
 [^:octicons-link-external-16:^][14] if present.
 
-Once Pixi is installed, run the following command to configure it:
+For convenience, the script modifies Pixi global configuration automatically,
+using Mahoraga as the sole mirror of [anaconda.org][17] and PyPI.
+You can also configure the mirrors as you wish:
 === "Stable"
 
     ``` sh
@@ -385,3 +389,5 @@ The next generation of the official Python installer for Windows,
 [13]: https://github.com/astral-sh/uv/issues/16519
 [14]: https://pixi.prefix.dev/latest/reference/environment_variables/#configurable-environment-variables
 [15]: https://docs.astral.sh/uv/reference/storage/#configuration-directories
+[16]: https://pixi.prefix.dev/latest/installation/#installer-script-options
+[17]: https://anaconda.org/
