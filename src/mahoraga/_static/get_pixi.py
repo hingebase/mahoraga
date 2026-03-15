@@ -82,7 +82,7 @@ def _main() -> NoReturn:
     )
     args = parser.parse_args()
 
-    # https://pixi.sh/latest/reference/environment_variables/#configurable-environment-variables
+    # https://pixi.prefix.dev/latest/reference/environment_variables/#configurable-environment-variables
     pixi_home = _pixi_home()
     cache_dir = _pixi_cache_dir()
 

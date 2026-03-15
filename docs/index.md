@@ -10,7 +10,7 @@
     and PyPI packages, all in one place.
     [:octicons-arrow-right-24: Docs](tutorial.md#uv)
 
-- [![Pixi](https://pixi.sh/latest/assets/pixi.png){ .middle width="36" }][2]　__Pixi__
+- [![Pixi](https://pixi.prefix.dev/latest/assets/pixi.png){ .middle width="36" }][2]　__Pixi__
 
     ---
 
@@ -74,8 +74,8 @@
 </div>
 
 [1]: https://docs.astral.sh/uv/
-[2]: https://pixi.sh/latest/
-[3]: https://pixi.sh/latest/#available-software
+[2]: https://pixi.prefix.dev/latest/
+[3]: https://pixi.prefix.dev/latest/#available-software
 [4]: https://pyodide.org/en/stable/
 [5]: https://pip.pypa.io/en/stable/
 [6]: https://pdm-project.org/en/latest/
