@@ -276,4 +276,4 @@ def _split_repo(lifespan: _Lifespan) -> None:
         )
 
 
-hishel._core._spec.get_heuristic_freshness = lambda response: 600  # noqa: ARG005, SLF001  # ty: ignore[invalid-assignment]
+hishel._core._spec.get_heuristic_freshness = lambda response: 600  # noqa: ARG005, SLF001

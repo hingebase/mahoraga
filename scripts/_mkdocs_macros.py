@@ -77,7 +77,7 @@ def define_env(env: MacrosPlugin) -> None:
         svg = "https://cdn.jsdelivr.net/npm/@material-design-icons/svg@0/filled/temple_buddhist.svg"
         privacy = cast("PrivacyPlugin", env.conf.plugins["material/privacy"])
         privacy.config.assets = True
-        requests.get = _get  # ty: ignore[invalid-assignment]
+        requests.get = _get
     _coloring(svg)
 
 
