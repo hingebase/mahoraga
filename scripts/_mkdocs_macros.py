@@ -56,12 +56,10 @@ def define_env(env: MacrosPlugin) -> None:
         for line in f:
             k, v = line.split("==")
             env.variables[f"{k}_version".replace("-", "_")] = v.rstrip()
+    mahoraga_base_url = os.getenv("MAHORAGA_BASE_URL", "").rstrip("/")
     env.variables.update({  # pyright: ignore[reportUnknownMemberType]
         "changelog": _changelog(),
-        "mahoraga_base_url": os.getenv(
-            "MAHORAGA_BASE_URL",
-            default="http://127.0.0.1:3450",
-        ).rstrip("/"),
+        "mahoraga_base_url": mahoraga_base_url or "http://127.0.0.1:3450",
         "mahoraga_version": _Project().version,
         "pymanager_version": _Tag().name,
         "python_build_standalone_tag": release.tag_name,
@@ -77,7 +75,25 @@ def define_env(env: MacrosPlugin) -> None:
         svg = "https://cdn.jsdelivr.net/npm/@material-design-icons/svg@0/filled/temple_buddhist.svg"
         privacy = cast("PrivacyPlugin", env.conf.plugins["material/privacy"])
         privacy.config.assets = True
-        requests.get = _get
+        if mahoraga_base_url:
+            req = requests.PreparedRequest()
+
+            def get(
+                url: str | bytes,
+                params: _Params | None = None,
+                **kwargs: Incomplete,
+            ) -> requests.Response:
+                req.prepare_url(url, params)  # pyright: ignore[reportUnknownMemberType]
+                prepared = req.url
+                if not prepared:
+                    message = "Prepared URL should never be empty"
+                    raise AssertionError(message)
+                if prepared.startswith("https://cdn.jsdelivr.net/"):
+                    prepared = mahoraga_base_url + prepared[24:]
+                with requests.Session() as session:
+                    return session.get(prepared, **kwargs)
+
+            requests.get = get
     _coloring(svg)
 
 
@@ -242,25 +258,6 @@ def _coloring(src: str) -> None:
     g[:] = root
     root[:] = [g]
     tree.write(dst)
-
-
-def _get(
-    url: str | bytes,
-    params: _Params | None = None,
-    **kwargs: Incomplete,
-) -> requests.Response:
-    req = requests.PreparedRequest()
-    req.prepare_url(url, params)  # pyright: ignore[reportUnknownMemberType]
-    if (
-        (prepared := req.url)
-        and prepared.startswith("https://cdn.jsdelivr.net/")
-        and (base_url := os.getenv("MAHORAGA_BASE_URL"))
-    ):
-        req.prepare_url(base_url, None)  # pyright: ignore[reportUnknownMemberType]
-        if prepared_base_url := req.url:
-            url = f"{prepared_base_url.rstrip("/")}{prepared[24:]}"
-    with requests.Session() as session:
-        return session.get(url, **kwargs)
 
 
 def _open(requirements: pathlib.Path) -> io.TextIOWrapper:
