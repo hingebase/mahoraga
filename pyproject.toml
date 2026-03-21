@@ -101,7 +101,6 @@ select = ["ALL"]
 
 [tool.ruff.lint.per-file-ignores]
 "src/**/__init__.py" = ["RUF067"]
-"src/mahoraga/_static/panel_support.py" = ["INP001"]
 "scripts/**/*.py" = ["INP001"]
 
 [tool.ruff.lint.pycodestyle]
