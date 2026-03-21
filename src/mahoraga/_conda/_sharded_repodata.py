@@ -178,7 +178,6 @@ def _split_repo(
     try:
         new = pooch.retrieve(  # pyright: ignore[reportUnknownMemberType]
             f"{_utils.prefix(channel, cfg)}/{platform}/run_exports.json.zst",
-            known_hash=None,
             path=root.parent,
         )
     except OSError:

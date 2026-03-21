@@ -94,7 +94,6 @@ def _fetch[T: pydantic.BaseModel](
     path, fname = os.path.split(cache_location)
     pooch.retrieve(  # pyright: ignore[reportUnknownMemberType]
         url,
-        known_hash=None,
         fname=fname,
         path=path,
         downloader=pooch.HTTPDownloader(**kwargs),  # pyright: ignore[reportArgumentType]

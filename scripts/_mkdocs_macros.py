@@ -234,7 +234,7 @@ def _coloring(src: str) -> None:
     # https://github.com/python/cpython/issues/61290
     ET.register_namespace("", "http://www.w3.org/2000/svg")
 
-    tree = defusedxml.ElementTree.parse(pooch.retrieve(src, known_hash=None))  # pyright: ignore[reportUnknownMemberType]
+    tree = defusedxml.ElementTree.parse(pooch.retrieve(src))  # pyright: ignore[reportUnknownMemberType]
     root = tree.getroot()
     if root is None:
         raise RuntimeError
@@ -291,7 +291,6 @@ def _retrieve(url: str, params: _Params | None = None) -> str:
         headers["Authorization"] = f"Bearer {gh_token}"
     return pooch.retrieve(  # pyright: ignore[reportUnknownMemberType]
         url,
-        known_hash=None,
         path=pooch.os_cache("pooch") / time.strftime("%Y.%m.%d"),
         downloader=pooch.HTTPDownloader(headers=headers, params=params),  # pyright: ignore[reportArgumentType]
     )
