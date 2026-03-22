@@ -72,3 +72,10 @@ plugins:
   - privacy:
       assets: false
   - search
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/hingebase/mahoraga
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/mahoraga/
