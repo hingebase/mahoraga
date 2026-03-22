@@ -1,4 +1,4 @@
-# Build serverless web application with Holoviz Panel
+# Build serverless web application with HoloViz Panel
 [Panel][1] is a Python library for building web applications, mainly serves as
 a bridge between [Bokeh][2] and [HoloViews][3]. (If you don't use HoloViews
 directly or indirectly, you may want to skip this topic and search for some
