@@ -21,6 +21,7 @@ import ipaddress
 import itertools
 import os
 import sys
+from collections.abc import Iterable, Sequence
 from typing import (
     TYPE_CHECKING,
     Annotated,
@@ -315,15 +316,24 @@ class _Upstream(pydantic.BaseModel, **_model_config):
         "https://releases.astral.sh/github/python-build-standalone/releases/download/",
     ])
     uv: _Uv = _Uv()
-    backup: set[str] = {
-        "anaconda.org",
-        "conda.anaconda.org",
-        "github.com",
-        "prefix.dev",
-        "pypi.org",
-        "releases.astral.sh",
-        "www.python.org",
+    backup: dict[str, pydantic.NonNegativeInt] = {
+        "anaconda.org": 0,
+        "conda.anaconda.org": 0,
+        "github.com": 0,
+        "prefix.dev": 0,
+        "pypi.org": 0,
+        "releases.astral.sh": 0,
+        "www.python.org": 0,
+        "mirrors.bfsu.edu.cn": 1,
+        "mirrors.tuna.tsinghua.edu.cn": 1,
     }
+
+    @pydantic.field_validator("backup", mode="before")
+    @classmethod
+    def compat(cls, backup: Iterable[str]) -> Iterable[str]:
+        if isinstance(backup, Sequence) and not isinstance(backup, str):
+            return dict.fromkeys(backup, 0)
+        return backup
 
 
 class Config(pydantic_settings.BaseSettings, **_model_config):
