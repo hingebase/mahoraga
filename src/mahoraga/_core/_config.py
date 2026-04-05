@@ -263,6 +263,7 @@ class _PyPI(pydantic.BaseModel):
         _adapter.validate_python([
             "https://mirrors.bfsu.edu.cn/pypi/web/",
             "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/",
+            "https://mirrors.ustc.edu.cn/pypi/",
             "https://pypi.org/",
         ])
     )
