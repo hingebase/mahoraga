@@ -142,17 +142,20 @@ def schedule_exit(stack: contextlib.AsyncExitStack) -> None:
 
 
 class Statistics(pydantic_settings.BaseSettings, json_file_encoding="utf-8"):
-    backup_servers: set[str]
+    backup_servers: dict[str, int]
     concurrent_requests: collections.Counter[str] = collections.Counter()
     total_seconds: collections.Counter[str] = collections.Counter()
 
     def key(self, url: str) -> tuple[bool, int, int]:
         h = httpx.URL(url).host
-        return (
-            h in self.backup_servers,
-            self.concurrent_requests[h],
-            self.total_seconds[h],
-        )
+        concurrency = self.concurrent_requests[h]
+        try:
+            limit = self.backup_servers[h]
+        except KeyError:
+            backup = False
+        else:
+            backup = concurrency >= limit
+        return backup, concurrency, self.total_seconds[h]
 
     @override
     @classmethod
