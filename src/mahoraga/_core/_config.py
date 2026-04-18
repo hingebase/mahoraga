@@ -47,7 +47,7 @@ import uvicorn.config
 from mahoraga import __version__, _core
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator, Iterator
+    from collections.abc import AsyncGenerator, Iterator
     from logging.config import (
         _DictConfigArgs,  # pyright: ignore[reportPrivateUsage]
     )
@@ -346,7 +346,7 @@ class Config(pydantic_settings.BaseSettings, **_model_config):
     eager_task_execution: bool = False
 
     @contextlib.asynccontextmanager
-    async def lifespan(self, _: FastAPI) -> AsyncIterator[_core.Context]:
+    async def lifespan(self, _: FastAPI) -> AsyncGenerator[_core.Context]:
         # Discard all Dask environment variables which have been read
         # into the global config
         for name in [name for name in os.environ if name.startswith("DASK_")]:

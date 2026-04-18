@@ -45,7 +45,7 @@ from rattler.networking.fetch_repo_data import CacheAction
 from mahoraga import _core
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator, Awaitable
+    from collections.abc import AsyncGenerator, Awaitable
     from ssl import SSLContext
 
     from _typeshed import StrPath, Unused
@@ -104,7 +104,7 @@ class AsyncClient(hishel.httpx.AsyncCacheClient):
         method: str,
         url: httpx.URL | str,
         **kwargs: Any,
-    ) -> AsyncIterator[httpx.Response]:
+    ) -> AsyncGenerator[httpx.Response]:
         url = httpx.URL(url)
         h = url.host
         if h.endswith((
@@ -204,7 +204,7 @@ def cached_or_locked(
 
 
 @contextlib.asynccontextmanager
-async def _cached_or_locked(cache_location: StrPath) -> AsyncIterator[bool]:
+async def _cached_or_locked(cache_location: StrPath) -> AsyncGenerator[bool]:
     ctx = _core.context.get()
     async with ctx["locks"][str(cache_location)]:
         if not await anyio.Path(cache_location).is_file():
