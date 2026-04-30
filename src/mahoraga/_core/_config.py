@@ -245,7 +245,7 @@ class _Conda(pydantic.BaseModel, **_model_config):
     channel_alias: dict[str, _HttpUrl] = pydantic.TypeAdapter(
         dict[str, _HttpUrl],
     ).validate_python({
-        "emscripten-forge-dev": "https://prefix.dev/",
+        "emscripten-forge-4x": "https://prefix.dev/",
     })
 
 
