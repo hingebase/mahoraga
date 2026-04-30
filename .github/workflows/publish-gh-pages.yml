@@ -22,14 +22,14 @@ jobs:
         with:
           fetch-depth: 0
           fetch-tags: true
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@v8.1.0
         with:
           enable-cache: false
       - run: uv run --only-dev mkdocs build -s
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/upload-pages-artifact@v4
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: site
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
