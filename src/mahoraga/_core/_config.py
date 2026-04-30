@@ -245,7 +245,7 @@ class _Conda(pydantic.BaseModel, **_model_config):
     channel_alias: dict[str, _HttpUrl] = pydantic.TypeAdapter(
         dict[str, _HttpUrl],
     ).validate_python({
-        "emscripten-forge-dev": "https://prefix.dev/",
+        "emscripten-forge-4x": "https://prefix.dev/",
     })
 
 
@@ -253,16 +253,16 @@ class _PyPI(pydantic.BaseModel):
     html: list[_HttpUrl] = _adapter.validate_python([
         "https://mirror.nju.edu.cn/pypi/web/",
         "https://mirrors.aliyun.com/pypi/web/",
+        "https://mirrors.bfsu.edu.cn/pypi/web/",
         "https://mirrors.cloud.tencent.com/pypi/",
         "https://mirrors.huaweicloud.com/repository/pypi/",
         "https://mirrors.hust.edu.cn/pypi/web/",
         "https://mirrors.pku.edu.cn/pypi/web/",
         "https://mirrors.sustech.edu.cn/pypi/web/",
+        "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/",
     ])
     json_: Annotated[list[_HttpUrl], pydantic.Field(alias="json")] = (
         _adapter.validate_python([
-            "https://mirrors.bfsu.edu.cn/pypi/web/",
-            "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/",
             "https://mirrors.ustc.edu.cn/pypi/",
             "https://pypi.org/",
         ])
