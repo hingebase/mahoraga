@@ -110,7 +110,11 @@ server {
     }
 
     location ^~ /python-build-standalone/ {
-        {{ cache_or_fetch }}
+        error_page 404 = @fetch;
+        limit_except GET {
+            deny all;
+        }
+        log_not_found off;
     }
 
     location @fetch {
