@@ -17,3 +17,6 @@ docs/requirements.txt
 
 # Exclude uv.lock which contains private addresses
 uv.lock
+
+# GitHub Release preview
+scripts/github-release-preview.md

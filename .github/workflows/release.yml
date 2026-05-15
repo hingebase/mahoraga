@@ -1,4 +1,4 @@
-name: GitHub Pages
+name: GitHub Release
 
 on:
   push:
@@ -8,15 +8,11 @@ on:
 permissions: read-all
 
 jobs:
-  gh-pages:
-    name: Publish to GitHub Pages
+  release:
     runs-on: ubuntu-slim
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     permissions:
+      contents: write
       id-token: write
-      pages: write
     steps:
       - uses: actions/checkout@v6
         with:
@@ -25,11 +21,6 @@ jobs:
       - uses: astral-sh/setup-uv@v8.1.0
         with:
           enable-cache: false
-      - run: uv run --only-dev mkdocs build -s
+      - run: uv run --only-dev python scripts/_github_release.py
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/upload-pages-artifact@v5
-        with:
-          path: site
-      - id: deployment
-        uses: actions/deploy-pages@v5

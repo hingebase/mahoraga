@@ -8,9 +8,9 @@
 
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied. See the License for the specific language governing
+# permissions and limitations under the License.
 
 __all__ = ["Config", "run"]
 
@@ -186,7 +186,10 @@ class Config(_core.Config, toml_file="mahoraga.toml"):
                     if record.msg == "Started worker-1":
                         nonlocal started
                         started = True
-                        logging.getLogger("_granian.workers").removeFilter(self)
+                        asyncio.get_running_loop().call_soon(
+                            logging.getLogger("_granian.serve").removeFilter,
+                            self,
+                        )
                         _granian_lifespan()
                     return True
 
@@ -213,10 +216,12 @@ class Config(_core.Config, toml_file="mahoraga.toml"):
                     '%(addr)s - "%(method)s %(path)s %(protocol)s" %(status)d'
                 ),
                 factory=True,
-                static_path_mount=pathlib.Path(static_files.all_directories[0]),
+                static_path_mount=list(
+                    map(pathlib.Path, static_files.all_directories),
+                ),
             )
             server.workers_kill_timeout = self.server.workers_kill_timeout()
-            logging.getLogger("_granian.workers").addFilter(Filter())
+            logging.getLogger("_granian.serve").addFilter(Filter())
         _preload.configure_logging_extra(self.log.levelno())
         try:
             asyncio.run(
@@ -271,4 +276,4 @@ def _split_repo(lifespan: _Lifespan) -> None:
         )
 
 
-hishel._core._spec.get_heuristic_freshness = lambda response: 600  # noqa: ARG005, SLF001  # ty: ignore[invalid-assignment]
+hishel._core._spec.get_heuristic_freshness = lambda response: 600  # noqa: ARG005, SLF001

@@ -8,9 +8,9 @@
 
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied. See the License for the specific language governing
+# permissions and limitations under the License.
 
 __all__ = ["configure_logging_extra"]
 
@@ -46,6 +46,8 @@ class DistributedScheduler:
     def filter(self, record: logging.LogRecord) -> bool:
         if record.args != ("dashboard", "http://127.0.0.1:8787/status"):
             return True
+        # It's safe to remove the filter immediately since the iteration
+        # of `logger.filters` will be stopped by `return False`
         logging.getLogger("distributed.scheduler").removeFilter(self)
         return False
 
@@ -166,13 +168,14 @@ def dask_setup(_: Worker, log_level: str) -> None:
 
 
 class _LogRecord(pydantic.BaseModel, logging.LogRecord):
+    # ruff: disable[N815]
     args: Any
     asctime: str = ""
     created: float
     exc_info: Any
     exc_text: str | None
     filename: str
-    funcName: str  # noqa: N815
+    funcName: str
     levelname: str
     levelno: int
     lineno: int
@@ -183,12 +186,13 @@ class _LogRecord(pydantic.BaseModel, logging.LogRecord):
     name: str
     pathname: str
     process: int | None
-    processName: str | None  # noqa: N815
-    relativeCreated: float  # noqa: N815
+    processName: str | None
+    relativeCreated: float
     stack_info: str | None
     thread: int | None
-    threadName: str | None  # noqa: N815
-    taskName: str | None  # noqa: N815
+    threadName: str | None
+    taskName: str | None
+    # ruff: enable[N815]
 
     @pydantic.field_validator(
         "args",

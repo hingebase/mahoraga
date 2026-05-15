@@ -136,13 +136,13 @@ python-build-standalone = [
 ]
 
 # Mark a mirror as backup to decrease its priority.
-# Backup mirrors are used when all non-backup mirrors are unavailable or having
-# active connections.
-backup = [
-    {%- for host in upstream.backup %}
-    "{{ host }}",
-    {%- endfor %}
-]
+# A mirror becomes backup when the number of concurrent requests reached the
+# following threshold. Backup mirrors are used when all the non-backup mirrors
+# are unavailable.
+[upstream.backup]
+{%- for key, value in upstream.backup | dictsort %}
+"{{ key }}" = {{ value }}
+{%- endfor %}
 
 # Upstream conda mirror servers.
 # The default mirrors are assumed to have all channels and support labels.

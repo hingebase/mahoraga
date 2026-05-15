@@ -8,9 +8,9 @@
 
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied. See the License for the specific language governing
+# permissions and limitations under the License.
 
 __all__ = ["GitHubRelease", "NPMBase", "headers"]
 
@@ -18,7 +18,7 @@ import asyncio
 import logging
 import os
 import pathlib
-from typing import TYPE_CHECKING, Any, Literal, Self
+from typing import TYPE_CHECKING, Literal, Self
 
 import pooch  # pyright: ignore[reportMissingTypeStubs]
 import pydantic
@@ -89,15 +89,14 @@ def _fetch[T: pydantic.BaseModel](
     klass: type[T],
     url: str,
     cache_location: pathlib.Path,
-    **kwargs: Any,  # noqa: ANN401
+    **kwargs: object,
 ) -> T:
     path, fname = os.path.split(cache_location)
     pooch.retrieve(  # pyright: ignore[reportUnknownMemberType]
         url,
-        known_hash=None,
         fname=fname,
         path=path,
-        downloader=pooch.HTTPDownloader(**kwargs),
+        downloader=pooch.HTTPDownloader(**kwargs),  # pyright: ignore[reportArgumentType]
     )
     json_data = cache_location.read_text(encoding="utf-8")
     try:
@@ -109,6 +108,6 @@ def _fetch[T: pydantic.BaseModel](
 
 headers = {
     "Accept": "application/vnd.github+json",
-    "X-GitHub-Api-Version": "2022-11-28",
+    "X-GitHub-Api-Version": "2026-03-10",
 }
 _logger = logging.getLogger("mahoraga")

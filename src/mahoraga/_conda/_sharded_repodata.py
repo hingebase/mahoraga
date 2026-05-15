@@ -8,9 +8,9 @@
 
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied. See the License for the specific language governing
+# permissions and limitations under the License.
 
 __all__ = ["router", "split_repo"]
 
@@ -156,7 +156,7 @@ def _sha256(
     }
     with pooch.utils.temporary_file(root) as tmp:  # pyright: ignore[reportUnknownMemberType]
         with pathlib.Path(tmp).open("w+b") as f:
-            # https://github.com/conda/rattler/blob/py-rattler-v0.18.0/crates/rattler_index/src/lib.rs#L826
+            # https://github.com/conda/rattler/blob/py-rattler-v0.22.0/crates/rattler_index/src/lib.rs#L835
             with compression.zstd.ZstdFile(f, "w") as g:
                 msgpack.dump(shard, g)
             f.seek(0)
@@ -178,7 +178,6 @@ def _split_repo(
     try:
         new = pooch.retrieve(  # pyright: ignore[reportUnknownMemberType]
             f"{_utils.prefix(channel, cfg)}/{platform}/run_exports.json.zst",
-            known_hash=None,
             path=root.parent,
         )
     except OSError:

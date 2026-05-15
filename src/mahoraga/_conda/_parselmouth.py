@@ -8,9 +8,9 @@
 
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied. See the License for the specific language governing
+# permissions and limitations under the License.
 
 __all__ = ["router"]
 
@@ -38,7 +38,7 @@ async def get_compressed_mapping() -> fastapi.Response:
                 "https://api.github.com/repos/prefix-dev/parselmouth/contents/files/compressed_mapping.json",
                 headers={
                     "Accept": "application/vnd.github.raw+json",
-                    "X-GitHub-Api-Version": "2022-11-28",
+                    "X-GitHub-Api-Version": "2026-03-10",
                 },
                 stack=stack,
             ),

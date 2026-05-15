@@ -193,7 +193,7 @@ one, and it will work as expected.
 
 [1]: https://ofek.dev/pyapp/latest/
 [2]: ../tutorial.md
-[3]: https://pixi.sh/latest/
+[3]: https://pixi.prefix.dev/latest/
 [4]: ../tutorial.md#pixi
 [5]: https://developer.apple.com/library/archive/technotes/tn2339/_index.html
 [6]: https://visualstudio.microsoft.com/visual-cpp-build-tools/

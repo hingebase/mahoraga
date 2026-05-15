@@ -8,9 +8,9 @@
 
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied. See the License for the specific language governing
+# permissions and limitations under the License.
 
 __all__ = ["router"]
 
@@ -32,7 +32,7 @@ from mahoraga import _core
 from . import _models
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
+    from collections.abc import AsyncIterator
 
 router = fastapi.APIRouter(route_class=_core.APIRoute)
 
@@ -246,7 +246,7 @@ def _sha256_and_size_from_json(
 async def _stream(
     response: httpx.Response,
     stack: contextlib.AsyncExitStack,
-) -> AsyncGenerator[bytes]:
+) -> AsyncIterator[bytes]:
     async with stack:
         yield b""
         async for chunk in response.aiter_bytes():

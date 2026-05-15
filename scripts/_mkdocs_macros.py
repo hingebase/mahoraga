@@ -8,9 +8,9 @@
 
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied. See the License for the specific language governing
+# permissions and limitations under the License.
 
 import collections
 import datetime
@@ -30,7 +30,6 @@ import pooch  # pyright: ignore[reportMissingTypeStubs]
 import pydantic
 import pydantic_settings
 import pygit2
-import pyodide_lock
 import requests
 
 if TYPE_CHECKING:
@@ -57,12 +56,10 @@ def define_env(env: MacrosPlugin) -> None:
         for line in f:
             k, v = line.split("==")
             env.variables[f"{k}_version".replace("-", "_")] = v.rstrip()
+    mahoraga_base_url = os.getenv("MAHORAGA_BASE_URL", "").rstrip("/")
     env.variables.update({  # pyright: ignore[reportUnknownMemberType]
         "changelog": _changelog(),
-        "mahoraga_base_url": os.getenv(
-            "MAHORAGA_BASE_URL",
-            default="http://127.0.0.1:3450",
-        ).rstrip("/"),
+        "mahoraga_base_url": mahoraga_base_url or "http://127.0.0.1:3450",
         "mahoraga_version": _Project().version,
         "pymanager_version": _Tag().name,
         "python_build_standalone_tag": release.tag_name,
@@ -78,14 +75,26 @@ def define_env(env: MacrosPlugin) -> None:
         svg = "https://cdn.jsdelivr.net/npm/@material-design-icons/svg@0/filled/temple_buddhist.svg"
         privacy = cast("PrivacyPlugin", env.conf.plugins["material/privacy"])
         privacy.config.assets = True
-        requests.get = _get  # ty: ignore[invalid-assignment]
+        if mahoraga_base_url:
+            req = requests.PreparedRequest()
+
+            def get(
+                url: str | bytes,
+                params: _Params | None = None,
+                **kwargs: Incomplete,
+            ) -> requests.Response:
+                req.prepare_url(url, params)  # pyright: ignore[reportUnknownMemberType]
+                prepared = req.url
+                if not prepared:
+                    message = "Prepared URL should never be empty"
+                    raise AssertionError(message)
+                if prepared.startswith("https://cdn.jsdelivr.net/"):
+                    prepared = mahoraga_base_url + prepared[24:]
+                with requests.Session() as session:
+                    return session.get(prepared, **kwargs)
+
+            requests.get = get
     _coloring(svg)
-    lock_file = pooch.retrieve(  # pyright: ignore[reportUnknownMemberType]
-        f"https://cdn.jsdelivr.net/pyodide/v{env.variables['pyodide_py_version']}/full/pyodide-lock.json",
-        known_hash=None,
-    )
-    lock_spec = pyodide_lock.PyodideLockSpec.from_json(pathlib.Path(lock_file))
-    env.variables["bokeh_version"] = lock_spec.packages["bokeh"].version
 
 
 def on_post_build(env: MacrosPlugin) -> None:
@@ -102,7 +111,6 @@ def on_post_build(env: MacrosPlugin) -> None:
             jsmin.JavascriptMinify(g, f).minify()  # pyright: ignore[reportUnknownMemberType]
             f.truncate()
     if os.getenv("GH_TOKEN"):
-        (site_dir / ".nojekyll").touch()
         subprocess.run(  # noqa: S603
             ["/usr/bin/chmod", "-R", "a=r,u+w,a+X", site_dir],
             check=True,
@@ -242,7 +250,7 @@ def _coloring(src: str) -> None:
     # https://github.com/python/cpython/issues/61290
     ET.register_namespace("", "http://www.w3.org/2000/svg")
 
-    tree = defusedxml.ElementTree.parse(pooch.retrieve(src, known_hash=None))  # pyright: ignore[reportUnknownMemberType]
+    tree = defusedxml.ElementTree.parse(pooch.retrieve(src))  # pyright: ignore[reportUnknownMemberType]
     root = tree.getroot()
     if root is None:
         raise RuntimeError
@@ -250,25 +258,6 @@ def _coloring(src: str) -> None:
     g[:] = root
     root[:] = [g]
     tree.write(dst)
-
-
-def _get(
-    url: str | bytes,
-    params: _Params | None = None,
-    **kwargs: Incomplete,
-) -> requests.Response:
-    req = requests.PreparedRequest()
-    req.prepare_url(url, params)  # pyright: ignore[reportUnknownMemberType]
-    if (
-        (prepared := req.url)
-        and prepared.startswith("https://cdn.jsdelivr.net/")
-        and (base_url := os.getenv("MAHORAGA_BASE_URL"))
-    ):
-        req.prepare_url(base_url, None)  # pyright: ignore[reportUnknownMemberType]
-        if prepared_base_url := req.url:
-            url = f"{prepared_base_url.rstrip("/")}{prepared[24:]}"
-    with requests.Session() as session:
-        return session.get(url, **kwargs)
 
 
 def _open(requirements: pathlib.Path) -> io.TextIOWrapper:
@@ -293,13 +282,12 @@ def _open(requirements: pathlib.Path) -> io.TextIOWrapper:
 def _retrieve(url: str, params: _Params | None = None) -> str:
     headers = {
         "Accept": "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
+        "X-GitHub-Api-Version": "2026-03-10",
     }
     if gh_token := os.getenv("GH_TOKEN"):
         headers["Authorization"] = f"Bearer {gh_token}"
     return pooch.retrieve(  # pyright: ignore[reportUnknownMemberType]
         url,
-        known_hash=None,
-        path=pooch.os_cache("pooch") / time.strftime("%Y.%m.%d"),  # pyright: ignore[reportUnknownMemberType]
-        downloader=pooch.HTTPDownloader(headers=headers, params=params),
+        path=pooch.os_cache("pooch") / time.strftime("%Y.%m.%d"),
+        downloader=pooch.HTTPDownloader(headers=headers, params=params),  # pyright: ignore[reportArgumentType]
     )

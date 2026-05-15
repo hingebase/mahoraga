@@ -8,9 +8,9 @@
 
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied. See the License for the specific language governing
+# permissions and limitations under the License.
 
 __all__ = ["main"]
 
@@ -45,11 +45,12 @@ def main() -> None:
 class _New(_core.Server, alias_generator=None):
     """Create a new directory structure for Mahoraga.
 
-    The default configuration may not be suitable for you. A small subset of
-    the options can be tuned via command line (see below), while the rest live
-    in the `mahoraga.toml` file created by this command. Once you've done with
-    that file, you don't need to run this command again to create another
-    directory. For details, run `mahoraga import -h`.
+    The default configuration may not be suitable for you. A small
+    subset of the options can be tuned via command line (see below),
+    while the rest live in the `mahoraga.toml` file created by this
+    command. Once you've done with that file, you don't need to run this
+    command again to create another directory. For details, run
+    `mahoraga import -h`.
     """
 
     root: Annotated[
@@ -66,15 +67,15 @@ class _New(_core.Server, alias_generator=None):
 class _Import(_core.Address):
     """Create a new directory structure from existing configuration.
 
-    Mahoraga directory structure is not relocatable. Use this command to move
-    your configuration files to another location, either on the same machine or
-    not.
+    Mahoraga directory structure is not relocatable. Use this command to
+    move your configuration files to another location, either on the
+    same machine or not.
 
     Mahoraga directory structure follows semantic versioning. Directory
     created by Mahoraga version X.Y.Z (X>=1) is guaranteed to work under
     any version >=X.Y.Z,<X+1. Once updated to an uncompatible version,
-    you have to create a new directory via `mahoraga new` and migrate your data
-    by hand.
+    you have to create a new directory via `mahoraga new` and migrate
+    your data by hand.
     """
 
     source: Annotated[

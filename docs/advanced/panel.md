@@ -1,4 +1,4 @@
-# Build serverless web application with Holoviz Panel
+# Build serverless web application with HoloViz Panel
 [Panel][1] is a Python library for building web applications, mainly serves as
 a bridge between [Bokeh][2] and [HoloViews][3]. (If you don't use HoloViews
 directly or indirectly, you may want to skip this topic and search for some
@@ -16,13 +16,11 @@ The following example is for Pyodide, but can be adapted to CPython as well.
 - A running Mahoraga server which we have set up in the previous [tutorial][4].
 - [CORS][5] must be enabled.
 ## Simple slider panel
-The following example is just a combination of the [Mahoraga][5], [Panel][6]
-and [Pyodide][7] tutorials. The key point is the script `panel_support.py`
-^[:octicons-link-external-16:][8]^ which replaces all the hard-coded
-URLs in Panel with a runtime configurable prefix, i.e. the Mahoraga URL.
+The following example combines the [Mahoraga][5], [Panel][6] and [Pyodide][7]
+tutorials.
 === "Pyodide"
 
-    ``` html hl_lines="6-10 27 31 37"
+    ``` html hl_lines="6-10 27 31"
     <!doctype html>
     <html>
       <head>
@@ -50,16 +48,10 @@ URLs in Panel with a runtime configurable prefix, i.e. the Mahoraga URL.
             `);
             const micropip = pyodide.pyimport("micropip");
             micropip.set_index_urls("{{ mahoraga_base_url }}/pypi/simple/{package_name}/?micropip=1");
-            await micropip.install(["panel =={{ panel_version }}"]);
-            await pyodide.runPythonAsync(`
-                from pyodide.http import pyfetch
-                response = await pyfetch("{{ mahoraga_base_url }}/static/panel_support.py")
-                with open("panel_support.py", "wb") as f:
-                    f.write(await response.bytes())
-            `);
+            await micropip.install(["bokeh =={{ bokeh_version }}", "panel =={{ panel_version }}"]);
             pyodide.runPython(`
-                import panel_support
-                panel_support.monkey_patch("{{ mahoraga_base_url }}/")
+                import os
+                os.environ["PANEL_CDN_ROOT"] = "{{ mahoraga_base_url }}/npm/@holoviz/panel@"
                 import panel as pn
                 pn.extension(sizing_mode="stretch_width")
                 slider = pn.widgets.FloatSlider(start=0, end=10, name="Amplitude")
@@ -76,7 +68,7 @@ URLs in Panel with a runtime configurable prefix, i.e. the Mahoraga URL.
 
 === "PyScript"
 
-    ``` html hl_lines="6-11 16 25 29 34"
+    ``` html hl_lines="6-11 16 25 29"
     <!doctype html>
     <html>
       <head>
@@ -93,7 +85,7 @@ URLs in Panel with a runtime configurable prefix, i.e. the Mahoraga URL.
         <div id="simple_app"></div>
         <script type="py" config='{
           "interpreter": "{{ mahoraga_base_url }}/pyodide/v{{ pyodide_py_version }}/full/pyodide.mjs",
-          "packages": ["bokeh", "micropip"]
+          "packages": ["micropip"]
         }'>
             import micropip
             class _Transaction(micropip.transaction.Transaction):
@@ -102,15 +94,10 @@ URLs in Panel with a runtime configurable prefix, i.e. the Mahoraga URL.
                     self.search_pyodide_lock_first = True
             micropip.package_manager.Transaction = _Transaction
             micropip.set_index_urls("{{ mahoraga_base_url }}/pypi/simple/{package_name}/?micropip=1")
-            await micropip.install(["panel =={{ panel_version }}"])
+            await micropip.install(["bokeh =={{ bokeh_version }}", "panel =={{ panel_version }}"])
 
-            from pyodide.http import pyfetch
-            response = await pyfetch("{{ mahoraga_base_url }}/static/panel_support.py")
-            with open("panel_support.py", "wb") as f:
-                f.write(await response.bytes())
-
-            import panel_support
-            panel_support.monkey_patch("{{ mahoraga_base_url }}/")
+            import os
+            os.environ["PANEL_CDN_ROOT"] = "{{ mahoraga_base_url }}/npm/@holoviz/panel@"
             import panel as pn
             pn.extension(sizing_mode="stretch_width")
             slider = pn.widgets.FloatSlider(start=0, end=10, name="Amplitude")
@@ -129,4 +116,3 @@ URLs in Panel with a runtime configurable prefix, i.e. the Mahoraga URL.
 [5]: ../tutorial.md#pyodide
 [6]: https://panel.holoviz.org/how_to/wasm/standalone.html
 [7]: https://pyodide.org/en/stable/usage/loading-custom-python-code.html#loading-then-importing-python-code
-[8]: https://github.com/hingebase/mahoraga/blob/v{{ mahoraga_version }}/src/mahoraga/_static/panel_support.py

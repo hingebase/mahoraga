@@ -8,9 +8,9 @@
 
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied. See the License for the specific language governing
+# permissions and limitations under the License.
 
 __all__ = [
     "APIRoute",
@@ -30,6 +30,7 @@ import pathlib
 import shutil
 from collections.abc import (
     AsyncGenerator,
+    AsyncIterator,
     Callable,
     Coroutine,
     Generator,
@@ -275,7 +276,7 @@ async def _stream(
     cache_location: StrPath | None = None,
     sha256: bytes | None = None,
     size: int | None = None,
-) -> AsyncGenerator[bytes]:
+) -> AsyncIterator[bytes]:
     last = b""
     scope = anyio.CancelScope(shield=True)
     async with contextlib.AsyncExitStack() as stack:

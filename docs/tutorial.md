@@ -184,17 +184,21 @@ provide a Python script which can be executed by uv:
 uv run {{ mahoraga_base_url }}/static/get_pixi.py {{ mahoraga_base_url }}
 ```
 By default, the script installs the latest version of Pixi to `PIXI_HOME`
-[^:octicons-link-external-16:^][14], replacing any existed version. To specify a
-version, pass it via CLI arguments:
+[^:octicons-link-external-16:^][14], replacing any existed version, and prepend
+`$PIXI_HOME/bin` to your `PATH`. To specify a version, pass it via CLI
+arguments:
 ``` sh
 -v '0.43.1'  # Exact version
 -v '0.43.*'  # Latest revision of a specific minor version
 -v '>=0.43.1,<1'  # Version range
 ```
-The script respects environment variables `PIXI_HOME` and `PIXI_CACHE_DIR`
+The script respects environment variables `PIXI_HOME`, `PIXI_NO_PATH_UPDATE`
+[^:octicons-link-external-16:^][16] and `PIXI_CACHE_DIR`
 [^:octicons-link-external-16:^][14] if present.
 
-Once Pixi is installed, run the following command to configure it:
+For convenience, the script modifies Pixi global configuration automatically,
+using Mahoraga as the sole mirror of [anaconda.org][17] and PyPI.
+You can also configure the mirrors as you wish:
 === "Stable"
 
     ``` sh
@@ -215,14 +219,14 @@ Once Pixi is installed, run the following command to configure it:
     }'
     ```
 
-After that, you can install Conda packages like [rattler-build][8] with Pixi.
-### rattler-build
+After that, you can install Conda packages like [Rattler-Build][8] with Pixi.
+### Rattler-Build
 !!! note
 
-    Mirror configuration requires rattler-build version 0.41.0 or later.
-rattler-build accepts the same config file format as Pixi. Pass the Pixi config
-file [modified above][9] to rattler-build, unless there are options you would
-not like to share between Pixi and rattler-build.
+    Mirror configuration requires Rattler-Build version 0.41.0 or later.
+Rattler-Build accepts the same config file format as Pixi. Pass the Pixi config
+file [modified above][9] to Rattler-Build, unless there are options you would
+not like to share between Pixi and Rattler-Build.
 === "Linux/macOS"
 
     ``` sh
@@ -374,14 +378,16 @@ The next generation of the official Python installer for Windows,
 [2]: https://docs.astral.sh/uv/guides/tools/
 [3]: #client-configuration
 [4]: https://docs.python.org/dev/using/windows.html#python-install-manager
-[5]: https://pixi.sh/latest/
+[5]: https://pixi.prefix.dev/latest/
 [6]: https://conda.org/learn/ceps/cep-0016/
 [7]: https://github.com/hingebase/mahoraga/blob/v{{ mahoraga_version }}/src/mahoraga/_cli/mahoraga.toml.jinja#L51-L74
-[8]: https://rattler.build/latest/
+[8]: https://rattler-build.prefix.dev/latest/
 [9]: #pixi
 [10]: https://pyodide.org/en/stable/
 [11]: https://nginx.org/
 [12]: https://nginx.org/en/docs/http/ngx_http_core_module.html#http
 [13]: https://github.com/astral-sh/uv/issues/16519
-[14]: https://pixi.sh/latest/reference/environment_variables/#configurable-environment-variables
+[14]: https://pixi.prefix.dev/latest/reference/environment_variables/#configurable-environment-variables
 [15]: https://docs.astral.sh/uv/reference/storage/#configuration-directories
+[16]: https://pixi.prefix.dev/latest/installation/#installer-script-options
+[17]: https://anaconda.org/

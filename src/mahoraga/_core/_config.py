@@ -8,9 +8,9 @@
 
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied. See the License for the specific language governing
+# permissions and limitations under the License.
 
 __all__ = ["Address", "Config", "Predicate", "Server"]
 
@@ -21,6 +21,7 @@ import ipaddress
 import itertools
 import os
 import sys
+from collections.abc import Iterable, Sequence
 from typing import (
     TYPE_CHECKING,
     Annotated,
@@ -46,7 +47,7 @@ import uvicorn.config
 from mahoraga import __version__, _core
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator, Iterator
+    from collections.abc import AsyncGenerator, Iterator
     from logging.config import (
         _DictConfigArgs,  # pyright: ignore[reportPrivateUsage]
     )
@@ -244,7 +245,7 @@ class _Conda(pydantic.BaseModel, **_model_config):
     channel_alias: dict[str, _HttpUrl] = pydantic.TypeAdapter(
         dict[str, _HttpUrl],
     ).validate_python({
-        "emscripten-forge-dev": "https://prefix.dev/",
+        "emscripten-forge-4x": "https://prefix.dev/",
     })
 
 
@@ -252,15 +253,17 @@ class _PyPI(pydantic.BaseModel):
     html: list[_HttpUrl] = _adapter.validate_python([
         "https://mirror.nju.edu.cn/pypi/web/",
         "https://mirrors.aliyun.com/pypi/web/",
+        "https://mirrors.bfsu.edu.cn/pypi/web/",
         "https://mirrors.cloud.tencent.com/pypi/",
         "https://mirrors.huaweicloud.com/repository/pypi/",
+        "https://mirrors.hust.edu.cn/pypi/web/",
         "https://mirrors.pku.edu.cn/pypi/web/",
         "https://mirrors.sustech.edu.cn/pypi/web/",
+        "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/",
     ])
     json_: Annotated[list[_HttpUrl], pydantic.Field(alias="json")] = (
         _adapter.validate_python([
-            "https://mirrors.bfsu.edu.cn/pypi/web/",
-            "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/",
+            "https://mirrors.ustc.edu.cn/pypi/",
             "https://pypi.org/",
         ])
     )
@@ -279,6 +282,7 @@ class _Uv(pydantic.BaseModel):
         "https://mirror.nyist.edu.cn/github-release/astral-sh/uv/",
         "https://mirrors.ustc.edu.cn/github-release/astral-sh/uv/",
         "https://github.com/astral-sh/uv/releases/download/",
+        "https://releases.astral.sh/github/uv/releases/download/",
     ])
 
 
@@ -299,6 +303,7 @@ class _Upstream(pydantic.BaseModel, **_model_config):
         "https://mirrors.aliyun.com/python-release/windows/{name}",
         "https://mirrors.bfsu.edu.cn/python/{version}/{name}",
         "https://mirrors.huaweicloud.com/python/{version}/{name}",
+        "https://mirrors.jcut.edu.cn/python/{version}/{name}",
         "https://mirrors.tuna.tsinghua.edu.cn/python/{version}/{name}",
         "https://mirrors.ustc.edu.cn/python/{version}/{name}",
         "https://www.python.org/ftp/python/{version}/{name}",
@@ -307,19 +312,29 @@ class _Upstream(pydantic.BaseModel, **_model_config):
         "https://mirror.nju.edu.cn/github-release/astral-sh/python-build-standalone/",
         "https://mirrors.lzu.edu.cn/github-release/astral-sh/python-build-standalone/",
         "https://cdn.npmmirror.com/binaries/python-build-standalone/",
-        "https://pycdn-2025-03-02.oss-cn-shanghai.aliyuncs.com/mirror/astral-sh/python-build-standalone/",
+        "https://mirrors.ustc.edu.cn/github-release/astral-sh/python-build-standalone/",
         "https://github.com/astral-sh/python-build-standalone/releases/download/",
+        "https://releases.astral.sh/github/python-build-standalone/releases/download/",
     ])
     uv: _Uv = _Uv()
-    backup: set[str] = {
-        "anaconda.org",
-        "conda.anaconda.org",
-        "github.com",
-        "prefix.dev",
-        "pycdn-2025-03-02.oss-cn-shanghai.aliyuncs.com",
-        "pypi.org",
-        "www.python.org",
+    backup: dict[str, pydantic.NonNegativeInt] = {
+        "anaconda.org": 0,
+        "conda.anaconda.org": 0,
+        "github.com": 0,
+        "prefix.dev": 0,
+        "pypi.org": 0,
+        "releases.astral.sh": 0,
+        "www.python.org": 0,
+        "mirrors.bfsu.edu.cn": 1,
+        "mirrors.tuna.tsinghua.edu.cn": 1,
     }
+
+    @pydantic.field_validator("backup", mode="before")
+    @classmethod
+    def compat(cls, backup: Iterable[str]) -> Iterable[str]:
+        if isinstance(backup, Sequence) and not isinstance(backup, str):
+            return dict.fromkeys(backup, 0)
+        return backup
 
 
 class Config(pydantic_settings.BaseSettings, **_model_config):
@@ -331,9 +346,9 @@ class Config(pydantic_settings.BaseSettings, **_model_config):
     eager_task_execution: bool = False
 
     @contextlib.asynccontextmanager
-    async def lifespan(self, _: FastAPI) -> AsyncIterator[_core.Context]:
-        # Discard all Dask environment variables which have been read into the
-        # global config
+    async def lifespan(self, _: FastAPI) -> AsyncGenerator[_core.Context]:
+        # Discard all Dask environment variables which have been read
+        # into the global config
         for name in [name for name in os.environ if name.startswith("DASK_")]:
             del os.environ[name]
 
