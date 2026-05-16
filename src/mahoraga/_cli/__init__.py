@@ -147,6 +147,7 @@ def _setup(cfg: _core.Config, root: pathlib.Path) -> pathlib.Path:
     )
     cfg_file = root / "mahoraga.toml"
     for src, dst in [
+        ("Caddyfile.jinja", root / "Caddyfile"),
         ("mahoraga.toml.jinja", cfg_file),
         ("mahoraga.conf.jinja", root / "nginx/mahoraga.conf"),
         ("nginx.conf.jinja", root / "nginx/nginx.conf"),
