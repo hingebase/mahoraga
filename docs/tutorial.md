@@ -45,25 +45,44 @@ fetching some packages from Mahoraga. Then if everything goes well, press
     uvw tool run mahoraga run
     ```
 
-For better performance, you can set up another server (for example [Nginx][11])
-in front of Mahoraga. Packages cached on disk can be served within that server,
-so that subsequent requests won't go to Mahoraga again. You can find the
-following Nginx configuration files in `~/.mahoraga/nginx`:
+For better performance, you can set up a non-Python server in front of Mahoraga.
+Packages cached on disk can be served within that server, so that subsequent
+requests won't go to Mahoraga again.
+We provide configuration files for [Nginx][11] and [Caddy][18] out-of-the-box.
+=== "Nginx"
 
-- `nginx.conf`: Top-level configuration file for direct use.
-- `mahoraga.conf`: A snippet intended to be included in the `http`
-  ^[:octicons-link-external-16:][12]^ block of another file.
+    You can find the following Nginx configuration files in `~/.mahoraga/nginx`:
 
-!!! note
+    - `nginx.conf`: Top-level configuration file for direct use.
+    - `mahoraga.conf`: A snippet intended to be included in the `http`
+      ^[:octicons-link-external-16:][12]^ block of another file.
 
-    For Linux and macOS, Nginx is available in conda-forge and can be installed
-    by [Pixi][5]:
-    ``` sh
-    pixi global install nginx
-    ```
-To start the Nginx server, simply run `nginx -c ~/.mahoraga/nginx/nginx.conf`.
+    !!! note
+
+        For Linux and macOS, Nginx is available in conda-forge and can be
+        installed by [Pixi][5]:
+        ``` sh
+        pixi global install nginx
+        ```
+    To start the Nginx server, run `nginx -c ~/.mahoraga/nginx/nginx.conf`.
+
+=== "Caddy"
+
+    You can find the Caddy configuration file at `~/.mahoraga/Caddyfile`. As the
+    name suggests, it can be used as the top-level configuration file directly.
+    In addition, it's also a valid snippet when imported to the root of another
+    `Caddyfile`, since it doesn't contain a [global options block][19].
+
+    !!! note
+
+        Caddy is available in conda-forge and can be installed by [Pixi][5]:
+        ``` sh
+        pixi global install caddy
+        ```
+    To start the Caddy server, run `cd ~/.mahoraga && caddy run`.
+
 When configuring the clients, make sure they don't communicate with Mahoraga
-directly, but through Nginx.
+directly, but through Nginx or Caddy.
 ## Client Configuration
 !!! note
 
@@ -256,13 +275,22 @@ allow-origins = [
     "*",
 ]
 ```
-Additionally, if you are using Nginx, uncomment all blocks in your
-`mahoraga.conf` like this:
-``` nginx title="mahoraga.conf"
-# if ($http_origin) {
-#     add_header Access-Control-Allow-Origin *;
-# }
-```
+Additionally, if you are using Nginx or Caddy, uncomment all blocks in your
+`mahoraga.conf` or `Caddyfile` like this:
+=== "Nginx"
+
+    ``` nginx title="mahoraga.conf"
+    # if ($http_origin) {
+    #     add_header Access-Control-Allow-Origin *;
+    # }
+    ```
+
+=== "Caddy"
+
+    ``` title="Caddyfile"
+    # header @mahoraga-has-origin Access-Control-Allow-Origin *
+    ```
+
 The frontend configuration depends on the library you directly use:
 === "Pyodide"
 
@@ -391,3 +419,5 @@ The next generation of the official Python installer for Windows,
 [15]: https://docs.astral.sh/uv/reference/storage/#configuration-directories
 [16]: https://pixi.prefix.dev/latest/installation/#installer-script-options
 [17]: https://anaconda.org/
+[18]: https://caddyserver.com/
+[19]: https://caddyserver.com/docs/caddyfile/concepts#global-options

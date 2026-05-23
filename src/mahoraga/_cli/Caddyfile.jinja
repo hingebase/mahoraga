@@ -1,0 +1,154 @@
+{% macro mahoraga_reverse_proxy(matcher, rewrite=False, origin=False) -%}
+	route {
+		respond @mahoraga-not-get 403
+		reverse_proxy @mahoraga-{{ matcher }} http://127.0.0.1:{{ 0x3450 if server.port == 3450 else 3450 }} {
+			header_up -Connection
+{%- if rewrite %}
+			rewrite {orig_uri}
+{%- endif %}
+			transport http {
+				keepalive {{ server.keep_alive }}s
+				keepalive_idle_conns_per_host {{ server.limit_concurrency }}
+				versions 1.1
+				network_proxy none
+			}
+		}
+{%- if origin %}
+		{{ "" if "*" in cors.allow_origins else "# " }}header @mahoraga-has-origin Access-Control-Allow-Origin *
+{%- endif %}
+		import mahoraga-mime-types
+	}
+	file_server
+{%- endmacro -%}
+
+# https://github.com/caddyserver/caddy/issues/4546#issuecomment-1020441548
+(mahoraga-mime-types) {
+	header @mahoraga-gz Content-Type application/gzip
+	header @mahoraga-json Content-Type application/json
+	header @mahoraga-wasm Content-Type application/wasm
+	header @mahoraga-bz2 Content-Type application/x-bzip2
+	header @mahoraga-conda Content-Type application/zip
+	header @mahoraga-whl Content-Type application/zip
+	header @mahoraga-zip Content-Type application/zip
+	header @mahoraga-zst Content-Type application/zstd
+	header @mahoraga-png Content-Type image/png
+	header @mahoraga-svg Content-Type image/svg+xml
+	header @mahoraga-css Content-Type text/css
+	header @mahoraga-js Content-Type text/javascript
+	header @mahoraga-mjs Content-Type text/javascript
+	header @mahoraga-py Content-Type text/x-python
+	header ?Content-Type application/octet-stream
+}
+
+(mahoraga-cache-or-fetch) {
+	{{ mahoraga_reverse_proxy("cache-miss", rewrite=True, origin=True) }}
+}
+
+(mahoraga-conda-package) {
+	root {{ server.root }}/channels
+	uri strip_prefix /conda
+	import mahoraga-cache-or-fetch
+}
+
+(mahoraga-sharded-repodata) {
+	root {{ server.root }}/channels
+	{{ "" if "*" in cors.allow_origins else "# " }}header @mahoraga-has-origin Access-Control-Allow-Origin *
+	uri strip_prefix /conda
+	route {
+		respond @mahoraga-not-get 403
+		header Content-Type application/zstd
+	}
+	file_server
+}
+
+{{ "" if server.host.is_unspecified else server.host }}:{{ server.port }} {
+	@mahoraga-gz path *.gz
+	@mahoraga-json path *.json
+	@mahoraga-wasm path *.wasm
+	@mahoraga-bz2 path *.bz2
+	@mahoraga-conda path *.conda
+	@mahoraga-whl path *.whl
+	@mahoraga-zip path *.zip
+	@mahoraga-zst path *.zst
+	@mahoraga-png path *.png
+	@mahoraga-svg path *.svg
+	@mahoraga-css path *.css
+	@mahoraga-js path *.js
+	@mahoraga-mjs path *.mjs
+	@mahoraga-py path *.py
+
+	@mahoraga-cache-miss not file
+	@mahoraga-has-origin not header !Origin
+	@mahoraga-no-cache `!path('/python-build-standalone/*') || !file()`
+	@mahoraga-not-get not method GET HEAD
+	@mahoraga-pyodide-no-cache <<CEL
+		path(
+			'/pyodide/debug/python_cli_entry.mjs',
+			'/pyodide/dev/*',
+			'/pyodide/full/python_cli_entry.mjs'
+		) || !file()
+		CEL
+
+	log mahoraga {
+		output file {{ server.root }}/log/caddy.log {
+			roll_size 2MiB
+			roll_uncompressed
+		}
+	}
+
+	root {{ server.root }}
+
+	# Each "*" matches one path segment unless it's a fast prefix match, see
+	# https://github.com/caddyserver/caddy/issues/5029#issuecomment-1544721441
+	handle /conda/*/*/*.conda {
+		import mahoraga-conda-package
+	}
+	handle /conda/*/*/*.tar.bz2 {
+		import mahoraga-conda-package
+	}
+	handle /conda/*/label/*/*/*.conda {
+		import mahoraga-conda-package
+	}
+	handle /conda/*/label/*/*/*.tar.bz2 {
+		import mahoraga-conda-package
+	}
+	handle /conda/*/*/repodata_shards.msgpack.zst {
+		import mahoraga-sharded-repodata
+	}
+	handle /conda/*/label/*/*/repodata_shards.msgpack.zst {
+		import mahoraga-sharded-repodata
+	}
+	handle /conda/*/*/shards/*.msgpack.zst {
+		import mahoraga-sharded-repodata
+	}
+	handle /conda/*/label/*/*/shards/*.msgpack.zst {
+		import mahoraga-sharded-repodata
+	}
+
+	handle /log {
+		respond 403
+	}
+
+	handle /npm/* {
+		import mahoraga-cache-or-fetch
+	}
+
+	handle /parselmouth/hash-v0/* {
+		# Not implemented yet
+		respond @mahoraga-not-get 403
+		respond 404
+	}
+
+	handle /pyodide/* {
+		{{ mahoraga_reverse_proxy("pyodide-no-cache", origin=True) | indent("\t") }}
+	}
+
+	handle /pypi/packages/* {
+		uri strip_prefix /pypi
+		import mahoraga-cache-or-fetch
+	}
+
+	handle {
+		{{ mahoraga_reverse_proxy("no-cache") | indent("\t") }}
+	}
+}
