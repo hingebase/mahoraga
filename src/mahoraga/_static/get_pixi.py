@@ -33,8 +33,13 @@ import sys
 import tempfile
 import warnings
 from pathlib import Path
+from typing import TYPE_CHECKING
 
+import rattler.exceptions
 import rattler.networking
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 if sys.platform == "win32":
     import winreg
@@ -129,6 +134,35 @@ else:
         return True
 
 
+async def _find_pixi(
+    cache_dir: os.PathLike[str] | None,
+    specs: Sequence[rattler.MatchSpec],
+    client: rattler.Client,
+) -> list[rattler.RepoDataRecord]:
+    virtual_packages = rattler.VirtualPackage.detect()
+    try:
+        return await rattler.solve(
+            sources=["conda-forge"],
+            specs=specs,
+            gateway=rattler.Gateway(cache_dir, client=client),
+            virtual_packages=virtual_packages,
+        )
+    except rattler.exceptions.SolverError:
+        if sys.platform.startswith("darwin"):
+            for vp in virtual_packages:
+                gvp = vp.into_generic()
+                if gvp.name.normalized == "__osx":
+                    if gvp.version < rattler.Version("11.0"):
+                        return await rattler.solve(
+                            sources=["https://prefix.dev/github-releases"],
+                            specs=specs,
+                            gateway=rattler.Gateway(cache_dir),
+                            virtual_packages=virtual_packages,
+                        )
+                    break
+        raise
+
+
 async def _install_pixi(
     target_prefix: os.PathLike[str],
     cache_dir: os.PathLike[str] | None,
@@ -142,14 +176,8 @@ async def _install_pixi(
         "https://pypi.org/simple/": [f"{mahoraga_base_url}/pypi/simple/"],
     }
     client = rattler.Client([rattler.networking.MirrorMiddleware(mirrors)])
-    records = await rattler.solve(
-        sources=["conda-forge"],
-        specs=specs,
-        gateway=rattler.Gateway(cache_dir, client=client),
-        virtual_packages=rattler.VirtualPackage.detect(),
-    )
     await rattler.install(
-        records,
+        await _find_pixi(cache_dir, specs, client),
         target_prefix,
         cache_dir,
         show_progress=False,
