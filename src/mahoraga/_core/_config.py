@@ -183,6 +183,7 @@ class _Conda(pydantic.BaseModel, **_model_config):
             "https://mirror.nju.edu.cn/anaconda/cloud/",
             "https://mirror.nyist.edu.cn/anaconda/cloud/",
             "https://mirrors.cqupt.edu.cn/anaconda/cloud/",
+            "https://mirrors.ha.edu.cn/anaconda/cloud/",
             "https://mirrors.hit.edu.cn/anaconda/cloud/",
             "https://mirrors.lzu.edu.cn/anaconda/cloud/",
             "https://mirrors.pku.edu.cn/anaconda/cloud/",
@@ -194,6 +195,7 @@ class _Conda(pydantic.BaseModel, **_model_config):
             "https://mirror.nju.edu.cn/anaconda/cloud/",
             "https://mirror.nyist.edu.cn/anaconda/cloud/",
             "https://mirrors.cqupt.edu.cn/anaconda/cloud/",
+            "https://mirrors.ha.edu.cn/anaconda/cloud/",
             "https://mirrors.hit.edu.cn/anaconda/cloud/",
             "https://mirrors.lzu.edu.cn/anaconda/cloud/",
             "https://mirrors.pku.edu.cn/anaconda/cloud/",
@@ -253,16 +255,16 @@ class _PyPI(pydantic.BaseModel):
     html: list[_HttpUrl] = _adapter.validate_python([
         "https://mirror.nju.edu.cn/pypi/web/",
         "https://mirrors.aliyun.com/pypi/web/",
-        "https://mirrors.bfsu.edu.cn/pypi/web/",
         "https://mirrors.cloud.tencent.com/pypi/",
         "https://mirrors.huaweicloud.com/repository/pypi/",
         "https://mirrors.hust.edu.cn/pypi/web/",
         "https://mirrors.pku.edu.cn/pypi/web/",
         "https://mirrors.sustech.edu.cn/pypi/web/",
-        "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/",
     ])
     json_: Annotated[list[_HttpUrl], pydantic.Field(alias="json")] = (
         _adapter.validate_python([
+            "https://mirrors.bfsu.edu.cn/pypi/web/",
+            "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/",
             "https://mirrors.ustc.edu.cn/pypi/",
             "https://pypi.org/",
         ])
@@ -280,6 +282,7 @@ class _Uv(pydantic.BaseModel):
     ])
     tag: list[_HttpUrl] = _adapter.validate_python([
         "https://mirror.nyist.edu.cn/github-release/astral-sh/uv/",
+        "https://mirrors.sdu.edu.cn/github-release/astral-sh_uv/",
         "https://mirrors.ustc.edu.cn/github-release/astral-sh/uv/",
         "https://github.com/astral-sh/uv/releases/download/",
         "https://releases.astral.sh/github/uv/releases/download/",
@@ -302,6 +305,7 @@ class _Upstream(pydantic.BaseModel, **_model_config):
         "https://mirror.nju.edu.cn/python/{version}/{name}",
         "https://mirrors.aliyun.com/python-release/windows/{name}",
         "https://mirrors.bfsu.edu.cn/python/{version}/{name}",
+        "https://mirrors.cqu.edu.cn/python/{version}/{name}",
         "https://mirrors.huaweicloud.com/python/{version}/{name}",
         "https://mirrors.jcut.edu.cn/python/{version}/{name}",
         "https://mirrors.tuna.tsinghua.edu.cn/python/{version}/{name}",
@@ -325,8 +329,8 @@ class _Upstream(pydantic.BaseModel, **_model_config):
         "pypi.org": 0,
         "releases.astral.sh": 0,
         "www.python.org": 0,
-        "mirrors.bfsu.edu.cn": 1,
-        "mirrors.tuna.tsinghua.edu.cn": 1,
+        "mirrors.bfsu.edu.cn": 0,
+        "mirrors.tuna.tsinghua.edu.cn": 0,
     }
 
     @pydantic.field_validator("backup", mode="before")
