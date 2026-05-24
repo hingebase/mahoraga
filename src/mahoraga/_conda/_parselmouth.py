@@ -26,7 +26,7 @@ from mahoraga import _core
 router = fastapi.APIRouter(route_class=_core.APIRoute)
 
 
-@router.get("/compressed_mapping.json")
+@router.get("/compressed-v0/compressed_mapping.json")
 async def get_compressed_mapping() -> fastapi.Response:
     ctx = contextvars.copy_context()
     lock = ctx[_core.context]["locks"]["compressed_mapping.json"]
@@ -35,11 +35,7 @@ async def get_compressed_mapping() -> fastapi.Response:
         await stack.enter_async_context(lock)
         return await asyncio.create_task(
             _core.stream(
-                "https://api.github.com/repos/prefix-dev/parselmouth/contents/files/compressed_mapping.json",
-                headers={
-                    "Accept": "application/vnd.github.raw+json",
-                    "X-GitHub-Api-Version": "2026-03-10",
-                },
+                "https://conda-mapping.prefix.dev/compressed-v0/compressed_mapping.json",
                 stack=stack,
             ),
             context=ctx,

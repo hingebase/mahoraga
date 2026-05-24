@@ -233,7 +233,7 @@ You can also configure the mirrors as you wish:
     pixi config set -g mirrors '{
         "https://conda.anaconda.org/": ["{{ mahoraga_base_url }}/conda/"],
         "https://pypi.org/simple/": ["{{ mahoraga_base_url }}/pypi/simple/"],
-        "https://raw.githubusercontent.com/prefix-dev/parselmouth/main/files/": ["{{ mahoraga_base_url }}/parselmouth/"],
+        "https://raw.githubusercontent.com/prefix-dev/parselmouth/main/files/": ["{{ mahoraga_base_url }}/parselmouth/compressed-v0/"],
         "https://conda-mapping.prefix.dev/": ["{{ mahoraga_base_url }}/parselmouth/"]
     }'
     ```
