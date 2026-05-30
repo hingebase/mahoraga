@@ -41,7 +41,6 @@ import httpx
 import httpx_aiohttp
 import pydantic_settings
 from httpx._config import DEFAULT_LIMITS  # noqa: PLC2701
-from rattler.networking.fetch_repo_data import CacheAction
 
 from mahoraga import _core
 
@@ -52,6 +51,7 @@ if TYPE_CHECKING:
     from _typeshed import StrPath, Unused
     from distributed import Client, Future
     from httpx._types import CertTypes
+    from rattler.networking.fetch_repo_data import CacheAction
 
 
 class AsyncClient(hishel.httpx.AsyncCacheClient):
@@ -297,13 +297,13 @@ class _AsyncCacheTransport(hishel.httpx.AsyncCacheTransport):
         storage: hishel.AsyncBaseStorage | None = None,
         policy: hishel.CachePolicy | None = None,
     ) -> None:
-        self.next_transport = next_transport
+        self.next_transport: httpx.AsyncBaseTransport = next_transport
         self._cache_proxy = _AsyncCacheProxy(
             request_sender=self.request_sender,
             storage=storage,
             policy=policy,
         )
-        self.storage = self._cache_proxy.storage
+        self.storage: hishel.AsyncBaseStorage = self._cache_proxy.storage
 
 
 class Context(TypedDict):
@@ -315,7 +315,7 @@ class Context(TypedDict):
     statistics: Statistics
 
 
-cache_action = contextvars.ContextVar[CacheAction](
+cache_action: contextvars.ContextVar[CacheAction] = contextvars.ContextVar(
     "cache_action",
     default="no-cache",
 )

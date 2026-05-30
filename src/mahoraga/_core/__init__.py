@@ -20,7 +20,6 @@ __all__ = [
     "Context",
     "GitHubRelease",
     "NPMBase",
-    "Predicate",
     "Response",
     "Server",
     "Statistics",
@@ -34,6 +33,7 @@ __all__ = [
     "hourly",
     "immutable",
     "load_balance",
+    "predicate",
     "schedule_exit",
     "stream",
     "unreachable",
@@ -42,7 +42,7 @@ __all__ = [
 import contextvars
 from typing import NoReturn
 
-from ._config import Address, Config, Predicate, Server
+from ._config import Address, Config, Server, predicate
 from ._context import (
     AsyncClient,
     Context,
@@ -64,7 +64,7 @@ from ._stream import (
     stream,
 )
 
-context = contextvars.ContextVar[Context]("context")
+context: contextvars.ContextVar[Context] = contextvars.ContextVar("context")
 
 
 def unreachable(message: str = "Unreachable") -> NoReturn:

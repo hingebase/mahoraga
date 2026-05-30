@@ -36,7 +36,7 @@ import requests
 
 from . import _core
 
-router = fastapi.APIRouter(route_class=_core.APIRoute)
+router: fastapi.APIRouter = fastapi.APIRouter(route_class=_core.APIRoute)
 
 
 @router.get("/python/pymanager/{name}")

@@ -25,7 +25,7 @@ from mahoraga import _core
 
 from . import _utils
 
-router = fastapi.APIRouter(route_class=_core.APIRoute)
+router: fastapi.APIRouter = fastapi.APIRouter(route_class=_core.APIRoute)
 
 
 @router.get("/@bokeh/{package}/{path:path}", dependencies=_core.immutable)

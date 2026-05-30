@@ -18,14 +18,14 @@ __all__ = []
 
 import importlib.metadata
 import multiprocessing as mp
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Final, cast
 
 import dask.config
 
 if TYPE_CHECKING:
     from pydantic import JsonValue
 
-__version__ = importlib.metadata.version("mahoraga")
+__version__: Final[str] = importlib.metadata.version("mahoraga")
 
 if mp.parent_process() is None:
     def _disable_dask_distributed_logging_config() -> None:

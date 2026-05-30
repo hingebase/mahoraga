@@ -27,7 +27,7 @@ from mahoraga import _core
 
 from . import _utils
 
-router = fastapi.APIRouter(route_class=_core.APIRoute)
+router: fastapi.APIRouter = fastapi.APIRouter(route_class=_core.APIRoute)
 
 
 @router.get("/{channel}/{platform}/{name}", dependencies=_core.immutable)

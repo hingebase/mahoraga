@@ -34,7 +34,7 @@ from mahoraga import _core, _jsdelivr
 
 from . import _utils
 
-router = fastapi.APIRouter(route_class=_core.APIRoute)
+router: fastapi.APIRouter = fastapi.APIRouter(route_class=_core.APIRoute)
 
 
 @router.get("/{name}", dependencies=_core.immutable)

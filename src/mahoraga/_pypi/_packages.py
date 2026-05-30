@@ -34,7 +34,7 @@ from . import _models
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
-router = fastapi.APIRouter(route_class=_core.APIRoute)
+router: fastapi.APIRouter = fastapi.APIRouter(route_class=_core.APIRoute)
 
 
 @router.head("/{tag}/{prefix}/{project}/{filename}")

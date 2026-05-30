@@ -23,7 +23,7 @@ from mahoraga import _core
 
 from . import _utils
 
-router = fastapi.APIRouter(route_class=_core.APIRoute)
+router: fastapi.APIRouter = fastapi.APIRouter(route_class=_core.APIRoute)
 
 
 @router.get("/pyodide/{version}/docs/_static/img/pyodide-logo-readme.png")

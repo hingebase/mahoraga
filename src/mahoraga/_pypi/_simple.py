@@ -29,7 +29,7 @@ from mahoraga import _core
 
 from . import _models  # noqa: TC001
 
-router = fastapi.APIRouter(route_class=_core.APIRoute)
+router: fastapi.APIRouter = fastapi.APIRouter(route_class=_core.APIRoute)
 
 
 @router.get("/{project}/")

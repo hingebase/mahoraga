@@ -35,7 +35,7 @@ from . import _models, _utils
 if TYPE_CHECKING:
     from distributed import Client, Future
 
-router = fastapi.APIRouter(route_class=_core.APIRoute)
+router: fastapi.APIRouter = fastapi.APIRouter(route_class=_core.APIRoute)
 
 
 @router.get(

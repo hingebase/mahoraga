@@ -23,7 +23,7 @@ import fastapi
 
 from mahoraga import _core
 
-router = fastapi.APIRouter(route_class=_core.APIRoute)
+router: fastapi.APIRouter = fastapi.APIRouter(route_class=_core.APIRoute)
 
 
 @router.get("/compressed-v0/compressed_mapping.json")

@@ -12,7 +12,7 @@
 # implied. See the License for the specific language governing
 # permissions and limitations under the License.
 
-__all__ = ["Address", "Config", "Predicate", "Server"]
+__all__ = ["Address", "Config", "Server", "predicate"]
 
 import asyncio
 import contextlib
@@ -62,11 +62,8 @@ else:
 
 _DASK_DASHBOARD = 8787
 
-Predicate = functools.singledispatch(at.Predicate)
 
-
-@Predicate.register
-def _(func: str) -> at.Predicate:
+def predicate(func: str) -> at.Predicate:
     def wrapper(input_value: object, /) -> bool:
         return eval(func, {"input_value": input_value})  # noqa: S307
     wrapper.__qualname__ = func
@@ -82,7 +79,7 @@ class Address(pydantic.BaseModel):
     host: Annotated[
         ipaddress.IPv4Address,
         pydantic.Field(description="The host to serve on"),
-        Predicate("not (input_value.is_multicast or input_value.is_reserved)"),
+        predicate("not (input_value.is_multicast or input_value.is_reserved)"),
     ] = ipaddress.IPv4Address("127.0.0.1")
     port: Annotated[
         pydantic.PositiveInt,

@@ -81,7 +81,7 @@ class _Import(_core.Address):
     source: Annotated[
         pydantic_settings.CliPositionalArg[pydantic.FilePath],
         pydantic.Field(description="An existing mahoraga.toml file"),
-        _core.Predicate("input_value.name == 'mahoraga.toml'"),
+        _core.predicate("input_value.name == 'mahoraga.toml'"),
     ]
     destination: Annotated[
         pydantic_settings.CliPositionalArg[pydantic.NewPath],
@@ -109,7 +109,7 @@ class _Run(pydantic.BaseModel, validate_default=True):
         pydantic.DirectoryPath,
         pydantic.Field(description="Root path of a directory containing "
                                    "mahoraga.toml"),
-        _core.Predicate("(input_value / 'mahoraga.toml').is_file()"),
+        _core.predicate("(input_value / 'mahoraga.toml').is_file()"),
     ] = pathlib.Path()
 
     def cli_cmd(self) -> None:

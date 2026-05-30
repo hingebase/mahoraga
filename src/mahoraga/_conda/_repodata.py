@@ -29,7 +29,7 @@ from . import _models, _utils
 if TYPE_CHECKING:
     from pydantic import BaseModel
 
-router = fastapi.APIRouter(route_class=_core.APIRoute)
+router: fastapi.APIRouter = fastapi.APIRouter(route_class=_core.APIRoute)
 
 
 @router.head("/{channel}/{platform}/repodata.json.bz2")
