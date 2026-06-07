@@ -12,6 +12,7 @@
 # implied. See the License for the specific language governing
 # permissions and limitations under the License.
 
+import abc
 import collections
 import datetime
 import io
@@ -21,7 +22,7 @@ import re
 import subprocess  # noqa: S404
 import time
 import xml.etree.ElementTree as ET  # noqa: S405
-from typing import TYPE_CHECKING, Any, cast, override
+from typing import TYPE_CHECKING, ClassVar, cast, override
 
 import csscompressor  # pyright: ignore[reportMissingTypeStubs]
 import defusedxml.ElementTree
@@ -44,7 +45,7 @@ if TYPE_CHECKING:
 
 
 def define_env(env: MacrosPlugin) -> None:
-    release = _Release()
+    release = _PythonBuildStandalone()
     for asset in release.assets:
         name = asset.name
         if name.startswith("cpython-3.14."):
@@ -60,8 +61,8 @@ def define_env(env: MacrosPlugin) -> None:
     env.variables.update({  # pyright: ignore[reportUnknownMemberType]
         "changelog": _changelog(),
         "mahoraga_base_url": mahoraga_base_url or "http://127.0.0.1:3450",
-        "mahoraga_version": _Project().version,
-        "pymanager_version": _Tag().name,
+        "mahoraga_version": _Mahoraga().version,
+        "pymanager_version": _PyManager().tag_name,
         "python_build_standalone_tag": release.tag_name,
         "python_version": python_version,
         "python_version_short": "".join(python_version.split(".")[:2]),
@@ -121,81 +122,58 @@ class _Asset(pydantic.BaseModel, extra="ignore"):
     name: str
 
 
-class _JsonConfigSettingsSource(pydantic_settings.JsonConfigSettingsSource):
+class _BaseSettings(pydantic_settings.BaseSettings, extra="ignore"):
     @override
-    def _read_file(self, file_path: pathlib.Path) -> dict[str, Any]:
-        [obj] = cast("list[dict[str, Any]]", super()._read_file(file_path))
-        return obj
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[pydantic_settings.BaseSettings],
+        init_settings: pydantic_settings.PydanticBaseSettingsSource,
+        env_settings: pydantic_settings.PydanticBaseSettingsSource,
+        dotenv_settings: pydantic_settings.PydanticBaseSettingsSource,
+        file_secret_settings: pydantic_settings.PydanticBaseSettingsSource,
+    ) -> tuple[pydantic_settings.PydanticBaseSettingsSource, ...]:
+        return (cls.settings_source(),)
+
+    @classmethod
+    @abc.abstractmethod
+    def settings_source(cls) -> pydantic_settings.PydanticBaseSettingsSource:
+        raise NotImplementedError
 
 
-class _Project(
-    pydantic_settings.BaseSettings,
-    extra="ignore",
-    pyproject_toml_table_header=("project",),
-):
+class _Mahoraga(_BaseSettings, pyproject_toml_table_header=("project",)):
     version: str = ""
 
     @override
     @classmethod
-    def settings_customise_sources(
-        cls,
-        settings_cls: type[pydantic_settings.BaseSettings],
-        init_settings: pydantic_settings.PydanticBaseSettingsSource,
-        env_settings: pydantic_settings.PydanticBaseSettingsSource,
-        dotenv_settings: pydantic_settings.PydanticBaseSettingsSource,
-        file_secret_settings: pydantic_settings.PydanticBaseSettingsSource,
-    ) -> tuple[pydantic_settings.PydanticBaseSettingsSource, ...]:
-        return (
-            pydantic_settings.PyprojectTomlConfigSettingsSource(settings_cls),
-        )
+    def settings_source(cls) -> pydantic_settings.PydanticBaseSettingsSource:
+        return pydantic_settings.PyprojectTomlConfigSettingsSource(cls)
 
 
-class _Release(
-    pydantic_settings.BaseSettings,
-    extra="ignore",
-    json_file_encoding="utf-8",
-):
-    assets: list[_Asset] = []
+class _PyManager(_BaseSettings, json_file_encoding="utf-8"):
+    github_repo: ClassVar[str] = "python/pymanager"
     tag_name: str = ""
 
     @override
     @classmethod
-    def settings_customise_sources(
-        cls,
-        settings_cls: type[pydantic_settings.BaseSettings],
-        init_settings: pydantic_settings.PydanticBaseSettingsSource,
-        env_settings: pydantic_settings.PydanticBaseSettingsSource,
-        dotenv_settings: pydantic_settings.PydanticBaseSettingsSource,
-        file_secret_settings: pydantic_settings.PydanticBaseSettingsSource,
-    ) -> tuple[pydantic_settings.PydanticBaseSettingsSource, ...]:
-        j = _retrieve(
-            "https://api.github.com/repos/astral-sh/python-build-standalone/releases/latest",
+    def settings_source(cls) -> pydantic_settings.PydanticBaseSettingsSource:
+        headers = {
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2026-03-10",
+        }
+        if gh_token := os.getenv("GH_TOKEN"):
+            headers["Authorization"] = f"Bearer {gh_token}"
+        json_file = pooch.retrieve(  # pyright: ignore[reportUnknownMemberType]
+            f"https://api.github.com/repos/{cls.github_repo}/releases/latest",
+            path=pooch.os_cache("pooch") / time.strftime("%Y.%m.%d"),
+            downloader=pooch.HTTPDownloader(headers=headers),  # pyright: ignore[reportArgumentType]
         )
-        return (pydantic_settings.JsonConfigSettingsSource(settings_cls, j),)
+        return pydantic_settings.JsonConfigSettingsSource(cls, json_file)
 
 
-class _Tag(
-    pydantic_settings.BaseSettings,
-    extra="ignore",
-    json_file_encoding="utf-8",
-):
-    name: str = ""
-
-    @override
-    @classmethod
-    def settings_customise_sources(
-        cls,
-        settings_cls: type[pydantic_settings.BaseSettings],
-        init_settings: pydantic_settings.PydanticBaseSettingsSource,
-        env_settings: pydantic_settings.PydanticBaseSettingsSource,
-        dotenv_settings: pydantic_settings.PydanticBaseSettingsSource,
-        file_secret_settings: pydantic_settings.PydanticBaseSettingsSource,
-    ) -> tuple[pydantic_settings.PydanticBaseSettingsSource, ...]:
-        j = _retrieve(
-            "https://api.github.com/repos/python/pymanager/tags",
-            params={"per_page": "1"},
-        )
-        return (_JsonConfigSettingsSource(settings_cls, j),)
+class _PythonBuildStandalone(_PyManager):
+    assets: list[_Asset] = []
+    github_repo: ClassVar[str] = "astral-sh/python-build-standalone"
 
 
 def _changelog() -> list[tuple[str, collections.defaultdict[str, list[str]]]]:
@@ -277,17 +255,3 @@ def _open(requirements: pathlib.Path) -> io.TextIOWrapper:
             check=True,
         )
         return requirements.open(encoding="utf-8")
-
-
-def _retrieve(url: str, params: _Params | None = None) -> str:
-    headers = {
-        "Accept": "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2026-03-10",
-    }
-    if gh_token := os.getenv("GH_TOKEN"):
-        headers["Authorization"] = f"Bearer {gh_token}"
-    return pooch.retrieve(  # pyright: ignore[reportUnknownMemberType]
-        url,
-        path=pooch.os_cache("pooch") / time.strftime("%Y.%m.%d"),
-        downloader=pooch.HTTPDownloader(headers=headers, params=params),  # pyright: ignore[reportArgumentType]
-    )
