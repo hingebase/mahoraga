@@ -351,7 +351,7 @@ The frontend configuration depends on the library you directly use:
 
 === "Stlite"
 
-    ``` html hl_lines="6 11 14 16-17"
+    ``` html hl_lines="6 11 14 16-19"
     <!doctype html>
     <html>
       <head>
@@ -368,6 +368,8 @@ The frontend configuration depends on the library you directly use:
               pyodideUrl: "{{ mahoraga_base_url }}/pyodide/v{{ pyodide_py_version }}/full/pyodide.js",
               requirements: [
                 "{{ mahoraga_base_url }}/pypi/packages/py3/b/blinker/blinker-{{ blinker_version }}-py3-none-any.whl",
+                "{{ mahoraga_base_url }}/pypi/packages/py3/i/itsdangerous/itsdangerous-{{ itsdangerous_version }}-py3-none-any.whl",
+                "{{ mahoraga_base_url }}/pypi/packages/py3/p/python-multipart/python_multipart-{{ python_multipart_version }}-py3-none-any.whl",
                 "{{ mahoraga_base_url }}/pypi/packages/py3/t/tenacity/tenacity-{{ tenacity_version }}-py3-none-any.whl",
               ],
               entrypoint: "your_app.py",
