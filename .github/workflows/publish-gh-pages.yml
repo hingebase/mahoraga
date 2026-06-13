@@ -28,7 +28,7 @@ jobs:
       - run: uv run --only-dev zensical build -s
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - run: rm -f site/assets/images/favicon.png site/assets/stylesheets/classic
+      - run: rm -rf site/assets/images/favicon.png site/assets/stylesheets/classic
       - uses: actions/upload-pages-artifact@v5
         with:
           path: site
