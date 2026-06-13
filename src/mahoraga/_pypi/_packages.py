@@ -248,6 +248,6 @@ async def _stream(
     stack: contextlib.AsyncExitStack,
 ) -> AsyncIterator[bytes]:
     async with stack:
-        yield b""
+        yield b""  # noqa: ASYNC119
         async for chunk in response.aiter_bytes():
-            yield chunk
+            yield chunk  # noqa: ASYNC119

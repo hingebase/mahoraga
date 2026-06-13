@@ -51,7 +51,6 @@ if TYPE_CHECKING:
     from logging.config import (
         _DictConfigArgs,  # pyright: ignore[reportPrivateUsage]
     )
-    from pathlib import Path
 
     from fastapi import FastAPI
 
@@ -414,8 +413,9 @@ class Config(pydantic_settings.BaseSettings, **_model_config):
                 max_connections=self.server.limit_concurrency,
                 keepalive_expiry=self.server.keep_alive,
             ),
-            storage=_AsyncSqliteStorage(
+            storage=hishel.AsyncSqliteStorage(
                 connection=await anysqlite.connect(":memory:"),
+                default_ttl=600.,
             ),
         ) as httpx_client:
             yield {
@@ -436,8 +436,8 @@ class Config(pydantic_settings.BaseSettings, **_model_config):
             loop.set_task_factory(asyncio.eager_task_factory)
         return loop
 
-    @override
     @classmethod
+    @override
     def settings_customise_sources(
         cls,
         settings_cls: type[pydantic_settings.BaseSettings],
@@ -450,25 +450,6 @@ class Config(pydantic_settings.BaseSettings, **_model_config):
             pydantic_settings.TomlConfigSettingsSource(settings_cls),
             init_settings,
         )
-
-
-class _AsyncSqliteStorage(hishel.AsyncSqliteStorage):
-    @override
-    def __init__(
-        self,
-        *,
-        connection: anysqlite.Connection | None = None,
-        database_path: str | Path = "hishel_cache.db",
-        default_ttl: float | None = 600.,
-        refresh_ttl_on_access: bool = True,
-    ) -> None:
-        super().__init__(
-            connection=connection,
-            database_path=database_path,
-            default_ttl=default_ttl,
-            refresh_ttl_on_access=refresh_ttl_on_access,
-        )
-        self._lock = asyncio.Lock()
 
 
 @functools.lru_cache(maxsize=1)

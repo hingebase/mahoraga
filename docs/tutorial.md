@@ -4,7 +4,7 @@ It's recommended to install Mahoraga with [uv][1]:
 ``` sh
 uv tool install -U mahoraga
 ```
-!!! note
+!!! info "Note"
 
     Installing Mahoraga requires uv version 0.9.0 or later.
 ## Server Configuration
@@ -19,7 +19,7 @@ any text editor you like:
 uvx pyvim ~/.mahoraga/mahoraga.toml
 ```
 Inline documentations can be found inside the file.
-!!! note
+!!! info "Note"
 
     Running `uvx` without `uv tool install` will result in a full installation
     every time you run the tool. See [uv tool][2] documentation for details.
@@ -57,7 +57,7 @@ We provide configuration files for [Nginx][11] and [Caddy][18] out-of-the-box.
     - `mahoraga.conf`: A snippet intended to be included in the `http`
       ^[:octicons-link-external-16:][12]^ block of another file.
 
-    !!! note
+    !!! info "Note"
 
         For Linux and macOS, Nginx is available in conda-forge and can be
         installed by [Pixi][5]:
@@ -73,7 +73,7 @@ We provide configuration files for [Nginx][11] and [Caddy][18] out-of-the-box.
     In addition, it's also a valid snippet when imported to the root of another
     `Caddyfile`, since it doesn't contain a [global options block][19].
 
-    !!! note
+    !!! info "Note"
 
         Caddy is available in conda-forge and can be installed by [Pixi][5]:
         ``` sh
@@ -84,12 +84,12 @@ We provide configuration files for [Nginx][11] and [Caddy][18] out-of-the-box.
 When configuring the clients, make sure they don't communicate with Mahoraga
 directly, but through Nginx or Caddy.
 ## Client Configuration
-!!! note
+!!! info "Note"
 
     Mahoraga serves on `{{ mahoraga_base_url }}` by default. Replace it with the
     actual URL exposed to your clients.
 ### uv
-!!! note
+!!! info "Note"
 
     Mirror configuration requires uv version 0.9.10 or later.
 To install or update [uv][1] on a client machine, download and run the
@@ -108,7 +108,7 @@ standalone installer:
     irm {{ mahoraga_base_url }}/uv/uv-installer.ps1 | iex
     ```
 
-!!! note
+!!! info "Note"
 
     `uv self update` is unsupported due to
     [this issue^:octicons-link-external-16:^][13].
@@ -122,7 +122,7 @@ via either environment variables or a [config file][15]:
     export UV_DEFAULT_INDEX={{ mahoraga_base_url }}/pypi/simple
     export UV_HTTP_TIMEOUT=60
     ```
-    !!! note
+    !!! info "Note"
 
         Cache-Control override can only be set via config file.
 
@@ -134,7 +134,7 @@ via either environment variables or a [config file][15]:
     $Env:UV_DEFAULT_INDEX = "{{ mahoraga_base_url }}/pypi/simple"
     $Env:UV_HTTP_TIMEOUT = "60"
     ```
-    !!! note
+    !!! info "Note"
 
         Cache-Control override can only be set via config file.
 
@@ -152,7 +152,7 @@ via either environment variables or a [config file][15]:
     # Override them in case an upstream mirror doesn't implement cache control.
     cache-control = { api = "max-age=600", files = "max-age=365000000, immutable" }
     ```
-    !!! note
+    !!! info "Note"
 
         Timeout can only be set via environment variable.
 
@@ -171,7 +171,7 @@ via either environment variables or a [config file][15]:
     # Override them in case an upstream mirror doesn't implement cache control.
     cache-control = { api = "max-age=600", files = "max-age=365000000, immutable" }
     ```
-    !!! note
+    !!! info "Note"
 
         Timeout can only be set via environment variable.
 
@@ -192,7 +192,7 @@ however a small shell trick can work:
     ```
 
 ### Pixi
-!!! note
+!!! info "Note"
 
     Mirror configuration requires Pixi version 0.43.1 or later.
 It's recommended to enable [sharded repodata][6] in [Mahoraga configuration][7]
@@ -203,7 +203,7 @@ provide a Python script which can be executed by uv:
 uv run {{ mahoraga_base_url }}/static/get_pixi.py {{ mahoraga_base_url }}
 ```
 By default, the script installs the latest version of Pixi to `PIXI_HOME`
-[^:octicons-link-external-16:^][14], replacing any existed version, and prepend
+^[:octicons-link-external-16:][14]^, replacing any existed version, and prepend
 `$PIXI_HOME/bin` to your `PATH`. To specify a version, pass it via CLI
 arguments:
 ``` sh
@@ -212,8 +212,8 @@ arguments:
 -v '>=0.43.1,<1'  # Version range
 ```
 The script respects environment variables `PIXI_HOME`, `PIXI_NO_PATH_UPDATE`
-[^:octicons-link-external-16:^][16] and `PIXI_CACHE_DIR`
-[^:octicons-link-external-16:^][14] if present.
+^[:octicons-link-external-16:][16]^ and `PIXI_CACHE_DIR`
+^[:octicons-link-external-16:][14]^ if present.
 
 For convenience, the script modifies Pixi global configuration automatically,
 using Mahoraga as the sole mirror of [anaconda.org][17] and PyPI.
@@ -240,7 +240,7 @@ You can also configure the mirrors as you wish:
 
 After that, you can install Conda packages like [Rattler-Build][8] with Pixi.
 ### Rattler-Build
-!!! note
+!!! info "Note"
 
     Mirror configuration requires Rattler-Build version 0.41.0 or later.
 Rattler-Build accepts the same config file format as Pixi. Pass the Pixi config
@@ -263,7 +263,7 @@ not like to share between Pixi and Rattler-Build.
     ```
 
 ### Pyodide
-!!! note
+!!! info "Note"
 
     Mirror configuration requires Pyodide version 0.28.0 or later.
 [Pyodide][10] Python distribution, wheels and JavaScript/WebAssembly runtime are
@@ -351,7 +351,7 @@ The frontend configuration depends on the library you directly use:
 
 === "Stlite"
 
-    ``` html hl_lines="6 11 14 16-17"
+    ``` html hl_lines="6 11 14 16-19"
     <!doctype html>
     <html>
       <head>
@@ -368,6 +368,8 @@ The frontend configuration depends on the library you directly use:
               pyodideUrl: "{{ mahoraga_base_url }}/pyodide/v{{ pyodide_py_version }}/full/pyodide.js",
               requirements: [
                 "{{ mahoraga_base_url }}/pypi/packages/py3/b/blinker/blinker-{{ blinker_version }}-py3-none-any.whl",
+                "{{ mahoraga_base_url }}/pypi/packages/py3/i/itsdangerous/itsdangerous-{{ itsdangerous_version }}-py3-none-any.whl",
+                "{{ mahoraga_base_url }}/pypi/packages/py3/p/python-multipart/python_multipart-{{ python_multipart_version }}-py3-none-any.whl",
                 "{{ mahoraga_base_url }}/pypi/packages/py3/t/tenacity/tenacity-{{ tenacity_version }}-py3-none-any.whl",
               ],
               entrypoint: "your_app.py",
@@ -397,7 +399,7 @@ The next generation of the official Python installer for Windows,
     curl -O {{ mahoraga_base_url }}/python/pymanager/python-manager-{{ pymanager_version }}.msi
     ```
 
-!!! note
+!!! info "Note"
 
     Support for the command `pymanager install` hasn't been implemented in
     Mahoraga yet.

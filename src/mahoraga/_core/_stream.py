@@ -280,6 +280,7 @@ async def _stream(
     last = b""
     scope = anyio.CancelScope(shield=True)
     async with contextlib.AsyncExitStack() as stack:
+        # ruff: disable[ASYNC119]
         outer = await stack.enter_async_context(contextlib.AsyncExitStack())
         await stack.enter_async_context(wrapped)
         if cache_location and sha256:
@@ -313,6 +314,7 @@ async def _stream(
                 yield last
                 last = current
         yield last
+        # ruff: enable[ASYNC119]
 
 
 @contextlib.contextmanager
