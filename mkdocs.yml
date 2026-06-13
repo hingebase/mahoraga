@@ -26,8 +26,8 @@ theme:
     - navigation.top
     - toc.follow
   icon:
-    logo: material/temple-buddhist
     repo: fontawesome/brands/github
+  logo: assets/logo.svg
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
