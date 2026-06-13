@@ -12,6 +12,7 @@ wheels/
 # MkDocs build
 .cache
 site
+docs/assets/logo.svg
 docs/favicon.svg
 docs/requirements.txt
 

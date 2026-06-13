@@ -14,6 +14,7 @@
 
 import abc
 import collections
+import dataclasses
 import datetime
 import io
 import os
@@ -21,17 +22,16 @@ import pathlib
 import re
 import subprocess  # noqa: S404
 import time
-import xml.etree.ElementTree as ET  # noqa: S405
 from typing import TYPE_CHECKING, ClassVar, cast, override
 
 import csscompressor  # pyright: ignore[reportMissingTypeStubs]
-import defusedxml.ElementTree
 import jsmin  # pyright: ignore[reportMissingTypeStubs]
-import pooch  # pyright: ignore[reportMissingTypeStubs]
+import pooch.typing  # pyright: ignore[reportMissingTypeStubs]
 import pydantic
 import pydantic_settings
 import pygit2
 import requests
+import ziafont
 
 if TYPE_CHECKING:
     from _typeshed import Incomplete
@@ -70,10 +70,29 @@ def define_env(env: MacrosPlugin) -> None:
                          .read_text("utf-8")
                          .partition(" [Docs]")[0],
     })
-    if os.getenv("GH_TOKEN"):
-        svg = "https://raw.githubusercontent.com/marella/material-design-icons/refs/heads/main/svg/filled/temple_buddhist.svg"
-    else:
-        svg = "https://cdn.jsdelivr.net/npm/@material-design-icons/svg@0/filled/temple_buddhist.svg"
+
+    # These URLs point to the main branch and the hashes will expire on
+    # each commit. Replace them once there is a new GitHub Release.
+    pooch.retrieve(  # pyright: ignore[reportUnknownMemberType]
+        "https://notofonts.github.io/devanagari/fonts/NotoSansDevanagariUI/hinted/ttf/NotoSansDevanagariUI-ExtraCondensed.ttf",
+        known_hash="2bb9d27504211ed8ff73ed5287d8eb4ed109d9b91eccec820f8805a4cd3563d7",
+        processor=_Renderer(
+            pathlib.Path("docs", "favicon.svg"),
+            size=8,
+            color="#6b8e7b",
+        ),
+    )
+    pooch.retrieve(  # pyright: ignore[reportUnknownMemberType]
+        "https://notofonts.github.io/devanagari/fonts/NotoSansDevanagariUI/hinted/ttf/NotoSansDevanagariUI-ExtraCondensedThin.ttf",
+        known_hash="2df029a23387909bf16d684b3089af0e8835ed74d11346cff0aadabbdca0603b",
+        processor=_Renderer(
+            pathlib.Path("docs", "assets", "logo.svg"),
+            size=24,
+            color="white",
+        ),
+    )
+
+    if not os.getenv("GH_TOKEN"):
         privacy = cast("PrivacyPlugin", env.conf.plugins["material/privacy"])
         privacy.config.assets = True
         if mahoraga_base_url:
@@ -95,7 +114,6 @@ def define_env(env: MacrosPlugin) -> None:
                     return session.get(prepared, **kwargs)
 
             requests.get = get
-    _coloring(svg)
 
 
 def on_post_build(env: MacrosPlugin) -> None:
@@ -176,6 +194,31 @@ class _PythonBuildStandalone(_PyManager):
     github_repo: ClassVar[str] = "astral-sh/python-build-standalone"
 
 
+@dataclasses.dataclass
+class _Renderer(pooch.typing.Processor):  # pyright: ignore[reportGeneralTypeIssues, reportUntypedBaseClass]
+    svg: pathlib.Path
+    size: float
+    color: str
+
+    def __call__(
+        self,
+        fname: str,
+        action: pooch.typing.Action,
+        pooch: pooch.Pooch | None,
+    ) -> None:
+        if self.svg.is_file():
+            del action, pooch
+            return
+        self.svg.parent.mkdir(exist_ok=True)
+        text = ziafont.font.Text(
+            "\u092e\u0939\u094b\u0930\u0917",
+            font=fname,
+            size=self.size,
+            color=self.color,
+        )
+        self.svg.write_text(text.svg(), encoding="utf-8")
+
+
 def _changelog() -> list[tuple[str, collections.defaultdict[str, list[str]]]]:
     repo = pygit2.Repository(".git")
     tags = {
@@ -218,24 +261,6 @@ def _changelog() -> list[tuple[str, collections.defaultdict[str, list[str]]]]:
     if not sections[0][1]:
         sections.pop(0)
     return sections
-
-
-def _coloring(src: str) -> None:
-    dst = pathlib.Path("docs", "favicon.svg")
-    if dst.is_file():
-        return
-
-    # https://github.com/python/cpython/issues/61290
-    ET.register_namespace("", "http://www.w3.org/2000/svg")
-
-    tree = defusedxml.ElementTree.parse(pooch.retrieve(src))  # pyright: ignore[reportUnknownMemberType]
-    root = tree.getroot()
-    if root is None:
-        raise RuntimeError
-    g = ET.Element("g", {"fill": "#6b8e7b"})
-    g[:] = root
-    root[:] = [g]
-    tree.write(dst)
 
 
 def _open(requirements: pathlib.Path) -> io.TextIOWrapper:
