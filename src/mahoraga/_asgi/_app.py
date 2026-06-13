@@ -86,9 +86,6 @@ def make_app(
     if static_files:
         app.mount("/static", static_files, name="static")
 
-    # Private, only for building docs
-    app.include_router(_jsdelivr.gh, prefix="/gh", include_in_schema=False)
-
     res = fastapi.openapi.docs.get_swagger_ui_html(
         openapi_url="{{ url_for('openapi') }}",
         title=app.title,
