@@ -203,7 +203,7 @@ provide a Python script which can be executed by uv:
 uv run {{ mahoraga_base_url }}/static/get_pixi.py {{ mahoraga_base_url }}
 ```
 By default, the script installs the latest version of Pixi to `PIXI_HOME`
-[^:octicons-link-external-16:^][14], replacing any existed version, and prepend
+^[:octicons-link-external-16:][14]^, replacing any existed version, and prepend
 `$PIXI_HOME/bin` to your `PATH`. To specify a version, pass it via CLI
 arguments:
 ``` sh
@@ -212,8 +212,8 @@ arguments:
 -v '>=0.43.1,<1'  # Version range
 ```
 The script respects environment variables `PIXI_HOME`, `PIXI_NO_PATH_UPDATE`
-[^:octicons-link-external-16:^][16] and `PIXI_CACHE_DIR`
-[^:octicons-link-external-16:^][14] if present.
+^[:octicons-link-external-16:][16]^ and `PIXI_CACHE_DIR`
+^[:octicons-link-external-16:][14]^ if present.
 
 For convenience, the script modifies Pixi global configuration automatically,
 using Mahoraga as the sole mirror of [anaconda.org][17] and PyPI.

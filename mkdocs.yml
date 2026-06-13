@@ -12,12 +12,9 @@ nav:
       - advanced/pyapp.md
   - changelog.md
 
-exclude_docs: |
-  requirements.*
-
 theme:
-  name: material
-  favicon: favicon.svg
+  variant: classic
+  favicon: assets/images/favicon.svg
   features:
     - content.action.edit
     - content.action.view
@@ -27,7 +24,7 @@ theme:
     - toc.follow
   icon:
     repo: fontawesome/brands/github
-  logo: assets/logo.svg
+  logo: assets/images/logo.svg
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
@@ -41,7 +38,7 @@ theme:
         name: Switch to light mode
 
 extra_css:
-  - stylesheets/extra.css
+  - assets/stylesheets/extra.css
 
 markdown_extensions:
   - abbr
@@ -57,20 +54,13 @@ markdown_extensions:
   - pymdownx.superfences
   - pymdownx.tabbed:
       alternate_style: true
+  - zensical.extensions.macros:
+      module_name: scripts/_mkdocs_macros
+      on_error_fail: true
+      on_undefined: strict
 
 plugins:
-  - macros:
-      module_name: scripts/_mkdocs_macros
-  - minify:
-      cache_safe: true
-      css_files:
-        - stylesheets/extra.css
-      minify_css: true
-      minify_js: true
-  - minify_html
   - offline
-  - privacy:
-      assets: false
   - search
 
 extra:
