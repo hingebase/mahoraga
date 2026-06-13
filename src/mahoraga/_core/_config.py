@@ -436,8 +436,8 @@ class Config(pydantic_settings.BaseSettings, **_model_config):
             loop.set_task_factory(asyncio.eager_task_factory)
         return loop
 
-    @override
     @classmethod
+    @override
     def settings_customise_sources(
         cls,
         settings_cls: type[pydantic_settings.BaseSettings],

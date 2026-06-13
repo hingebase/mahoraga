@@ -89,8 +89,8 @@ class _Asset(pydantic.BaseModel, extra="ignore"):
 
 
 class _BaseSettings(pydantic_settings.BaseSettings, extra="ignore"):
-    @override
     @classmethod
+    @override
     def settings_customise_sources(
         cls,
         settings_cls: type[pydantic_settings.BaseSettings],
@@ -110,8 +110,8 @@ class _BaseSettings(pydantic_settings.BaseSettings, extra="ignore"):
 class _Mahoraga(_BaseSettings, pyproject_toml_table_header=("project",)):
     version: str = ""
 
-    @override
     @classmethod
+    @override
     def settings_source(cls) -> pydantic_settings.PydanticBaseSettingsSource:
         return pydantic_settings.PyprojectTomlConfigSettingsSource(cls)
 
@@ -120,8 +120,8 @@ class _PyManager(_BaseSettings, json_file_encoding="utf-8"):
     github_repo: ClassVar[str] = "python/pymanager"
     tag_name: str = ""
 
-    @override
     @classmethod
+    @override
     def settings_source(cls) -> pydantic_settings.PydanticBaseSettingsSource:
         headers = {
             "Accept": "application/vnd.github+json",

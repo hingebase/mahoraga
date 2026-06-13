@@ -158,8 +158,8 @@ class Statistics(pydantic_settings.BaseSettings, json_file_encoding="utf-8"):
             backup = concurrency >= limit
         return backup, concurrency, self.total_seconds[h]
 
-    @override
     @classmethod
+    @override
     def settings_customise_sources(
         cls,
         settings_cls: type[pydantic_settings.BaseSettings],
