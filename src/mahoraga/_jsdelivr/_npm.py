@@ -32,11 +32,6 @@ router: fastapi.APIRouter = fastapi.APIRouter(route_class=_core.APIRoute)
 @router.get("/@holoviz/{package}/{path:path}", dependencies=_core.immutable)
 @router.get("/@pyscript/{package}/{path:path}", dependencies=_core.immutable)
 @router.get("/@stlite/{package}/{path:path}", dependencies=_core.immutable)
-# Must be the last
-@router.get(
-    "/@material-design-icons/{package}/{path:path}",
-    dependencies=_core.immutable,
-)
 async def get_scoped_npm_file(
     package: Annotated[str, fastapi.Path(pattern=r"^[^@]+@[^@]+$")],
     path: Annotated[str, fastapi.Path(pattern=r"^[^/]")],

@@ -91,7 +91,7 @@ def make_app(
         title=app.title,
         swagger_js_url=URL_FOR % "swagger-ui-bundle.js",
         swagger_css_url=URL_FOR % "swagger-ui.css",
-        swagger_favicon_url="https://hingebase.github.io/mahoraga/favicon.svg",
+        swagger_favicon_url="https://hingebase.github.io/mahoraga/assets/images/favicon.svg",
         oauth2_redirect_url=URL_FOR % "oauth2-redirect.html",
         init_oauth=app.swagger_ui_init_oauth,
         swagger_ui_parameters=app.swagger_ui_parameters,
