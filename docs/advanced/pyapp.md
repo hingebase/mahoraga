@@ -4,7 +4,7 @@ no Python experience. In this topic, we are going to build a standalone
 executable of Mahoraga with PyApp, utilizing a running Mahoraga instance.
 The Mahoraga executable can be copied to another machine, and will help you set
 up Python development environment efficiently.
-!!! note
+!!! info "Note"
 
     Mahoraga serves on `{{ mahoraga_base_url }}` by default. Replace it with the
     actual URL exposed to your clients.
@@ -39,7 +39,7 @@ Make an empty directory, `cd` to it, and then build the online version of PyApp:
         UV_PYTHON=temp/python/bin/python3 \
         bin/pyapp
     ```
-    !!! note
+    !!! info "Note"
 
         You may want to replace the `v3` in `PYAPP_DISTRIBUTION_SOURCE` with
         `v2` or `v4` if the CPU of the target machine is already known.

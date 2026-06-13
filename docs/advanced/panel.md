@@ -7,7 +7,7 @@ Panel runs on both CPython and Pyodide. For installation, please refer to the
 [tutorial][4]. Beyond that, in Mahoraga we provide proxy for Panel/Bokeh
 frontend assets, eliminating direct requests to upstream servers completely.
 The following example is for Pyodide, but can be adapted to CPython as well.
-!!! note
+!!! info "Note"
 
     Mahoraga serves on `{{ mahoraga_base_url }}` by default. Replace it with the
     actual URL exposed to your clients.

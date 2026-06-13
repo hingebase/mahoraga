@@ -12,9 +12,8 @@
 # implied. See the License for the specific language governing
 # permissions and limitations under the License.
 
-__all__ = ["Metadata", "gh", "npm", "pyodide"]
+__all__ = ["Metadata", "npm", "pyodide"]
 
-from ._gh import router as gh
 from ._npm import Metadata
 from ._npm import router as npm
 from ._pyodide import router as pyodide

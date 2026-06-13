@@ -86,15 +86,12 @@ def make_app(
     if static_files:
         app.mount("/static", static_files, name="static")
 
-    # Private, only for building docs
-    app.include_router(_jsdelivr.gh, prefix="/gh", include_in_schema=False)
-
     res = fastapi.openapi.docs.get_swagger_ui_html(
         openapi_url="{{ url_for('openapi') }}",
         title=app.title,
         swagger_js_url=URL_FOR % "swagger-ui-bundle.js",
         swagger_css_url=URL_FOR % "swagger-ui.css",
-        swagger_favicon_url="https://hingebase.github.io/mahoraga/favicon.svg",
+        swagger_favicon_url="https://hingebase.github.io/mahoraga/assets/images/favicon.svg",
         oauth2_redirect_url=URL_FOR % "oauth2-redirect.html",
         init_oauth=app.swagger_ui_init_oauth,
         swagger_ui_parameters=app.swagger_ui_parameters,

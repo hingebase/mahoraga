@@ -9,12 +9,9 @@ wheels/
 # Virtual environments
 .venv
 
-# MkDocs build
+# Zensical
 .cache
 site
-docs/assets/logo.svg
-docs/favicon.svg
-docs/requirements.txt
 
 # Exclude uv.lock which contains private addresses
 uv.lock

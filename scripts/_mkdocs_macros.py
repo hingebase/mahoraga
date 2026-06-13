@@ -16,35 +16,24 @@ import abc
 import collections
 import dataclasses
 import datetime
-import io
 import os
 import pathlib
 import re
 import subprocess  # noqa: S404
 import time
-from typing import TYPE_CHECKING, ClassVar, cast, override
+from typing import TYPE_CHECKING, ClassVar, override
 
-import csscompressor  # pyright: ignore[reportMissingTypeStubs]
-import jsmin  # pyright: ignore[reportMissingTypeStubs]
 import pooch.typing  # pyright: ignore[reportMissingTypeStubs]
 import pydantic
 import pydantic_settings
 import pygit2
-import requests
 import ziafont
 
 if TYPE_CHECKING:
-    from _typeshed import Incomplete
-    from material.plugins.privacy.plugin import (  # pyright: ignore[reportMissingTypeStubs]
-        PrivacyPlugin,
-    )
-    from mkdocs_macros.plugin import MacrosPlugin
-    from requests.sessions import (
-        _Params,  # pyright: ignore[reportPrivateUsage]
-    )
+    from zensical.extensions.macros import MacroEnv
 
 
-def define_env(env: MacrosPlugin) -> None:
+def define_env(env: MacroEnv) -> None:
     release = _PythonBuildStandalone()
     for asset in release.assets:
         name = asset.name
@@ -53,12 +42,21 @@ def define_env(env: MacrosPlugin) -> None:
             break
     else:
         raise RuntimeError
-    with _open(pathlib.Path("docs", "requirements.txt")) as f:
-        for line in f:
-            k, v = line.split("==")
-            env.variables[f"{k}_version".replace("-", "_")] = v.rstrip()
+    for line in subprocess.check_output(  # noqa: S603
+        [
+            os.getenv("UV", "uv"),
+            "pip", "compile",
+            "--group", "docs",
+            "--no-annotate",
+            "--no-deps",
+            "--no-header",
+        ],
+        encoding="ascii",
+    ).splitlines():
+        k, v = line.split("==")
+        env.variables[f"{k}_version".replace("-", "_")] = v.rstrip()
     mahoraga_base_url = os.getenv("MAHORAGA_BASE_URL", "").rstrip("/")
-    env.variables.update({  # pyright: ignore[reportUnknownMemberType]
+    env.variables.update({
         "changelog": _changelog(),
         "mahoraga_base_url": mahoraga_base_url or "http://127.0.0.1:3450",
         "mahoraga_version": _Mahoraga().version,
@@ -70,70 +68,20 @@ def define_env(env: MacrosPlugin) -> None:
                          .read_text("utf-8")
                          .partition(" [Docs]")[0],
     })
+    images = pathlib.Path(env.conf["site_dir"], "assets", "images")
 
     # These URLs point to the main branch and the hashes will expire on
     # each commit. Replace them once there is a new GitHub Release.
     pooch.retrieve(  # pyright: ignore[reportUnknownMemberType]
         "https://notofonts.github.io/devanagari/fonts/NotoSansDevanagariUI/hinted/ttf/NotoSansDevanagariUI-ExtraCondensed.ttf",
         known_hash="2bb9d27504211ed8ff73ed5287d8eb4ed109d9b91eccec820f8805a4cd3563d7",
-        processor=_Renderer(
-            pathlib.Path("docs", "favicon.svg"),
-            size=8,
-            color="#6b8e7b",
-        ),
+        processor=_Renderer(images / "favicon.svg", size=8, color="#6b8e7b"),
     )
     pooch.retrieve(  # pyright: ignore[reportUnknownMemberType]
-        "https://notofonts.github.io/devanagari/fonts/NotoSansDevanagariUI/hinted/ttf/NotoSansDevanagariUI-ExtraCondensedThin.ttf",
-        known_hash="2df029a23387909bf16d684b3089af0e8835ed74d11346cff0aadabbdca0603b",
-        processor=_Renderer(
-            pathlib.Path("docs", "assets", "logo.svg"),
-            size=24,
-            color="white",
-        ),
+        "https://notofonts.github.io/devanagari/fonts/NotoSansDevanagariUI/hinted/ttf/NotoSansDevanagariUI-ExtraCondensedLight.ttf",
+        known_hash="0ef9d90fd6f359610918a0b269cb194d17bd38063ccb0b1c17833d3ddffef5fc",
+        processor=_Renderer(images / "logo.svg", size=24, color="#6b8e7b"),
     )
-
-    if not os.getenv("GH_TOKEN"):
-        privacy = cast("PrivacyPlugin", env.conf.plugins["material/privacy"])
-        privacy.config.assets = True
-        if mahoraga_base_url:
-            req = requests.PreparedRequest()
-
-            def get(
-                url: str | bytes,
-                params: _Params | None = None,
-                **kwargs: Incomplete,
-            ) -> requests.Response:
-                req.prepare_url(url, params)  # pyright: ignore[reportUnknownMemberType]
-                prepared = req.url
-                if not prepared:
-                    message = "Prepared URL should never be empty"
-                    raise AssertionError(message)
-                if prepared.startswith("https://cdn.jsdelivr.net/"):
-                    prepared = mahoraga_base_url + prepared[24:]
-                with requests.Session() as session:
-                    return session.get(prepared, **kwargs)
-
-            requests.get = get
-
-
-def on_post_build(env: MacrosPlugin) -> None:
-    site_dir = pathlib.Path(env.conf.site_dir)
-    for css in site_dir.glob("assets/external/fonts.googleapis.com/*.css"):
-        with css.open("r+", encoding="utf-8") as f:
-            s = csscompressor.compress(f.read())  # pyright: ignore[reportUnknownMemberType]
-            f.seek(0)
-            f.write(s)
-            f.truncate()
-    for js in site_dir.glob("assets/javascripts/lunr/*.js"):
-        with js.open("r+", encoding="utf-8") as f, io.StringIO(f.read()) as g:
-            f.seek(0)
-            jsmin.JavascriptMinify(g, f).minify()  # pyright: ignore[reportUnknownMemberType]
-            f.truncate()
-    if os.getenv("GH_TOKEN"):
-        subprocess.run(  # noqa: S603
-            ["/usr/bin/chmod", "-R", "a=r,u+w,a+X", site_dir],
-            check=True,
-        )
 
 
 class _Asset(pydantic.BaseModel, extra="ignore"):
@@ -209,7 +157,7 @@ class _Renderer(pooch.typing.Processor):  # pyright: ignore[reportGeneralTypeIss
         if self.svg.is_file():
             del action, pooch
             return
-        self.svg.parent.mkdir(exist_ok=True)
+        self.svg.parent.mkdir(parents=True, exist_ok=True)
         text = ziafont.font.Text(
             "\u092e\u0939\u094b\u0930\u0917",
             font=fname,
@@ -261,22 +209,3 @@ def _changelog() -> list[tuple[str, collections.defaultdict[str, list[str]]]]:
     if not sections[0][1]:
         sections.pop(0)
     return sections
-
-
-def _open(requirements: pathlib.Path) -> io.TextIOWrapper:
-    try:
-        return requirements.open(encoding="utf-8")
-    except OSError:
-        subprocess.run(  # noqa: S603
-            [
-                os.getenv("UV", "uv"),
-                "pip", "compile",
-                "--no-annotate",
-                "--no-deps",
-                "--no-header",
-                "-o", requirements,
-                requirements.with_suffix(".in"),
-            ],
-            check=True,
-        )
-        return requirements.open(encoding="utf-8")
