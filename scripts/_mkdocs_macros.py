@@ -78,9 +78,9 @@ def define_env(env: MacroEnv) -> None:
         processor=_Renderer(images / "favicon.svg", size=8, color="#6b8e7b"),
     )
     pooch.retrieve(  # pyright: ignore[reportUnknownMemberType]
-        "https://notofonts.github.io/devanagari/fonts/NotoSansDevanagariUI/hinted/ttf/NotoSansDevanagariUI-ExtraCondensedThin.ttf",
-        known_hash="2df029a23387909bf16d684b3089af0e8835ed74d11346cff0aadabbdca0603b",
-        processor=_Renderer(images / "logo.svg", size=24, color="white"),
+        "https://notofonts.github.io/devanagari/fonts/NotoSansDevanagariUI/hinted/ttf/NotoSansDevanagariUI-ExtraCondensedLight.ttf",
+        known_hash="0ef9d90fd6f359610918a0b269cb194d17bd38063ccb0b1c17833d3ddffef5fc",
+        processor=_Renderer(images / "logo.svg", size=24, color="#6b8e7b"),
     )
 
 

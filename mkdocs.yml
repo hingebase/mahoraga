@@ -13,7 +13,6 @@ nav:
   - changelog.md
 
 theme:
-  variant: classic
   favicon: assets/images/favicon.svg
   features:
     - content.action.edit
