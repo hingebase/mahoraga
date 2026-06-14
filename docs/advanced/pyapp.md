@@ -95,9 +95,10 @@ Make an empty directory, `cd` to it, and then build the online version of PyApp:
     ```
 
 `pyapp` will fail to run since we didn't set `PYAPP_DISTRIBUTION_PATH_PREFIX`
-on Unix and didn't remove `python{{ python_version_short }}._pth` on Windows.
-That doesn't matter since we have already get the Python environment. Pack it
-with maximum compression rate:
+^[:octicons-link-external-16:][7]^ on Unix and didn't remove
+`python{{ python_version_short }}._pth` ^[:octicons-link-external-16:][8]^ on
+Windows. That doesn't matter since we have already get the Python environment.
+Pack it with maximum compression rate:
 
 === "Linux (x64 glibc)"
 
@@ -197,3 +198,5 @@ one, and it will work as expected.
 [4]: ../tutorial.md#pixi
 [5]: https://developer.apple.com/library/archive/technotes/tn2339/_index.html
 [6]: https://visualstudio.microsoft.com/visual-cpp-build-tools/
+[7]: https://ofek.dev/pyapp/latest/config/distribution/#path-prefix
+[8]: https://docs.python.org/3/using/windows.html#windows-finding-modules
