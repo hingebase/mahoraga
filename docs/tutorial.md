@@ -1,12 +1,9 @@
 # Tutorial
 ## Installation
-It's recommended to install Mahoraga with [uv][1]:
+It's recommended to install Mahoraga with [uv][1] >=0.9.0:
 ``` sh
 uv tool install -U mahoraga
 ```
-!!! info "Note"
-
-    Installing Mahoraga requires uv version 0.9.0 or later.
 ## Server Configuration
 Before starting Mahoraga, you need to initialize a directory (for example
 `~/.mahoraga`) to hold its configuration and data:
@@ -71,7 +68,7 @@ We provide configuration files for [Nginx][11] and [Caddy][18] out-of-the-box.
     You can find the Caddy configuration file at `~/.mahoraga/Caddyfile`. As the
     name suggests, it can be used as the top-level configuration file directly.
     In addition, it's also a valid snippet when imported to the root of another
-    `Caddyfile`, since it doesn't contain a [global options block][19].
+    `Caddyfile`, since it doesn't contain a [global options block][13].
 
     !!! info "Note"
 
@@ -89,11 +86,8 @@ directly, but through Nginx or Caddy.
     Mahoraga serves on `{{ mahoraga_base_url }}` by default. Replace it with the
     actual URL exposed to your clients.
 ### uv
-!!! info "Note"
-
-    Mirror configuration requires uv version 0.9.10 or later.
-To install or update [uv][1] on a client machine, download and run the
-standalone installer:
+To get started on your client machine, install [uv][1] >=0.9.10 if you haven't
+got it elsewhere:
 === "Linux/macOS"
 
     ``` sh
@@ -108,10 +102,8 @@ standalone installer:
     irm {{ mahoraga_base_url }}/uv/uv-installer.ps1 | iex
     ```
 
-!!! info "Note"
-
-    `uv self update` is unsupported due to
-    [this issue^:octicons-link-external-16:^][13].
+When upgrading uv installed in this way, run the same command again. We don't
+support `uv self update` at this moment.  
 uv can be configured to grab PyPI packages and Python itself from Mahoraga,
 via either environment variables or a [config file][15]:
 === ".profile"
@@ -192,9 +184,6 @@ however a small shell trick can work:
     ```
 
 ### Pixi
-!!! info "Note"
-
-    Mirror configuration requires Pixi version 0.43.1 or later.
 It's recommended to enable [sharded repodata][6] in [Mahoraga configuration][7]
 if you use [Pixi][5] or any other tools for the Conda ecosystem.  
 There is no mirror for the standalone installer of Pixi as of now. Instead, we
@@ -211,6 +200,9 @@ arguments:
 -v '0.43.*'  # Latest revision of a specific minor version
 -v '>=0.43.1,<1'  # Version range
 ```
+!!! info "Note"
+
+    Mirror configuration requires Pixi version 0.43.1 or later.
 The script respects environment variables `PIXI_HOME`, `PIXI_NO_PATH_UPDATE`
 ^[:octicons-link-external-16:][16]^ and `PIXI_CACHE_DIR`
 ^[:octicons-link-external-16:][14]^ if present.
@@ -416,10 +408,9 @@ The next generation of the official Python installer for Windows,
 [10]: https://pyodide.org/en/stable/
 [11]: https://nginx.org/
 [12]: https://nginx.org/en/docs/http/ngx_http_core_module.html#http
-[13]: https://github.com/astral-sh/uv/issues/16519
+[13]: https://caddyserver.com/docs/caddyfile/concepts#global-options
 [14]: https://pixi.prefix.dev/latest/reference/environment_variables/#configurable-environment-variables
 [15]: https://docs.astral.sh/uv/reference/storage/#configuration-directories
 [16]: https://pixi.prefix.dev/latest/installation/#installer-script-options
 [17]: https://anaconda.org/
 [18]: https://caddyserver.com/
-[19]: https://caddyserver.com/docs/caddyfile/concepts#global-options
