@@ -15,7 +15,6 @@
 __all__ = [
     "PackageRecord",
     "RepodataHeaders",
-    "RunExports",
     "Shard",
     "ShardedRepodata",
 ]
@@ -39,13 +38,10 @@ class RepodataHeaders(pydantic.BaseModel, extra="ignore"):
     if_none_match: str | None = None
 
 
-class RunExports(
-    TypedDict("_RunExports", {"packages.conda": dict[str, dict[str, Any]]}),
+class Shard(
+    TypedDict("_Shard", {"packages.conda": dict[str, dict[str, Any]]}),
 ):
     packages: dict[str, dict[str, Any]]
-
-
-class Shard(RunExports):
     removed: list[str]
 
 
