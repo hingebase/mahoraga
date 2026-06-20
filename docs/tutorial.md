@@ -45,7 +45,7 @@ fetching some packages from Mahoraga. Then if everything goes well, press
 For better performance, you can set up a non-Python server in front of Mahoraga.
 Packages cached on disk can be served within that server, so that subsequent
 requests won't go to Mahoraga again.
-We provide configuration files for [Nginx][11] and [Caddy][18] out-of-the-box.
+We provide configuration files for [Nginx][11] and [Caddy][6] out-of-the-box.
 === "Nginx"
 
     You can find the following Nginx configuration files in `~/.mahoraga/nginx`:
@@ -184,10 +184,8 @@ however a small shell trick can work:
     ```
 
 ### Pixi
-It's recommended to enable [sharded repodata][6] in [Mahoraga configuration][7]
-if you use [Pixi][5] or any other tools for the Conda ecosystem.  
-There is no mirror for the standalone installer of Pixi as of now. Instead, we
-provide a Python script which can be executed by uv:
+There is no mirror for the standalone installer of [Pixi][5] as of now.
+Instead, we provide a Python script which can be executed by uv:
 ``` sh
 uv run {{ mahoraga_base_url }}/static/get_pixi.py {{ mahoraga_base_url }}
 ```
@@ -208,7 +206,7 @@ The script respects environment variables `PIXI_HOME`, `PIXI_NO_PATH_UPDATE`
 ^[:octicons-link-external-16:][14]^ if present.
 
 For convenience, the script modifies Pixi global configuration automatically,
-using Mahoraga as the sole mirror of [anaconda.org][17] and PyPI.
+using Mahoraga as the sole mirror of [anaconda.org][7] and PyPI.
 You can also configure the mirrors as you wish:
 === "Stable"
 
@@ -401,8 +399,8 @@ The next generation of the official Python installer for Windows,
 [3]: #client-configuration
 [4]: https://docs.python.org/dev/using/windows.html#python-install-manager
 [5]: https://pixi.prefix.dev/latest/
-[6]: https://conda.org/learn/ceps/cep-0016/
-[7]: https://github.com/hingebase/mahoraga/blob/v{{ mahoraga_version }}/src/mahoraga/_cli/mahoraga.toml.jinja#L51-L64
+[6]: https://caddyserver.com/
+[7]: https://anaconda.org/
 [8]: https://rattler-build.prefix.dev/latest/
 [9]: #pixi
 [10]: https://pyodide.org/en/stable/
@@ -412,5 +410,3 @@ The next generation of the official Python installer for Windows,
 [14]: https://pixi.prefix.dev/latest/reference/environment_variables/#configurable-environment-variables
 [15]: https://docs.astral.sh/uv/reference/storage/#configuration-directories
 [16]: https://pixi.prefix.dev/latest/installation/#installer-script-options
-[17]: https://anaconda.org/
-[18]: https://caddyserver.com/

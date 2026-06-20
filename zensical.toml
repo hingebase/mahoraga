@@ -4,7 +4,11 @@ extra_css = ["assets/stylesheets/extra.css"]
 nav = [
     { Introduction = "index.md" },
     "tutorial.md",
-    { Advanced = ["advanced/panel.md", "advanced/pyapp.md"] },
+    { Advanced = [
+        "advanced/shards.md",
+        "advanced/panel.md",
+        "advanced/pyapp.md",
+    ] },
     "changelog.md",
 ]
 repo_name = "hingebase/mahoraga"

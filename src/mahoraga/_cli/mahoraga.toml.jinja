@@ -51,7 +51,7 @@ access = {{ log.access | lower }}
 # Conda sharded repodata configuration.
 # Keys should be channel names, and values should be lists of platform names.
 # Sharded repodata are generated every hour for all channel/platform pairs.
-# For details, see https://conda.org/learn/ceps/cep-0016/
+# For details, see https://hingebase.github.io/mahoraga/advanced/shards.html
 [shard]
 {%- for key, value in shard | dictsort %}
 {%- if key != "conda-forge" %}

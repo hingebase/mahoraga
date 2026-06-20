@@ -63,7 +63,7 @@
 
     Receive latest Conda package updates with minimal network traffic.
     Automatically updated every hour.
-    [:octicons-arrow-right-24: Configuration][11]
+    [:octicons-arrow-right-24: Docs][11]
 
 > :simple-anaconda:{ .lg .middle }　__Conda-PyPI mapping__
 >
@@ -83,4 +83,4 @@
 [8]: https://docs.conda.io/projects/conda/en/stable/
 [9]: https://mamba.readthedocs.io/en/latest/
 [10]: https://conda.org/learn/ceps/cep-0016/
-[11]: https://github.com/hingebase/mahoraga/blob/v{{ mahoraga_version }}/src/mahoraga/_cli/mahoraga.toml.jinja#L51-L64
+[11]: advanced/shards.md
