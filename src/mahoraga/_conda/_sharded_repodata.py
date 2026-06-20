@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING, Annotated, Any
 
 import anyio
 import fastapi.responses
+import httpx
 import msgpack
 import pooch.utils  # pyright: ignore[reportMissingTypeStubs]
 import rattler.platform
@@ -40,6 +41,42 @@ if TYPE_CHECKING:
 router: fastapi.APIRouter = fastapi.APIRouter(route_class=_core.APIRoute)
 
 
+@router.head("/{channel}/{platform}/repodata_shards.msgpack.zst")
+async def check_sharded_repodata_availability(
+    channel: str,
+    platform: rattler.platform.PlatformLiteral,
+) -> fastapi.Response:
+    cache_location = _cache_location(channel, platform)
+    if await cache_location.is_file():
+        return fastapi.Response()
+    ctx = _core.context.get()
+    client = ctx["httpx_client"]
+    prefix = _utils.prefix(channel, ctx["config"])
+    try:
+        response = await client.head(
+            f"{prefix}/{platform}/repodata_shards.msgpack.zst",
+            follow_redirects=True,
+        )
+    except httpx.HTTPError:
+        return fastapi.Response()
+    return _core.Response(
+        response.content,
+        response.status_code,
+        response.headers,
+    )
+
+
+@router.head("/{channel}/label/{label}/{platform}/repodata_shards.msgpack.zst")
+async def check_sharded_repodata_availability_with_label(
+    channel: str,
+    label: str,
+    platform: rattler.platform.PlatformLiteral,
+) -> fastapi.Response:
+    cache_location = _cache_location(channel, "label", label, platform)
+    status_code = 200 if await cache_location.is_file() else 404
+    return fastapi.Response(status_code=status_code)
+
+
 @router.get(
     "/{channel}/{platform}/repodata_shards.msgpack.zst",
     dependencies=_core.hourly,
@@ -48,8 +85,7 @@ async def get_sharded_repodata_index(
     channel: str,
     platform: rattler.platform.PlatformLiteral,
 ) -> fastapi.Response:
-    cache_location = anyio.Path(
-        "channels", channel, platform, "repodata_shards.msgpack.zst")
+    cache_location = _cache_location(channel, platform)
     if await cache_location.is_file():
         return fastapi.responses.FileResponse(cache_location)
     ctx = contextvars.copy_context()
@@ -129,6 +165,10 @@ def split_repo(
             fut = client.submit(_worker, cfg, channel, platform)  # pyright: ignore[reportUnknownMemberType]
             futures.add(fut)
             fut.add_done_callback(futures.discard)  # pyright: ignore[reportUnknownMemberType]
+
+
+def _cache_location(*segments: str) -> anyio.Path:
+    return anyio.Path("channels", *segments, "repodata_shards.msgpack.zst")
 
 
 def _packages(
