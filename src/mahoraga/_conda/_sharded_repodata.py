@@ -17,7 +17,6 @@ __all__ = ["router", "split_repo"]
 import asyncio
 import compression.zstd
 import hashlib
-import json
 import logging
 import pathlib
 import shutil
@@ -112,7 +111,6 @@ def _packages(
     package_name: rattler.PackageName,
     package_format_selection: rattler.PackageFormatSelection,
     repodata: rattler.SparseRepoData,
-    run_exports: dict[str, dict[str, Any]],
 ) -> dict[str, dict[str, Any]]:
     shards: dict[str, dict[str, Any]] = {}
     for record in repodata.load_records(
@@ -126,8 +124,6 @@ def _packages(
             if old.sha256:
                 new["sha256"] = bytes.fromhex(old.sha256)
             filename = record.file_name
-            if entry := run_exports.get(filename):
-                new["run_exports"] = entry["run_exports"]
             shards[filename] = new
     return shards
 
@@ -136,7 +132,6 @@ def _sha256(
     name: str,
     repodata: rattler.SparseRepoData,
     root: pathlib.Path,
-    run_exports: _models.RunExports,
 ) -> bytes:
     package_name = rattler.PackageName(name)
     shard: _models.Shard = {
@@ -144,13 +139,11 @@ def _sha256(
             package_name,
             rattler.PackageFormatSelection.ONLY_TAR_BZ2,
             repodata,
-            run_exports["packages"],
         ),
         "packages.conda": _packages(
             package_name,
             rattler.PackageFormatSelection.ONLY_CONDA,
             repodata,
-            run_exports["packages.conda"],
         ),
         "removed": [],
     }
@@ -174,27 +167,6 @@ def _split_repo(
 ) -> None:
     root = pathlib.Path("channels", channel, platform, "shards")
     root.mkdir(parents=True, exist_ok=True)
-    json_file = root.with_name("run_exports.json.zst")
-    try:
-        new = pooch.retrieve(  # pyright: ignore[reportUnknownMemberType]
-            f"{_utils.prefix(channel, cfg)}/{platform}/run_exports.json.zst",
-            path=root.parent,
-        )
-    except OSError:
-        pass
-    else:
-        json_file.unlink(missing_ok=True)
-        shutil.move(new, json_file)
-    try:
-        f = compression.zstd.ZstdFile(json_file)
-    except OSError:
-        run_exports: _models.RunExports = {
-            "packages": {},
-            "packages.conda": {},
-        }
-    else:
-        with f:
-            run_exports = json.load(f)
     with asyncio.run(
         _utils.fetch_repo_data(channel, platform, cfg),
         debug=cfg.log.level == "debug",
@@ -207,7 +179,7 @@ def _split_repo(
                 "subdir": platform,
             },
             "shards": {
-                name: _sha256(name, repodata, root, run_exports)
+                name: _sha256(name, repodata, root)
                 for name in repodata.package_names()
             },
         }
