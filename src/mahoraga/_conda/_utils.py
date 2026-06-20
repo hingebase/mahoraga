@@ -20,7 +20,9 @@ __all__ = [
 ]
 
 import asyncio
+import functools
 import itertools
+import pathlib
 import posixpath
 from typing import TYPE_CHECKING
 
@@ -32,6 +34,8 @@ from mahoraga import _core
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
+
+    from rattler.networking.fetch_repo_data import CacheAction
 
 
 async def fetch_repo_data(
@@ -73,10 +77,23 @@ async def fetch_repo_data_and_load_matching_records(
     *,
     label: str | None = None,
 ) -> list[rattler.RepoDataRecord]:
-    loop = asyncio.get_running_loop()
-    channels = _channels(channel, label)
     platforms = [rattler.Platform(platform)]
     specs = [rattler.MatchSpec(spec, strict=True)]
+    if channel == "conda-forge" and not label:
+        for cache_action in "force-cache-only", "cache-or-fetch":
+            gateway = _gateway(cache_action)
+            for channels in _conda_forge_channels:
+                try:
+                    [records] = await gateway.query(
+                        channels, platforms, specs, recursive=False)
+                except rattler.exceptions.GatewayError:
+                    pass
+                else:
+                    if records:
+                        return records
+        raise rattler.exceptions.FetchRepoDataError
+    loop = asyncio.get_running_loop()
+    channels = _channels(channel, label)
     try:
         [repodata] = await rattler.fetch_repo_data(
             channels=channels,
@@ -188,6 +205,15 @@ def _channels(
     ]
 
 
+@functools.lru_cache(maxsize=2)
+def _gateway(cache_action: CacheAction) -> rattler.Gateway:
+    return rattler.Gateway(
+        pathlib.Path("repodata-cache"),
+        rattler.SourceConfig(cache_action=cache_action),
+        client=rattler.Client(timeout=60),
+    )
+
+
 def _getitem[T](mapping: Mapping[str, str | list[T]], key: str) -> Sequence[T]:
     seen = {key}
     value = mapping.get(key, ())
@@ -208,6 +234,10 @@ def _load_matching_records_and_close(
         return repodata.load_matching_records(specs, package_format_selection)
 
 
+_conda_forge_channels = [
+    [rattler.Channel("conda-forge")],
+    [rattler.Channel("https://prefix.dev/conda-forge")],
+]
 _fetch_options = rattler.networking.FetchRepoDataOptions(
     cache_action="force-cache-only",
 )
