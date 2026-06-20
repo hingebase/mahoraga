@@ -402,7 +402,7 @@ The next generation of the official Python installer for Windows,
 [4]: https://docs.python.org/dev/using/windows.html#python-install-manager
 [5]: https://pixi.prefix.dev/latest/
 [6]: https://conda.org/learn/ceps/cep-0016/
-[7]: https://github.com/hingebase/mahoraga/blob/v{{ mahoraga_version }}/src/mahoraga/_cli/mahoraga.toml.jinja#L51-L74
+[7]: https://github.com/hingebase/mahoraga/blob/v{{ mahoraga_version }}/src/mahoraga/_cli/mahoraga.toml.jinja#L51-L64
 [8]: https://rattler-build.prefix.dev/latest/
 [9]: #pixi
 [10]: https://pyodide.org/en/stable/

@@ -16,12 +16,15 @@ __all__ = ["router", "split_repo"]
 
 import asyncio
 import compression.zstd
+import contextlib
+import contextvars
 import hashlib
 import logging
 import pathlib
 import shutil
 from typing import TYPE_CHECKING, Annotated, Any
 
+import anyio
 import fastapi.responses
 import msgpack
 import pooch.utils  # pyright: ignore[reportMissingTypeStubs]
@@ -45,9 +48,22 @@ async def get_sharded_repodata_index(
     channel: str,
     platform: rattler.platform.PlatformLiteral,
 ) -> fastapi.Response:
-    return fastapi.responses.FileResponse(
-        f"channels/{channel}/{platform}/repodata_shards.msgpack.zst",
-    )
+    cache_location = anyio.Path(
+        "channels", channel, platform, "repodata_shards.msgpack.zst")
+    if await cache_location.is_file():
+        return fastapi.responses.FileResponse(cache_location)
+    ctx = contextvars.copy_context()
+    lock = ctx[_core.context]["locks"][str(cache_location)]
+    ctx.run(_core.cache_action.set, "cache-or-fetch")
+    async with contextlib.AsyncExitStack() as stack:
+        await stack.enter_async_context(lock)
+        return await asyncio.create_task(
+            _core.stream(
+                f"{_utils.prefix(channel)}/{platform}/repodata_shards.msgpack.zst",
+                stack=stack,
+            ),
+            context=ctx,
+        )
 
 
 @router.get(
@@ -71,11 +87,19 @@ async def get_sharded_repodata_index_with_label(
 async def get_sharded_repodata(
     channel: str,
     platform: rattler.platform.PlatformLiteral,
-    name: Annotated[str, fastapi.Path(pattern=r"\.msgpack\.zst$")],
+    name: Annotated[str, fastapi.Path(pattern=r"^[a-f\d]{64}\.msgpack\.zst$")],
 ) -> fastapi.Response:
-    return fastapi.responses.FileResponse(
-        f"channels/{channel}/{platform}/shards/{name}",
-    )
+    cache_location = pathlib.Path(
+        "channels", channel, platform, "shards", name)
+    async with contextlib.AsyncExitStack() as stack:
+        if await _core.cached_or_locked(cache_location, stack):
+            return fastapi.responses.FileResponse(cache_location)
+        return await _core.stream(
+            f"{_utils.prefix(channel)}/{platform}/shards/{name}",
+            stack=stack,
+            cache_location=cache_location,
+            sha256=bytes.fromhex(name[:64]),
+        )
 
 
 @router.get(
@@ -86,7 +110,7 @@ async def get_sharded_repodata_with_label(
     channel: str,
     label: str,
     platform: rattler.platform.PlatformLiteral,
-    name: Annotated[str, fastapi.Path(pattern=r"\.msgpack\.zst$")],
+    name: Annotated[str, fastapi.Path(pattern=r"^[a-f\d]{64}\.msgpack\.zst$")],
 ) -> fastapi.Response:
     return fastapi.responses.FileResponse(
         f"channels/{channel}/label/{label}/{platform}/shards/{name}",
