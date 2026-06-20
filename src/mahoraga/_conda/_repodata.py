@@ -34,7 +34,6 @@ router: fastapi.APIRouter = fastapi.APIRouter(route_class=_core.APIRoute)
 
 @router.head("/{channel}/{platform}/repodata.json.bz2")
 @router.head("/{channel}/{platform}/repodata.json.zst")
-@router.head("/{channel}/{platform}/repodata.jlap")
 async def check_repodata_availability(
     channel: str,
     platform: rattler.platform.PlatformLiteral,
@@ -45,7 +44,6 @@ async def check_repodata_availability(
 
 @router.head("/{channel}/label/{label}/{platform}/repodata.json.bz2")
 @router.head("/{channel}/label/{label}/{platform}/repodata.json.zst")
-@router.head("/{channel}/label/{label}/{platform}/repodata.jlap")
 async def check_repodata_availability_with_label(
     channel: str,
     label: str,
@@ -81,24 +79,31 @@ async def get_repodata_with_label(
     return await _get_repodata(channel, platform, request, headers, label)
 
 
-@router.get("/{channel}/{platform}/repodata.jlap")
+@router.get("/{channel}/{platform}/repodata.jlap", deprecated=True)
+@router.head("/{channel}/{platform}/repodata.jlap", deprecated=True)
 async def get_differential_repodata(
     channel: str,
     platform: rattler.platform.PlatformLiteral,
-    headers: Annotated[_models.JLAPHeaders, fastapi.Header()],
 ) -> fastapi.Response:
-    return await _get_differential_repodata(channel, platform, headers)
+    del channel, platform
+    return fastapi.Response(status_code=404)
 
 
-@router.get("/{channel}/label/{label}/{platform}/repodata.jlap")
+@router.get(
+    "/{channel}/label/{label}/{platform}/repodata.jlap",
+    deprecated=True,
+)
+@router.head(
+    "/{channel}/label/{label}/{platform}/repodata.jlap",
+    deprecated=True,
+)
 async def get_differential_repodata_with_label(
     channel: str,
     label: str,
     platform: rattler.platform.PlatformLiteral,
-    headers: Annotated[_models.JLAPHeaders, fastapi.Header()],
 ) -> fastapi.Response:
-    channel = f"{channel}/label/{label}"
-    return await _get_differential_repodata(channel, platform, headers)
+    del channel, platform, label
+    return fastapi.Response(status_code=404)
 
 
 async def _check_repodata_availability(
@@ -120,17 +125,6 @@ async def _check_repodata_availability(
         response.content,
         response.status_code,
         response.headers,
-    )
-
-
-async def _get_differential_repodata(
-    channel: str,
-    platform: rattler.platform.PlatformLiteral,
-    headers: _models.JLAPHeaders,
-) -> fastapi.Response:
-    return await _core.stream(
-        f"{_utils.prefix(channel)}/{platform}/repodata.jlap",
-        headers=_to_dict(headers),
     )
 
 

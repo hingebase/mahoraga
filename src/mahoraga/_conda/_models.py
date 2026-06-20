@@ -13,7 +13,6 @@
 # permissions and limitations under the License.
 
 __all__ = [
-    "JLAPHeaders",
     "PackageRecord",
     "RepodataHeaders",
     "RunExports",
@@ -29,22 +28,15 @@ if TYPE_CHECKING:
     from rattler.platform import PlatformLiteral
 
 
-class _RepodataHeaders(pydantic.BaseModel, extra="ignore"):
-    if_none_match: str | None = None
-
-
-class JLAPHeaders(_RepodataHeaders):
-    range: str | None = None
-
-
 class PackageRecord(pydantic.BaseModel, extra="allow"):
     md5: str | None = None
     sha256: str | None = None
 
 
-class RepodataHeaders(_RepodataHeaders):
+class RepodataHeaders(pydantic.BaseModel, extra="ignore"):
     accept_encoding: str | None = None
     if_modified_since: str | None = None
+    if_none_match: str | None = None
 
 
 class RunExports(
