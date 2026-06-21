@@ -20,8 +20,7 @@ import pathlib
 from typing import Annotated
 
 import fastapi.responses
-import rattler.exceptions
-import rattler.platform
+import rattler.platform  # noqa: TC002
 
 from mahoraga import _core
 
@@ -60,11 +59,9 @@ async def _proxy_cache(
 ) -> fastapi.Response:
     if name.endswith(".conda"):
         media_type = "application/zip"
-        package_format_selection = rattler.PackageFormatSelection.ONLY_CONDA
         suffix = ".conda"
     else:
         media_type, _ = mimetypes.guess_type(name)
-        package_format_selection = rattler.PackageFormatSelection.ONLY_TAR_BZ2
         suffix = ".tar.bz2"
     if label:
         cache_location = pathlib.Path(
@@ -79,21 +76,8 @@ async def _proxy_cache(
             )
         pkg_name, version, build = name.removesuffix(suffix).rsplit("-", 2)
         spec = f"{pkg_name} =={version}[{build=}]"
-        try:
-            records = await _utils.fetch_repo_data_and_load_matching_records(
-                channel,
-                platform,
-                spec,
-                package_format_selection,
-                label=label,
-            )
-        except rattler.exceptions.FetchRepoDataError:
-            return fastapi.Response(status_code=404)
-        for record in records:
-            if record.file_name == name:
-                break
-        else:
-            return fastapi.Response(status_code=404)
+        record = await _utils.load_matching_record(
+            channel, label, platform, spec, name)
         urls = _utils.urls(channel, platform, name, label)
         if record.sha256:
             return await _core.stream(
