@@ -22,7 +22,7 @@ import hashlib
 import logging
 import pathlib
 import shutil
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import TYPE_CHECKING, Any
 
 import anyio
 import fastapi.responses
@@ -116,43 +116,6 @@ async def get_sharded_repodata_index_with_label(
     )
 
 
-@router.get(
-    "/{channel}/{platform}/shards/{name}",
-    dependencies=_core.immutable,
-)
-async def get_sharded_repodata(
-    channel: str,
-    platform: rattler.platform.PlatformLiteral,
-    name: Annotated[str, fastapi.Path(pattern=r"^[a-f\d]{64}\.msgpack\.zst$")],
-) -> fastapi.Response:
-    cache_location = pathlib.Path(
-        "channels", channel, platform, "shards", name)
-    async with contextlib.AsyncExitStack() as stack:
-        if await _core.cached_or_locked(cache_location, stack):
-            return fastapi.responses.FileResponse(cache_location)
-        return await _core.stream(
-            f"{_utils.prefix(channel)}/{platform}/shards/{name}",
-            stack=stack,
-            cache_location=cache_location,
-            sha256=bytes.fromhex(name[:64]),
-        )
-
-
-@router.get(
-    "/{channel}/label/{label}/{platform}/shards/{name}",
-    dependencies=_core.immutable,
-)
-async def get_sharded_repodata_with_label(
-    channel: str,
-    label: str,
-    platform: rattler.platform.PlatformLiteral,
-    name: Annotated[str, fastapi.Path(pattern=r"^[a-f\d]{64}\.msgpack\.zst$")],
-) -> fastapi.Response:
-    return fastapi.responses.FileResponse(
-        f"channels/{channel}/label/{label}/{platform}/shards/{name}",
-    )
-
-
 def split_repo(
     loop: asyncio.AbstractEventLoop,
     cfg: _core.Config,
@@ -213,7 +176,6 @@ def _sha256(
     }
     with pooch.utils.temporary_file(root) as tmp:  # pyright: ignore[reportUnknownMemberType]
         with pathlib.Path(tmp).open("w+b") as f:
-            # https://github.com/conda/rattler/blob/py-rattler-v0.22.0/crates/rattler_index/src/lib.rs#L835
             with compression.zstd.ZstdFile(f, "w") as g:
                 msgpack.dump(shard, g)
             f.seek(0)
@@ -229,7 +191,7 @@ def _split_repo(
     channel: str,
     platform: rattler.platform.PlatformLiteral,
 ) -> None:
-    root = pathlib.Path("channels", channel, platform, "shards")
+    root = pathlib.Path("channels", channel, platform)
     root.mkdir(parents=True, exist_ok=True)
     with asyncio.run(
         _utils.fetch_repo_data(channel, platform, cfg),
@@ -239,7 +201,7 @@ def _split_repo(
         sharded_repodata: _models.ShardedRepodata = {
             "info": {
                 "base_url": ".",
-                "shards_base_url": "./shards/",
+                "shards_base_url": "./",
                 "subdir": platform,
             },
             "shards": {
@@ -247,9 +209,9 @@ def _split_repo(
                 for name in repodata.package_names()
             },
         }
-    dst = root.with_name("repodata_shards.msgpack.zst")
-    with pooch.utils.temporary_file(root.parent) as tmp:  # pyright: ignore[reportUnknownMemberType]
-        with compression.zstd.ZstdFile(tmp, "w", level=19) as f:
+    dst = root / "repodata_shards.msgpack.zst"
+    with pooch.utils.temporary_file(root) as tmp:  # pyright: ignore[reportUnknownMemberType]
+        with compression.zstd.ZstdFile(tmp, "w") as f:
             msgpack.dump(sharded_repodata, f)
         dst.unlink(missing_ok=True)
         shutil.move(tmp, dst)

@@ -113,15 +113,15 @@
 		import mahoraga-conda-package
 	}
 	handle /conda/*/*/repodata_shards.msgpack.zst {
-        import mahoraga-conda-package
+		import mahoraga-conda-package
 	}
 	handle /conda/*/label/*/*/repodata_shards.msgpack.zst {
 		import mahoraga-sharded-repodata
 	}
-	handle /conda/*/*/shards/*.msgpack.zst {
+	handle /conda/*/*/*.msgpack.zst {
 		import mahoraga-conda-package
 	}
-	handle /conda/*/label/*/*/shards/*.msgpack.zst {
+	handle /conda/*/label/*/*/*.msgpack.zst {
 		import mahoraga-sharded-repodata
 	}
 
