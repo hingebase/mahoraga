@@ -58,14 +58,9 @@ server {
         {{ no_cache }}
     }
 
-    location ~ ^/conda/(.+\.(?:conda|tar\.bz2))$ {
+    location ~ ^/conda/(.+\.(?:conda|tar\.bz2|msgpack\.zst))$ {
         alias {{ server.root }}/channels/$1;
         {{ cache_or_fetch }}
-    }
-
-    location ~ ^/conda/(.+\.msgpack\.zst)$ {
-        alias {{ server.root }}/channels/$1;
-        {{ use_cache_only }}
     }
 
     location = /log {

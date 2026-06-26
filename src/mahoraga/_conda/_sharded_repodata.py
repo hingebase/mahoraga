@@ -16,14 +16,17 @@ __all__ = ["router", "split_repo"]
 
 import asyncio
 import compression.zstd
+import contextlib
+import contextvars
 import hashlib
-import json
 import logging
 import pathlib
 import shutil
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import TYPE_CHECKING, Any
 
+import anyio
 import fastapi.responses
+import httpx
 import msgpack
 import pooch.utils  # pyright: ignore[reportMissingTypeStubs]
 import rattler.platform
@@ -38,6 +41,42 @@ if TYPE_CHECKING:
 router: fastapi.APIRouter = fastapi.APIRouter(route_class=_core.APIRoute)
 
 
+@router.head("/{channel}/{platform}/repodata_shards.msgpack.zst")
+async def check_sharded_repodata_availability(
+    channel: str,
+    platform: rattler.platform.PlatformLiteral,
+) -> fastapi.Response:
+    cache_location = _cache_location(channel, platform)
+    if await cache_location.is_file():
+        return fastapi.Response()
+    ctx = _core.context.get()
+    client = ctx["httpx_client"]
+    prefix = _utils.prefix(channel, ctx["config"])
+    try:
+        response = await client.head(
+            f"{prefix}/{platform}/repodata_shards.msgpack.zst",
+            follow_redirects=True,
+        )
+    except httpx.HTTPError:
+        return fastapi.Response()
+    return _core.Response(
+        response.content,
+        response.status_code,
+        response.headers,
+    )
+
+
+@router.head("/{channel}/label/{label}/{platform}/repodata_shards.msgpack.zst")
+async def check_sharded_repodata_availability_with_label(
+    channel: str,
+    label: str,
+    platform: rattler.platform.PlatformLiteral,
+) -> fastapi.Response:
+    cache_location = _cache_location(channel, "label", label, platform)
+    status_code = 200 if await cache_location.is_file() else 404
+    return fastapi.Response(status_code=status_code)
+
+
 @router.get(
     "/{channel}/{platform}/repodata_shards.msgpack.zst",
     dependencies=_core.hourly,
@@ -46,9 +85,21 @@ async def get_sharded_repodata_index(
     channel: str,
     platform: rattler.platform.PlatformLiteral,
 ) -> fastapi.Response:
-    return fastapi.responses.FileResponse(
-        f"channels/{channel}/{platform}/repodata_shards.msgpack.zst",
-    )
+    cache_location = _cache_location(channel, platform)
+    if await cache_location.is_file():
+        return fastapi.responses.FileResponse(cache_location)
+    ctx = contextvars.copy_context()
+    lock = ctx[_core.context]["locks"][str(cache_location)]
+    ctx.run(_core.cache_action.set, "cache-or-fetch")
+    async with contextlib.AsyncExitStack() as stack:
+        await stack.enter_async_context(lock)
+        return await asyncio.create_task(
+            _core.stream(
+                f"{_utils.prefix(channel)}/{platform}/repodata_shards.msgpack.zst",
+                stack=stack,
+            ),
+            context=ctx,
+        )
 
 
 @router.get(
@@ -62,35 +113,6 @@ async def get_sharded_repodata_index_with_label(
 ) -> fastapi.Response:
     return fastapi.responses.FileResponse(
         f"channels/{channel}/label/{label}/{platform}/repodata_shards.msgpack.zst",
-    )
-
-
-@router.get(
-    "/{channel}/{platform}/shards/{name}",
-    dependencies=_core.immutable,
-)
-async def get_sharded_repodata(
-    channel: str,
-    platform: rattler.platform.PlatformLiteral,
-    name: Annotated[str, fastapi.Path(pattern=r"\.msgpack\.zst$")],
-) -> fastapi.Response:
-    return fastapi.responses.FileResponse(
-        f"channels/{channel}/{platform}/shards/{name}",
-    )
-
-
-@router.get(
-    "/{channel}/label/{label}/{platform}/shards/{name}",
-    dependencies=_core.immutable,
-)
-async def get_sharded_repodata_with_label(
-    channel: str,
-    label: str,
-    platform: rattler.platform.PlatformLiteral,
-    name: Annotated[str, fastapi.Path(pattern=r"\.msgpack\.zst$")],
-) -> fastapi.Response:
-    return fastapi.responses.FileResponse(
-        f"channels/{channel}/label/{label}/{platform}/shards/{name}",
     )
 
 
@@ -108,11 +130,14 @@ def split_repo(
             fut.add_done_callback(futures.discard)  # pyright: ignore[reportUnknownMemberType]
 
 
+def _cache_location(*segments: str) -> anyio.Path:
+    return anyio.Path("channels", *segments, "repodata_shards.msgpack.zst")
+
+
 def _packages(
     package_name: rattler.PackageName,
     package_format_selection: rattler.PackageFormatSelection,
     repodata: rattler.SparseRepoData,
-    run_exports: dict[str, dict[str, Any]],
 ) -> dict[str, dict[str, Any]]:
     shards: dict[str, dict[str, Any]] = {}
     for record in repodata.load_records(
@@ -126,8 +151,6 @@ def _packages(
             if old.sha256:
                 new["sha256"] = bytes.fromhex(old.sha256)
             filename = record.file_name
-            if entry := run_exports.get(filename):
-                new["run_exports"] = entry["run_exports"]
             shards[filename] = new
     return shards
 
@@ -136,7 +159,6 @@ def _sha256(
     name: str,
     repodata: rattler.SparseRepoData,
     root: pathlib.Path,
-    run_exports: _models.RunExports,
 ) -> bytes:
     package_name = rattler.PackageName(name)
     shard: _models.Shard = {
@@ -144,19 +166,16 @@ def _sha256(
             package_name,
             rattler.PackageFormatSelection.ONLY_TAR_BZ2,
             repodata,
-            run_exports["packages"],
         ),
         "packages.conda": _packages(
             package_name,
             rattler.PackageFormatSelection.ONLY_CONDA,
             repodata,
-            run_exports["packages.conda"],
         ),
         "removed": [],
     }
     with pooch.utils.temporary_file(root) as tmp:  # pyright: ignore[reportUnknownMemberType]
         with pathlib.Path(tmp).open("w+b") as f:
-            # https://github.com/conda/rattler/blob/py-rattler-v0.22.0/crates/rattler_index/src/lib.rs#L835
             with compression.zstd.ZstdFile(f, "w") as g:
                 msgpack.dump(shard, g)
             f.seek(0)
@@ -172,29 +191,8 @@ def _split_repo(
     channel: str,
     platform: rattler.platform.PlatformLiteral,
 ) -> None:
-    root = pathlib.Path("channels", channel, platform, "shards")
+    root = pathlib.Path("channels", channel, platform)
     root.mkdir(parents=True, exist_ok=True)
-    json_file = root.with_name("run_exports.json.zst")
-    try:
-        new = pooch.retrieve(  # pyright: ignore[reportUnknownMemberType]
-            f"{_utils.prefix(channel, cfg)}/{platform}/run_exports.json.zst",
-            path=root.parent,
-        )
-    except OSError:
-        pass
-    else:
-        json_file.unlink(missing_ok=True)
-        shutil.move(new, json_file)
-    try:
-        f = compression.zstd.ZstdFile(json_file)
-    except OSError:
-        run_exports: _models.RunExports = {
-            "packages": {},
-            "packages.conda": {},
-        }
-    else:
-        with f:
-            run_exports = json.load(f)
     with asyncio.run(
         _utils.fetch_repo_data(channel, platform, cfg),
         debug=cfg.log.level == "debug",
@@ -203,17 +201,17 @@ def _split_repo(
         sharded_repodata: _models.ShardedRepodata = {
             "info": {
                 "base_url": ".",
-                "shards_base_url": "./shards/",
+                "shards_base_url": "./",
                 "subdir": platform,
             },
             "shards": {
-                name: _sha256(name, repodata, root, run_exports)
+                name: _sha256(name, repodata, root)
                 for name in repodata.package_names()
             },
         }
-    dst = root.with_name("repodata_shards.msgpack.zst")
-    with pooch.utils.temporary_file(root.parent) as tmp:  # pyright: ignore[reportUnknownMemberType]
-        with compression.zstd.ZstdFile(tmp, "w", level=19) as f:
+    dst = root / "repodata_shards.msgpack.zst"
+    with pooch.utils.temporary_file(root) as tmp:  # pyright: ignore[reportUnknownMemberType]
+        with compression.zstd.ZstdFile(tmp, "w") as f:
             msgpack.dump(sharded_repodata, f)
         dst.unlink(missing_ok=True)
         shutil.move(tmp, dst)

@@ -13,10 +13,8 @@
 # permissions and limitations under the License.
 
 __all__ = [
-    "JLAPHeaders",
     "PackageRecord",
     "RepodataHeaders",
-    "RunExports",
     "Shard",
     "ShardedRepodata",
 ]
@@ -29,31 +27,21 @@ if TYPE_CHECKING:
     from rattler.platform import PlatformLiteral
 
 
-class _RepodataHeaders(pydantic.BaseModel, extra="ignore"):
-    if_none_match: str | None = None
-
-
-class JLAPHeaders(_RepodataHeaders):
-    range: str | None = None
-
-
 class PackageRecord(pydantic.BaseModel, extra="allow"):
     md5: str | None = None
     sha256: str | None = None
 
 
-class RepodataHeaders(_RepodataHeaders):
+class RepodataHeaders(pydantic.BaseModel, extra="ignore"):
     accept_encoding: str | None = None
     if_modified_since: str | None = None
+    if_none_match: str | None = None
 
 
-class RunExports(
-    TypedDict("_RunExports", {"packages.conda": dict[str, dict[str, Any]]}),
+class Shard(
+    TypedDict("_Shard", {"packages.conda": dict[str, dict[str, Any]]}),
 ):
     packages: dict[str, dict[str, Any]]
-
-
-class Shard(RunExports):
     removed: list[str]
 
 

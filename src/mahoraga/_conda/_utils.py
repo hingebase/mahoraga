@@ -14,16 +14,17 @@
 
 __all__ = [
     "fetch_repo_data",
-    "fetch_repo_data_and_load_matching_records",
+    "load_matching_record",
     "prefix",
     "urls",
 ]
 
-import asyncio
+import functools
 import itertools
 import posixpath
 from typing import TYPE_CHECKING
 
+import fastapi
 import rattler.exceptions
 import rattler.networking
 import rattler.platform
@@ -32,6 +33,8 @@ from mahoraga import _core
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
+
+    from rattler.networking.fetch_repo_data import CacheAction
 
 
 async def fetch_repo_data(
@@ -65,52 +68,28 @@ async def fetch_repo_data(
     return repodata
 
 
-async def fetch_repo_data_and_load_matching_records(
+async def load_matching_record(
     channel: str,
+    label: str | None,
     platform: rattler.platform.PlatformLiteral,
     spec: str,
-    package_format_selection: rattler.PackageFormatSelection,
-    *,
-    label: str | None = None,
-) -> list[rattler.RepoDataRecord]:
-    loop = asyncio.get_running_loop()
+    file_name: str,
+) -> rattler.RepoDataRecord:
     channels = _channels(channel, label)
     platforms = [rattler.Platform(platform)]
     specs = [rattler.MatchSpec(spec, strict=True)]
-    try:
-        [repodata] = await rattler.fetch_repo_data(
-            channels=channels,
-            platforms=platforms,
-            cache_path="repodata-cache",
-            callback=None,
-            fetch_options=_fetch_options,
-        )
-    except rattler.exceptions.FetchRepoDataError:
-        pass
-    else:
-        if records := await loop.run_in_executor(
-            None,
-            _load_matching_records_and_close,
-            repodata,
-            specs,
-            package_format_selection,
-        ):
-            return records
-    ctx = _core.context.get()
-    [repodata] = await rattler.fetch_repo_data(
-        channels=channels,
-        platforms=platforms,
-        cache_path="repodata-cache",
-        callback=None,
-        client=ctx["config"].server.rattler_client(),
-    )
-    return await loop.run_in_executor(
-        None,
-        _load_matching_records_and_close,
-        repodata,
-        specs,
-        package_format_selection,
-    )
+    for cache_action in "force-cache-only", "cache-or-fetch":
+        gateway = _gateway(cache_action)
+        try:
+            [records] = await gateway.query(
+                channels, platforms, specs, recursive=False)
+        except rattler.exceptions.GatewayError:
+            pass
+        else:
+            for record in records:
+                if record.file_name == file_name:
+                    return record
+    raise fastapi.HTTPException(404)
 
 
 def prefix(channel: str, cfg: _core.Config | None = None) -> str:
@@ -175,17 +154,19 @@ def _channels(
     try:
         url = cfg.upstream.conda.channel_alias[channel]
     except KeyError:
-        if label:
-            channel = f"{channel}/label/{label}"
-        return [rattler.Channel(channel)]
+        channel_configuration = None
+    else:
+        # Currently rattler.ChannelConfig.root_dir is unused
+        channel_configuration = rattler.ChannelConfig(str(url))
     if label:
         channel = f"{channel}/label/{label}"
-    return [
-        rattler.Channel(
-            channel,
-            rattler.ChannelConfig(str(url)),  # Currently root_dir is unused
-        ),
-    ]
+    return [rattler.Channel(channel, channel_configuration)]
+
+
+@functools.lru_cache(maxsize=2)
+def _gateway(cache_action: CacheAction) -> rattler.Gateway:
+    ctx = _core.context.get()
+    return ctx["config"].rattler_gateway(cache_action)
 
 
 def _getitem[T](mapping: Mapping[str, str | list[T]], key: str) -> Sequence[T]:
@@ -197,15 +178,6 @@ def _getitem[T](mapping: Mapping[str, str | list[T]], key: str) -> Sequence[T]:
         seen.add(value)
         value = mapping.get(value, ())
     return value
-
-
-def _load_matching_records_and_close(
-    repodata: rattler.SparseRepoData,
-    specs: list[rattler.MatchSpec],
-    package_format_selection: rattler.PackageFormatSelection,
-) -> list[rattler.RepoDataRecord]:
-    with repodata:
-        return repodata.load_matching_records(specs, package_format_selection)
 
 
 _fetch_options = rattler.networking.FetchRepoDataOptions(

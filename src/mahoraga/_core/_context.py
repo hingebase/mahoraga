@@ -31,15 +31,24 @@ import inspect
 import logging
 import time
 import weakref
-from typing import TYPE_CHECKING, Any, TypedDict, overload, override
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    TypedDict,
+    Unpack,
+    cast,
+    overload,
+    override,
+)
 
-import aiohttp
+import aiohttp.typedefs
 import anyio
 import cyares.aiohttp
 import hishel.httpx
 import httpx
 import httpx_aiohttp
 import pydantic_settings
+import yarl
 from httpx._config import DEFAULT_LIMITS  # noqa: PLC2701
 
 from mahoraga import _core
@@ -49,9 +58,15 @@ if TYPE_CHECKING:
     from ssl import SSLContext
 
     from _typeshed import StrPath, Unused
+    from aiohttp.client import (
+        _RequestContextManager,  # pyright: ignore[reportPrivateUsage]
+        _RequestOptions,  # pyright: ignore[reportPrivateUsage]
+    )
     from distributed import Client, Future
     from httpx._types import CertTypes
     from rattler.networking.fetch_repo_data import CacheAction
+
+_SUFFIXES = ("anaconda.org", "github.com", "prefix.dev", "pypi.org")
 
 
 class AsyncClient(hishel.httpx.AsyncCacheClient):
@@ -108,12 +123,7 @@ class AsyncClient(hishel.httpx.AsyncCacheClient):
     ) -> AsyncGenerator[httpx.Response]:
         url = httpx.URL(url)
         h = url.host
-        if h.endswith((
-            "anaconda.org",
-            "github.com",
-            "prefix.dev",
-            "pypi.org",
-        )):
+        if h.endswith(_SUFFIXES):
             kwargs["follow_redirects"] = True
         cm = super().stream(method, url, **kwargs)
         ctx = _core.context.get()
@@ -244,10 +254,27 @@ class _AiohttpTransport(httpx_aiohttp.AiohttpTransport):
             trace_configs = [trace_config]
         else:
             trace_configs = None
-        return aiohttp.ClientSession(
+        return _ClientSession(
             connector=connector,
             trace_configs=trace_configs,
         )
+
+
+class _ClientSession(aiohttp.ClientSession):
+    @override
+    def request(
+        self,
+        method: str,
+        url: aiohttp.typedefs.StrOrURL,
+        **kwargs: Unpack[_RequestOptions],
+    ) -> _RequestContextManager:
+        if cache_action.get() == "cache-or-fetch":
+            url = yarl.URL(url)
+            if (h := url.host) and h.endswith(_SUFFIXES):
+                headers = cast("httpx.Headers", kwargs.get("headers")).copy()
+                del headers["Host"]  # Added by httpx, bad for redirection
+                kwargs.update(allow_redirects=True, headers=headers)
+        return super().request(method, url, **kwargs)
 
 
 async def _on_signal(verb: str) -> None:  # noqa: RUF029

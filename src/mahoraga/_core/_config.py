@@ -20,6 +20,7 @@ import functools
 import ipaddress
 import itertools
 import os
+import pathlib
 import sys
 from collections.abc import Iterable, Sequence
 from typing import (
@@ -53,6 +54,7 @@ if TYPE_CHECKING:
     )
 
     from fastapi import FastAPI
+    from rattler.networking.fetch_repo_data import CacheAction
 
 if sys.platform == "win32":
     import winloop as uvloop  # pyright: ignore[reportMissingImports]
@@ -435,6 +437,26 @@ class Config(pydantic_settings.BaseSettings, **_model_config):
         if self.eager_task_execution:
             loop.set_task_factory(asyncio.eager_task_factory)
         return loop
+
+    def rattler_gateway(self, cache_action: CacheAction) -> rattler.Gateway:
+        host = self.server.host
+        if host.is_unspecified:
+            host = ipaddress.IPv4Address("127.0.0.1")
+        port = self.server.port
+        mirrors = {
+            "https://conda.anaconda.org/": [
+                str(_HttpUrl(f"http://{host}:{port}/conda/")),
+            ],
+        }
+        for k, v in self.upstream.conda.channel_alias.items():
+            mirrors[str(_HttpUrl(f"{str(v).rstrip('/')}/{k}/"))] = [
+                str(_HttpUrl(f"http://{host}:{port}/conda/{k}/")),
+            ]
+        return rattler.Gateway(
+            pathlib.Path("repodata-cache"),
+            rattler.SourceConfig(cache_action=cache_action),
+            client=rattler.Client([rattler.networking.MirrorMiddleware(mirrors)]),
+        )
 
     @classmethod
     @override

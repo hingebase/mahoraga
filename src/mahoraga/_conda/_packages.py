@@ -17,11 +17,11 @@ __all__ = ["router"]
 import contextlib
 import mimetypes
 import pathlib
+import posixpath
 from typing import Annotated
 
 import fastapi.responses
-import rattler.exceptions
-import rattler.platform
+import rattler.platform  # noqa: TC002
 
 from mahoraga import _core
 
@@ -34,7 +34,10 @@ router: fastapi.APIRouter = fastapi.APIRouter(route_class=_core.APIRoute)
 async def get_conda_package(
     channel: str,
     platform: rattler.platform.PlatformLiteral,
-    name: Annotated[str, fastapi.Path(pattern=r"\.(?:conda|tar\.bz2)$")],
+    name: Annotated[
+        str,
+        fastapi.Path(pattern=r"^(?:.+\.conda|.+\.tar\.bz2|[a-f\d]{64}\.msgpack\.zst)$"),
+    ],
 ) -> fastapi.Response:
     return await _proxy_cache(channel, platform, name)
 
@@ -47,7 +50,10 @@ async def get_conda_package_with_label(
     channel: str,
     label: str,
     platform: rattler.platform.PlatformLiteral,
-    name: Annotated[str, fastapi.Path(pattern=r"\.(?:conda|tar\.bz2)$")],
+    name: Annotated[
+        str,
+        fastapi.Path(pattern=r"^(?:.+\.conda|.+\.tar\.bz2|[a-f\d]{64}\.msgpack\.zst)$"),
+    ],
 ) -> fastapi.Response:
     return await _proxy_cache(channel, platform, name, label)
 
@@ -60,11 +66,12 @@ async def _proxy_cache(
 ) -> fastapi.Response:
     if name.endswith(".conda"):
         media_type = "application/zip"
-        package_format_selection = rattler.PackageFormatSelection.ONLY_CONDA
         suffix = ".conda"
+    elif name.endswith(".msgpack.zst"):
+        media_type = "binary/octet-stream"  # Same as anaconda.org
+        suffix = ".msgpack.zst"
     else:
         media_type, _ = mimetypes.guess_type(name)
-        package_format_selection = rattler.PackageFormatSelection.ONLY_TAR_BZ2
         suffix = ".tar.bz2"
     if label:
         cache_location = pathlib.Path(
@@ -77,31 +84,32 @@ async def _proxy_cache(
                 cache_location,
                 media_type=media_type,
             )
-        pkg_name, version, build = name.removesuffix(suffix).rsplit("-", 2)
-        spec = f"{pkg_name} =={version}[{build=}]"
-        try:
-            records = await _utils.fetch_repo_data_and_load_matching_records(
-                channel,
+        stem = name.removesuffix(suffix)
+        if suffix == ".msgpack.zst":
+            url = posixpath.join(
+                _utils.prefix(channel),
+                *(("label", label) if label else ()),
                 platform,
-                spec,
-                package_format_selection,
-                label=label,
+                name,
             )
-        except rattler.exceptions.FetchRepoDataError:
-            return fastapi.Response(status_code=404)
-        for record in records:
-            if record.file_name == name:
-                break
-        else:
-            return fastapi.Response(status_code=404)
+            return await _core.stream(
+                url,
+                stack=stack,
+                cache_location=cache_location,
+                sha256=bytes.fromhex(stem),
+            )
+        pkg_name, version, build = stem.rsplit("-", 2)
+        spec = f"{pkg_name} =={version}[{build=}]"
+        record = await _utils.load_matching_record(
+            channel, label, platform, spec, name)
         urls = _utils.urls(channel, platform, name, label)
-        if record.sha256:
+        if sha256 := record.sha256:
             return await _core.stream(
                 urls,
                 media_type=media_type,
                 stack=stack,
                 cache_location=cache_location,
-                sha256=record.sha256,
+                sha256=sha256,
                 size=record.size,
             )
         return await _core.stream(
