@@ -38,7 +38,7 @@ dependencies = [
     "jinja2 >=3.1.5",
     "kiss-headers >=2.4.0",
     "packaging >=26.0.0",
-    "pooch >=1.9.0",
+    "pooch-rattler >=0.3.1",
     "pydantic >=2.12.1",
     "pydantic-extra-types[semver] >=2.10.2",
     "pydantic-settings >=2.7.0",
@@ -63,7 +63,7 @@ typing = [
 [dependency-groups]
 # Requirements for the scripts directory
 dev = [
-    "pooch >=1.9.0",
+    "pooch-rattler >=0.3.1",
     "pydantic-settings >=2.7.0",
     "pygit2 >=1.19.0",
     "zensical >=0.0.45",
@@ -120,3 +120,6 @@ name = "testpypi"
 url = "https://test.pypi.org/simple/"
 publish-url = "https://test.pypi.org/legacy/"
 explicit = true
+
+[tool.uv.sources]
+pooch-rattler = { git = "https://github.com/hingebase/pooch-rattler", branch = "main" }

@@ -13,6 +13,7 @@
 # permissions and limitations under the License.
 
 import abc
+import asyncio
 import collections
 import dataclasses
 import datetime
@@ -23,7 +24,9 @@ import subprocess  # noqa: S404
 import time
 from typing import TYPE_CHECKING, ClassVar, override
 
+import anyio
 import pooch.typing  # pyright: ignore[reportMissingTypeStubs]
+import pooch_rattler
 import pydantic
 import pydantic_settings
 import pygit2
@@ -34,25 +37,20 @@ if TYPE_CHECKING:
 
 
 def define_env(env: MacroEnv) -> None:
-    release = _PythonBuildStandalone()
-    for asset in release.assets:
+    dependencies, pymanager, python_build_standalone, _, _ = anyio.run(
+        _macros_data,
+        pathlib.Path(env.conf["site_dir"], "assets", "images"),
+        pooch.os_cache("pooch") / time.strftime("%Y.%m.%d"),
+        backend_options={"use_uvloop": True},
+    )
+    for asset in python_build_standalone.assets:
         name = asset.name
         if name.startswith("cpython-3.14."):
             python_version = name[8 : name.index("+")]
             break
     else:
         raise RuntimeError
-    for line in subprocess.check_output(  # noqa: S603
-        [
-            os.getenv("UV", "uv"),
-            "pip", "compile",
-            "--group", "docs",
-            "--no-annotate",
-            "--no-deps",
-            "--no-header",
-        ],
-        encoding="ascii",
-    ).splitlines():
+    for line in dependencies.decode("ascii").splitlines():
         k, v = line.split("==")
         env.variables[f"{k}_version".replace("-", "_")] = v.rstrip()
     mahoraga_base_url = os.getenv("MAHORAGA_BASE_URL", "").rstrip("/")
@@ -60,28 +58,14 @@ def define_env(env: MacroEnv) -> None:
         "changelog": _changelog(),
         "mahoraga_base_url": mahoraga_base_url or "http://127.0.0.1:3450",
         "mahoraga_version": _Mahoraga().version,
-        "pymanager_version": _PyManager().tag_name,
-        "python_build_standalone_tag": release.tag_name,
+        "pymanager_version": pymanager.tag_name,
+        "python_build_standalone_tag": python_build_standalone.tag_name,
         "python_version": python_version,
         "python_version_short": "".join(python_version.split(".")[:2]),
         "readme": pathlib.Path("README.md")
                          .read_text("utf-8")
                          .partition(" [Docs]")[0],
     })
-    images = pathlib.Path(env.conf["site_dir"], "assets", "images")
-
-    # These URLs point to the main branch and the hashes will expire on
-    # each commit. Replace them once there is a new GitHub Release.
-    pooch.retrieve(  # pyright: ignore[reportUnknownMemberType]
-        "https://notofonts.github.io/devanagari/fonts/NotoSansDevanagariUI/hinted/ttf/NotoSansDevanagariUI-ExtraCondensed.ttf",
-        known_hash="2bb9d27504211ed8ff73ed5287d8eb4ed109d9b91eccec820f8805a4cd3563d7",
-        processor=_Renderer(images / "favicon.svg", size=8, color="#6b8e7b"),
-    )
-    pooch.retrieve(  # pyright: ignore[reportUnknownMemberType]
-        "https://notofonts.github.io/devanagari/fonts/NotoSansDevanagariUI/hinted/ttf/NotoSansDevanagariUI-ExtraCondensedLight.ttf",
-        known_hash="0ef9d90fd6f359610918a0b269cb194d17bd38063ccb0b1c17833d3ddffef5fc",
-        processor=_Renderer(images / "logo.svg", size=24, color="#6b8e7b"),
-    )
 
 
 class _Asset(pydantic.BaseModel, extra="ignore"):
@@ -99,11 +83,11 @@ class _BaseSettings(pydantic_settings.BaseSettings, extra="ignore"):
         dotenv_settings: pydantic_settings.PydanticBaseSettingsSource,
         file_secret_settings: pydantic_settings.PydanticBaseSettingsSource,
     ) -> tuple[pydantic_settings.PydanticBaseSettingsSource, ...]:
-        return (cls.settings_source(),)
+        return (cls.settings_src(),)
 
     @classmethod
     @abc.abstractmethod
-    def settings_source(cls) -> pydantic_settings.PydanticBaseSettingsSource:
+    def settings_src(cls) -> pydantic_settings.PydanticBaseSettingsSource:
         raise NotImplementedError
 
 
@@ -112,34 +96,8 @@ class _Mahoraga(_BaseSettings, pyproject_toml_table_header=("project",)):
 
     @classmethod
     @override
-    def settings_source(cls) -> pydantic_settings.PydanticBaseSettingsSource:
+    def settings_src(cls) -> pydantic_settings.PydanticBaseSettingsSource:
         return pydantic_settings.PyprojectTomlConfigSettingsSource(cls)
-
-
-class _PyManager(_BaseSettings, json_file_encoding="utf-8"):
-    github_repo: ClassVar[str] = "python/pymanager"
-    tag_name: str = ""
-
-    @classmethod
-    @override
-    def settings_source(cls) -> pydantic_settings.PydanticBaseSettingsSource:
-        headers = {
-            "Accept": "application/vnd.github+json",
-            "X-GitHub-Api-Version": "2026-03-10",
-        }
-        if gh_token := os.getenv("GH_TOKEN"):
-            headers["Authorization"] = f"Bearer {gh_token}"
-        json_file = pooch.retrieve(  # pyright: ignore[reportUnknownMemberType]
-            f"https://api.github.com/repos/{cls.github_repo}/releases/latest",
-            path=pooch.os_cache("pooch") / time.strftime("%Y.%m.%d"),
-            downloader=pooch.HTTPDownloader(headers=headers),  # pyright: ignore[reportArgumentType]
-        )
-        return pydantic_settings.JsonConfigSettingsSource(cls, json_file)
-
-
-class _PythonBuildStandalone(_PyManager):
-    assets: list[_Asset] = []
-    github_repo: ClassVar[str] = "astral-sh/python-build-standalone"
 
 
 @dataclasses.dataclass
@@ -209,3 +167,77 @@ def _changelog() -> list[tuple[str, collections.defaultdict[str, list[str]]]]:
     if not sections[0][1]:
         sections.pop(0)
     return sections
+
+
+async def _dependencies() -> bytes:
+    proc = await asyncio.create_subprocess_exec(
+        os.getenv("UV", "uv"),
+        "pip", "compile",
+        "--group", "docs",
+        "--no-annotate",
+        "--no-deps",
+        "--no-header",
+        stdout=subprocess.PIPE,
+    )
+    stdout, _ = await proc.communicate()
+    if returncode := proc.returncode:
+        raise subprocess.CalledProcessError(returncode, "uv", stdout)
+    return stdout
+
+
+async def _macros_data(images: pathlib.Path, path: pathlib.Path):  # noqa: ANN202
+    class PyManager(_BaseSettings, json_file_encoding="utf-8"):
+        github_repo: ClassVar[str] = "python/pymanager"
+        tag_name: str = ""
+
+        @classmethod
+        @override
+        def settings_src(cls) -> pydantic_settings.PydanticBaseSettingsSource:
+            json_file = github_api.retrieve(
+                f"https://api.github.com/repos/{cls.github_repo}/releases/latest",
+                path=path,
+            )
+            return pydantic_settings.JsonConfigSettingsSource(cls, json_file)
+
+    class PythonBuildStandalone(PyManager):
+        assets: list[_Asset] = pydantic.Field(default_factory=list)
+        github_repo: ClassVar[str] = "astral-sh/python-build-standalone"
+
+    loop = asyncio.get_running_loop()
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2026-03-10",
+    }
+    if gh_token := os.getenv("GH_TOKEN"):
+        headers["Authorization"] = f"Bearer {gh_token}"
+    github_api = pooch_rattler.Downloader(headers=headers)
+    github_io = pooch_rattler.Downloader(
+        # github.io requires a well-known user agent header
+        headers={"User-Agent": "curl/8.21.0"},
+    )
+    return await asyncio.gather(
+        _dependencies(),
+        loop.run_in_executor(None, PyManager),
+        loop.run_in_executor(None, PythonBuildStandalone),
+        # These URLs point to the main branch and the hashes will expire
+        # on each commit. Replace them once there is a new GitHub
+        # Release.
+        loop.run_in_executor(
+            None,
+            github_io.retrieve,
+            "https://notofonts.github.io/devanagari/fonts/NotoSansDevanagariUI/hinted/ttf/NotoSansDevanagariUI-ExtraCondensed.ttf",
+            "2bb9d27504211ed8ff73ed5287d8eb4ed109d9b91eccec820f8805a4cd3563d7",
+            None,
+            None,
+            _Renderer(images / "favicon.svg", size=8, color="#6b8e7b"),
+        ),
+        loop.run_in_executor(
+            None,
+            github_io.retrieve,
+            "https://notofonts.github.io/devanagari/fonts/NotoSansDevanagariUI/hinted/ttf/NotoSansDevanagariUI-ExtraCondensedLight.ttf",
+            "0ef9d90fd6f359610918a0b269cb194d17bd38063ccb0b1c17833d3ddffef5fc",
+            None,
+            None,
+            _Renderer(images / "logo.svg", size=24, color="#6b8e7b"),
+        ),
+    )
