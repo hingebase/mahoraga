@@ -82,11 +82,7 @@ async def get_npm_file(
                 cache_location,
             ):
                 return response
-    metadata = await _jsdelivr.Metadata.fetch(
-        f"npm/{package}.json",
-        url=url,
-        params={"structure": "flat"},
-    )
+    metadata = await _jsdelivr.Metadata.fetch(f"npm/{package}.json", url=url)
     for file in metadata.files:
         if file["name"].lstrip("/") == path:
             break

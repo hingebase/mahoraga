@@ -184,6 +184,8 @@ async def _get_standalone_python_sha256_and_size(
                         None,
                         fname,
                         dir_,
+                        None,
+                        ctx["downloader"],
                     )
                     break
             else:

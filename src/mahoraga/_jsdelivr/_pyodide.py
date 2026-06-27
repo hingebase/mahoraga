@@ -231,7 +231,6 @@ async def _get_pyodide_lock(
             metadata = await _jsdelivr.Metadata.fetch(
                 f"npm/{package}.json",
                 url=f"https://data.jsdelivr.com/v1/packages/npm/{package}",
-                params={"structure": "flat"},
             )
             for file in metadata.files:
                 if file["name"] == "/pyodide-lock.json":
@@ -240,6 +239,7 @@ async def _get_pyodide_lock(
                 raise fastapi.HTTPException(404)
             known_hash = base64.b64decode(file["hash"]).hex()
             dir_, fname = os.path.split(cache_location)
+            ctx = _core.context.get()
             loop = asyncio.get_running_loop()
             urls = _utils.urls("npm", package, "pyodide-lock.json")
             for url in _core.load_balance(urls):
@@ -251,6 +251,8 @@ async def _get_pyodide_lock(
                         known_hash,
                         fname,
                         dir_,
+                        None,
+                        ctx["downloader"],
                     )
                     break
             else:

@@ -20,6 +20,7 @@ import pathlib
 from typing import Annotated, TypedDict
 
 import fastapi.responses
+import pooch  # pyright: ignore[reportMissingTypeStubs]
 
 from mahoraga import _core
 
@@ -63,7 +64,7 @@ async def get_npm_file(
         resolved = await _Resolved.fetch(
             "npm", package, f"{version}.json",
             url=f"https://data.jsdelivr.com/v1/packages/npm/{package}/resolved",
-            params={"specifier": version},
+            downloader=pooch.HTTPDownloader(params={"specifier": version}),  # pyright: ignore[reportArgumentType]
         )
         package = f"{package}@{resolved.version}"
         if resolved.version != version:

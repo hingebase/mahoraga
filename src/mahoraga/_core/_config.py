@@ -39,6 +39,7 @@ import dask.system
 import distributed
 import hishel
 import httpx
+import pooch_rattler
 import pydantic
 import pydantic_settings
 import rattler.networking
@@ -423,6 +424,7 @@ class Config(pydantic_settings.BaseSettings, **_model_config):
             yield {
                 "config": self,
                 "dask_client": dask_client,
+                "downloader": pooch_rattler.Downloader(),
                 "futures": set(),
                 "httpx_client": httpx_client,
                 "locks": _core.WeakValueDictionary(),
