@@ -196,7 +196,7 @@ async def _macros_data(images: pathlib.Path, path: pathlib.Path):  # noqa: ANN20
             json_file = pooch.retrieve(  # pyright: ignore[reportUnknownMemberType]
                 f"https://api.github.com/repos/{cls.github_repo}/releases/latest",
                 path=path,
-                downloader=downloader_with_headers,
+                downloader=downloader_github_api,
             )
             return pydantic_settings.JsonConfigSettingsSource(cls, json_file)
 
@@ -211,8 +211,11 @@ async def _macros_data(images: pathlib.Path, path: pathlib.Path):  # noqa: ANN20
     }
     if gh_token := os.getenv("GH_TOKEN"):
         headers["Authorization"] = f"Bearer {gh_token}"
-    downloader_with_headers = pooch_rattler.Downloader(headers=headers)
-    downloader_without_headers = pooch_rattler.Downloader()
+    downloader_github_api = pooch_rattler.Downloader(headers=headers)
+    downloader_github_io = pooch_rattler.Downloader(
+        # github.io requires a well-known user agent header
+        headers={"User-Agent": "curl/8.21.0"},
+    )
     return await asyncio.gather(
         _dependencies(),
         loop.run_in_executor(None, PyManager),
@@ -228,7 +231,7 @@ async def _macros_data(images: pathlib.Path, path: pathlib.Path):  # noqa: ANN20
             None,
             None,
             _Renderer(images / "favicon.svg", size=8, color="#6b8e7b"),
-            downloader_without_headers,
+            downloader_github_io,
         ),
         loop.run_in_executor(
             None,
@@ -238,6 +241,6 @@ async def _macros_data(images: pathlib.Path, path: pathlib.Path):  # noqa: ANN20
             None,
             None,
             _Renderer(images / "logo.svg", size=24, color="#6b8e7b"),
-            downloader_without_headers,
+            downloader_github_io,
         ),
     )
