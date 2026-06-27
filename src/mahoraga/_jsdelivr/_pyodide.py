@@ -27,7 +27,6 @@ from typing import Annotated, Literal
 
 import fastapi.responses
 import packaging.version
-import pooch  # pyright: ignore[reportMissingTypeStubs]
 import pyodide_lock
 
 from mahoraga import _core, _jsdelivr
@@ -246,13 +245,11 @@ async def _get_pyodide_lock(
                 with contextlib.suppress(Exception):
                     await loop.run_in_executor(
                         None,
-                        pooch.retrieve,  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
+                        ctx["downloader"].retrieve,
                         url,
                         known_hash,
                         fname,
                         dir_,
-                        None,
-                        ctx["downloader"],
                     )
                     break
             else:

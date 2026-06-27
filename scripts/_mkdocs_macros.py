@@ -193,10 +193,9 @@ async def _macros_data(images: pathlib.Path, path: pathlib.Path):  # noqa: ANN20
         @classmethod
         @override
         def settings_src(cls) -> pydantic_settings.PydanticBaseSettingsSource:
-            json_file = pooch.retrieve(  # pyright: ignore[reportUnknownMemberType]
+            json_file = github_api.retrieve(
                 f"https://api.github.com/repos/{cls.github_repo}/releases/latest",
                 path=path,
-                downloader=downloader_github_api,
             )
             return pydantic_settings.JsonConfigSettingsSource(cls, json_file)
 
@@ -211,8 +210,8 @@ async def _macros_data(images: pathlib.Path, path: pathlib.Path):  # noqa: ANN20
     }
     if gh_token := os.getenv("GH_TOKEN"):
         headers["Authorization"] = f"Bearer {gh_token}"
-    downloader_github_api = pooch_rattler.Downloader(headers=headers)
-    downloader_github_io = pooch_rattler.Downloader(
+    github_api = pooch_rattler.Downloader(headers=headers)
+    github_io = pooch_rattler.Downloader(
         # github.io requires a well-known user agent header
         headers={"User-Agent": "curl/8.21.0"},
     )
@@ -225,22 +224,20 @@ async def _macros_data(images: pathlib.Path, path: pathlib.Path):  # noqa: ANN20
         # Release.
         loop.run_in_executor(
             None,
-            pooch.retrieve,  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
+            github_io.retrieve,
             "https://notofonts.github.io/devanagari/fonts/NotoSansDevanagariUI/hinted/ttf/NotoSansDevanagariUI-ExtraCondensed.ttf",
             "2bb9d27504211ed8ff73ed5287d8eb4ed109d9b91eccec820f8805a4cd3563d7",
             None,
             None,
             _Renderer(images / "favicon.svg", size=8, color="#6b8e7b"),
-            downloader_github_io,
         ),
         loop.run_in_executor(
             None,
-            pooch.retrieve,  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
+            github_io.retrieve,
             "https://notofonts.github.io/devanagari/fonts/NotoSansDevanagariUI/hinted/ttf/NotoSansDevanagariUI-ExtraCondensedLight.ttf",
             "0ef9d90fd6f359610918a0b269cb194d17bd38063ccb0b1c17833d3ddffef5fc",
             None,
             None,
             _Renderer(images / "logo.svg", size=24, color="#6b8e7b"),
-            downloader_github_io,
         ),
     )

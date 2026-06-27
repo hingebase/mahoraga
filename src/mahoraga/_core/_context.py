@@ -64,9 +64,7 @@ if TYPE_CHECKING:
     )
     from distributed import Client, Future
     from httpx._types import CertTypes
-    from pooch.typing import (  # pyright: ignore[reportMissingTypeStubs]
-        Downloader,
-    )
+    from pooch_rattler import Downloader
     from rattler.networking.fetch_repo_data import CacheAction
 
 _SUFFIXES = ("anaconda.org", "github.com", "prefix.dev", "pypi.org")
