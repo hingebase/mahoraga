@@ -74,15 +74,6 @@ server {
         {{ cache_or_fetch }}
     }
 
-    location ^~ /parselmouth/hash-v0/ {
-        # Not implemented yet
-        limit_except GET {
-            deny all;
-        }
-        log_not_found off;
-        return 404;
-    }
-
     location ^~ /pyodide/ {
         {{ cache_or_fetch }}
     }
