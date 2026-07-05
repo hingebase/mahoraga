@@ -15,12 +15,14 @@
 __all__ = ["GitHubRelease", "NPMBase", "headers"]
 
 import asyncio
+import functools
 import logging
 import os
 import pathlib
-from typing import TYPE_CHECKING, Literal, Self
+from typing import TYPE_CHECKING, Literal, Self, override
 
-import pooch  # pyright: ignore[reportMissingTypeStubs]
+import pooch.typing  # pyright: ignore[reportMissingTypeStubs]
+import pooch_rattler
 import pydantic
 
 from mahoraga import _core
@@ -65,7 +67,7 @@ class GitHubRelease(pydantic.BaseModel, extra="ignore"):
                 cls,
                 f"https://api.github.com/repos/{owner}/{repo}/releases/tags/{tag_name}",
                 cache_location,
-                headers=headers,
+                _github_downloader(),
             )
 
 
@@ -75,28 +77,53 @@ class NPMBase(pydantic.BaseModel):
     version: str
 
     @classmethod
-    async def fetch(cls, *args: StrPath, url: str, **kwargs: object) -> Self:
+    async def fetch(
+        cls,
+        *args: StrPath,
+        url: str,
+        downloader: pooch.typing.Downloader | None = None,
+    ) -> Self:
         if not args:
             _core.unreachable()
         cache_location = pathlib.Path(*args)
         ctx = _core.context.get()
         async with ctx["locks"][str(cache_location)]:
             return await asyncio.to_thread(
-                _fetch, cls, url, cache_location, **kwargs)
+                _fetch,
+                cls,
+                url,
+                cache_location,
+                downloader or _JsdelivrDownloader(),
+            )
+
+
+@functools.lru_cache(maxsize=1)
+class _JsdelivrDownloader(pooch_rattler.Downloader):
+    @override
+    def __call__(
+        self,
+        url: str,
+        output_file: object,
+        pooch: pooch.Pooch | None,
+        *,
+        check_only: bool | None = None,
+    ) -> None:
+        url += "?structure=flat"
+        return super().__call__(url, output_file, pooch, check_only=check_only)
 
 
 def _fetch[T: pydantic.BaseModel](
     klass: type[T],
     url: str,
     cache_location: pathlib.Path,
-    **kwargs: object,
+    downloader: pooch.typing.Downloader,
 ) -> T:
     path, fname = os.path.split(cache_location)
     pooch.retrieve(  # pyright: ignore[reportUnknownMemberType]
         url,
         fname=fname,
         path=path,
-        downloader=pooch.HTTPDownloader(**kwargs),  # pyright: ignore[reportArgumentType]
+        downloader=downloader,
     )
     json_data = cache_location.read_text(encoding="utf-8")
     try:
@@ -104,6 +131,11 @@ def _fetch[T: pydantic.BaseModel](
     except pydantic.ValidationError:
         cache_location.unlink()
         raise
+
+
+@functools.lru_cache(maxsize=1)
+def _github_downloader() -> pooch.typing.Downloader:
+    return pooch_rattler.Downloader(headers=headers)
 
 
 headers = {

@@ -29,7 +29,6 @@ from typing import Annotated
 
 import fastapi.responses
 import packaging.version
-import pooch  # pyright: ignore[reportMissingTypeStubs]
 import pydantic
 import pydantic_extra_types.semantic_version  # noqa: TC002
 import requests
@@ -179,7 +178,7 @@ async def _get_standalone_python_sha256_and_size(
                 with contextlib.suppress(Exception):
                     await loop.run_in_executor(
                         None,
-                        pooch.retrieve,  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
+                        ctx["downloader"].retrieve,
                         url,
                         None,
                         fname,

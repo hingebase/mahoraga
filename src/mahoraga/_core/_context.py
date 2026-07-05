@@ -64,6 +64,7 @@ if TYPE_CHECKING:
     )
     from distributed import Client, Future
     from httpx._types import CertTypes
+    from pooch_rattler import Downloader
     from rattler.networking.fetch_repo_data import CacheAction
 
 _SUFFIXES = ("anaconda.org", "github.com", "prefix.dev", "pypi.org")
@@ -336,6 +337,7 @@ class _AsyncCacheTransport(hishel.httpx.AsyncCacheTransport):
 class Context(TypedDict):
     config: _core.Config
     dask_client: Client
+    downloader: Downloader
     futures: set[asyncio.Future[Any] | Future[Any]]
     httpx_client: AsyncClient
     locks: WeakValueDictionary

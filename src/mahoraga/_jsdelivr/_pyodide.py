@@ -27,7 +27,6 @@ from typing import Annotated, Literal
 
 import fastapi.responses
 import packaging.version
-import pooch  # pyright: ignore[reportMissingTypeStubs]
 import pyodide_lock
 
 from mahoraga import _core, _jsdelivr
@@ -231,7 +230,6 @@ async def _get_pyodide_lock(
             metadata = await _jsdelivr.Metadata.fetch(
                 f"npm/{package}.json",
                 url=f"https://data.jsdelivr.com/v1/packages/npm/{package}",
-                params={"structure": "flat"},
             )
             for file in metadata.files:
                 if file["name"] == "/pyodide-lock.json":
@@ -240,13 +238,14 @@ async def _get_pyodide_lock(
                 raise fastapi.HTTPException(404)
             known_hash = base64.b64decode(file["hash"]).hex()
             dir_, fname = os.path.split(cache_location)
+            ctx = _core.context.get()
             loop = asyncio.get_running_loop()
             urls = _utils.urls("npm", package, "pyodide-lock.json")
             for url in _core.load_balance(urls):
                 with contextlib.suppress(Exception):
                     await loop.run_in_executor(
                         None,
-                        pooch.retrieve,  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
+                        ctx["downloader"].retrieve,
                         url,
                         known_hash,
                         fname,
