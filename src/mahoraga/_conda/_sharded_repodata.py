@@ -139,7 +139,7 @@ def _packages(
     package_format_selection: rattler.PackageFormatSelection,
     repodata: rattler.SparseRepoData,
 ) -> dict[str, dict[str, Any]]:
-    shards: dict[str, dict[str, Any]] = {}
+    shards: list[tuple[str, dict[str, Any]]] = []
     for record in repodata.load_records(
         package_name,
         package_format_selection,
@@ -150,9 +150,9 @@ def _packages(
                 new["md5"] = bytes.fromhex(old.md5)
             if old.sha256:
                 new["sha256"] = bytes.fromhex(old.sha256)
-            filename = record.file_name
-            shards[filename] = new
-    return shards
+            shards.append((record.file_name, new))
+    shards.sort()  # https://github.com/conda/rattler/pull/2553
+    return dict(shards)
 
 
 def _sha256(
