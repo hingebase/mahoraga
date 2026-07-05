@@ -1,6 +1,8 @@
 name: GitHub Pages
 
 on:
+  # https://github.com/actions/deploy-pages/issues/418#issuecomment-4883549401
+  workflow_dispatch:
   push:
     tags:
       - v*
