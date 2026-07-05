@@ -206,28 +206,16 @@ The script respects environment variables `PIXI_HOME`, `PIXI_NO_PATH_UPDATE`
 ^[:octicons-link-external-16:][14]^ if present.
 
 For convenience, the script modifies Pixi global configuration automatically,
-using Mahoraga as the sole mirror of [anaconda.org][7] and PyPI.
-You can also configure the mirrors as you wish:
-=== "Stable"
-
-    ``` sh
-    pixi config set -g mirrors '{
-        "https://conda.anaconda.org/": ["{{ mahoraga_base_url }}/conda/"],
-        "https://pypi.org/simple/": ["{{ mahoraga_base_url }}/pypi/simple/"]
-    }'
-    ```
-
-=== "Experimental PyPI mappings support"
-
-    ``` sh
-    pixi config set -g mirrors '{
-        "https://conda.anaconda.org/": ["{{ mahoraga_base_url }}/conda/"],
-        "https://pypi.org/simple/": ["{{ mahoraga_base_url }}/pypi/simple/"],
-        "https://raw.githubusercontent.com/prefix-dev/parselmouth/main/files/": ["{{ mahoraga_base_url }}/parselmouth/compressed-v0/"],
-        "https://conda-mapping.prefix.dev/": ["{{ mahoraga_base_url }}/parselmouth/"]
-    }'
-    ```
-
+using Mahoraga as the sole mirror of [anaconda.org][7], PyPI and
+`conda-mapping.prefix.dev`. You can also configure the mirrors as you wish:
+``` sh
+pixi config set -g mirrors '{
+    "https://conda.anaconda.org/": ["{{ mahoraga_base_url }}/conda/"],
+    "https://pypi.org/simple/": ["{{ mahoraga_base_url }}/pypi/simple/"],
+    "https://raw.githubusercontent.com/prefix-dev/parselmouth/main/files/": ["{{ mahoraga_base_url }}/parselmouth/compressed-v0/"],
+    "https://conda-mapping.prefix.dev/": ["{{ mahoraga_base_url }}/parselmouth/"]
+}'
+```
 After that, you can install Conda packages like [Rattler-Build][8] with Pixi.
 ### Rattler-Build
 !!! info "Note"
