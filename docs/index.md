@@ -45,15 +45,16 @@
 
     ---
 
-    Client requests are passed to the upstream server with the least total
+    Client requests are forwarded to the upstream server with the least total
     response time and least number of active connections.
 
 - :octicons-cache-16:{ .lg .middle }　__Lazy local cache__
 
     ---
 
-    Files with known SHA-256 checksums are validated and cached upon the first
-    request. No configuration required.
+    Files with known SHA-256 checksums are validated and cached on disk upon the
+    first request. Files without checksums (PyPI indices, Conda-PyPI mapping
+    etc.) are cached in memory temporarily.
 
     *[SHA-256]: Secure Hash Algorithm 256-bit
 
@@ -65,7 +66,7 @@
     Automatically updated every hour.
     [:octicons-arrow-right-24: Docs][11]
 
-> :simple-anaconda:{ .lg .middle }　__Conda-PyPI mapping__
+> :simple-pypi:{ .lg .middle }　__[PEP 658][12] distribution metadata__
 >
 > ---
 >
@@ -84,3 +85,4 @@
 [9]: https://mamba.readthedocs.io/en/latest/
 [10]: https://conda.org/learn/ceps/cep-0016/
 [11]: advanced/shards.md
+[12]: https://peps.python.org/pep-0658/

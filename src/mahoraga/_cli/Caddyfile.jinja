@@ -133,12 +133,6 @@
 		import mahoraga-cache-or-fetch
 	}
 
-	handle /parselmouth/hash-v0/* {
-		# Not implemented yet
-		respond @mahoraga-not-get 403
-		respond 404
-	}
-
 	handle /pyodide/* {
 		{{ mahoraga_reverse_proxy("pyodide-no-cache", origin=True) | indent("\t") }}
 	}

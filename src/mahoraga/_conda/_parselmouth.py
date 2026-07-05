@@ -46,4 +46,15 @@ async def get_compressed_mapping() -> fastapi.Response:
 async def get_hash_mapping(
     sha256: Annotated[str, fastapi.Path(pattern=r"^[0-9a-f]{64}$")],
 ) -> fastapi.Response:
-    return fastapi.Response(status_code=404)
+    ctx = contextvars.copy_context()
+    lock = ctx[_core.context]["locks"][f"hash-v0/{sha256}"]
+    ctx.run(_core.cache_action.set, "cache-or-fetch")
+    async with contextlib.AsyncExitStack() as stack:
+        await stack.enter_async_context(lock)
+        return await asyncio.create_task(
+            _core.stream(
+                f"https://conda-mapping.prefix.dev/hash-v0/{sha256}",
+                stack=stack,
+            ),
+            context=ctx,
+        )

@@ -174,6 +174,11 @@ async def _install_pixi(
     mirrors = {
         "https://conda.anaconda.org/": [f"{mahoraga_base_url}/conda/"],
         "https://pypi.org/simple/": [f"{mahoraga_base_url}/pypi/simple/"],
+        "https://raw.githubusercontent.com/prefix-dev/parselmouth/main/files/":
+            [f"{mahoraga_base_url}/parselmouth/compressed-v0/"],
+        "https://conda-mapping.prefix.dev/": [
+            f"{mahoraga_base_url}/parselmouth/",
+        ],
     }
     client = rattler.Client([rattler.networking.MirrorMiddleware(mirrors)])
     await rattler.install(
