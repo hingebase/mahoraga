@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from rattler.platform import PlatformLiteral
 
 
-class PackageRecord(pydantic.BaseModel, extra="allow"):
+class PackageRecord(pydantic.BaseModel, extra="allow", strict=True):
     md5: str | None = None
     sha256: str | None = None
 

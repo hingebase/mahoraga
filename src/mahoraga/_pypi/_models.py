@@ -29,11 +29,11 @@ NormalizedName = Annotated[
 ]
 
 
-class _Hashes(pydantic.BaseModel, extra="ignore"):
+class _Hashes(pydantic.BaseModel, extra="ignore", strict=True):
     sha256: str = ""
 
 
-class _Entry(pydantic.BaseModel, extra="ignore"):
+class _Entry(pydantic.BaseModel, extra="ignore", strict=True):
     filename: str
     hashes: _Hashes
 
@@ -41,7 +41,7 @@ class _Entry(pydantic.BaseModel, extra="ignore"):
     size: int | None = None
 
 
-class _Meta(pydantic.BaseModel, extra="ignore"):
+class _Meta(pydantic.BaseModel, extra="ignore", strict=True):
     api_version: Annotated[
         str,
         at.Ge("1.0"),
@@ -50,7 +50,7 @@ class _Meta(pydantic.BaseModel, extra="ignore"):
     ]
 
 
-class Simple(pydantic.BaseModel, extra="ignore"):
+class Simple(pydantic.BaseModel, extra="ignore", strict=True):
     name: NormalizedName
     files: list[_Entry]
     meta: _Meta

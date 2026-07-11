@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     from _typeshed import StrPath
 
 
-class _ReleaseAsset(pydantic.BaseModel, extra="ignore"):
+class _ReleaseAsset(pydantic.BaseModel, extra="ignore", strict=True):
     url: str
     name: str
     size: int
@@ -45,7 +45,7 @@ class _ReleaseAsset(pydantic.BaseModel, extra="ignore"):
         return None
 
 
-class GitHubRelease(pydantic.BaseModel, extra="ignore"):
+class GitHubRelease(pydantic.BaseModel, extra="ignore", strict=True):
     assets: list[_ReleaseAsset]
     tag_name: str
 
@@ -71,7 +71,7 @@ class GitHubRelease(pydantic.BaseModel, extra="ignore"):
             )
 
 
-class NPMBase(pydantic.BaseModel):
+class NPMBase(pydantic.BaseModel, strict=True):
     type: Literal["npm"]
     name: str
     version: str

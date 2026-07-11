@@ -137,15 +137,15 @@ async def _get_distribution_metadata_from_manifest(
     return tag, bytes.fromhex(raw[:64]), None
 
 
-class _Checksums(pydantic.BaseModel, extra="ignore"):
+class _Checksums(pydantic.BaseModel, extra="ignore", strict=True):
     sha256: str | None = None
 
 
-class _Artifact(pydantic.BaseModel, extra="ignore"):
+class _Artifact(pydantic.BaseModel, extra="ignore", strict=True):
     checksums: _Checksums = _Checksums()
 
 
-class _DistributionManifest(pydantic.BaseModel, extra="ignore"):
+class _DistributionManifest(pydantic.BaseModel, extra="ignore", strict=True):
     announcement_tag: str
     artifacts: dict[str, _Artifact]
 

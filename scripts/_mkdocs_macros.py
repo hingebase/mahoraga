@@ -68,11 +68,11 @@ def define_env(env: MacroEnv) -> None:
     })
 
 
-class _Asset(pydantic.BaseModel, extra="ignore"):
+class _Asset(pydantic.BaseModel, extra="ignore", strict=True):
     name: str
 
 
-class _BaseSettings(pydantic_settings.BaseSettings, extra="ignore"):
+class _Settings(pydantic_settings.BaseSettings, extra="ignore", strict=True):
     @classmethod
     @override
     def settings_customise_sources(
@@ -91,7 +91,7 @@ class _BaseSettings(pydantic_settings.BaseSettings, extra="ignore"):
         raise NotImplementedError
 
 
-class _Mahoraga(_BaseSettings, pyproject_toml_table_header=("project",)):
+class _Mahoraga(_Settings, pyproject_toml_table_header=("project",)):
     version: str = ""
 
     @classmethod
@@ -186,7 +186,7 @@ async def _dependencies() -> bytes:
 
 
 async def _macros_data(images: pathlib.Path, path: pathlib.Path):  # noqa: ANN202
-    class PyManager(_BaseSettings, json_file_encoding="utf-8"):
+    class PyManager(_Settings, json_file_encoding="utf-8"):
         github_repo: ClassVar[str] = "python/pymanager"
         tag_name: str = ""
 
