@@ -13,6 +13,7 @@
 # permissions and limitations under the License.
 
 __all__ = [
+    "ChannelRelations",
     "PackageRecord",
     "RepodataHeaders",
     "Shard",
@@ -25,6 +26,11 @@ import pydantic
 
 if TYPE_CHECKING:
     from rattler.platform import PlatformLiteral
+
+
+class ChannelRelations(TypedDict, total=False):
+    base: str
+    overrides: str
 
 
 class PackageRecord(pydantic.BaseModel, extra="allow", strict=True):
@@ -49,6 +55,7 @@ class _ShardedSubdirInfo(TypedDict):
     base_url: str
     shards_base_url: str
     subdir: PlatformLiteral
+    channel_relations: ChannelRelations
 
 
 class ShardedRepodata(TypedDict):

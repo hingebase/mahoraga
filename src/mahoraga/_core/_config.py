@@ -27,6 +27,7 @@ from typing import (
     TYPE_CHECKING,
     Annotated,
     Literal,
+    Self,
     cast,
     no_type_check,
     override,
@@ -275,6 +276,29 @@ class _PyPI(pydantic.BaseModel):
         return itertools.chain(self.html, self.json_)
 
 
+class _Shard(pydantic.BaseModel):
+    platforms: set[rattler.platform.PlatformLiteral]
+    base: Annotated[str, pydantic.Field(pattern=r"^\.\./")] | None = None
+    overrides: Annotated[str, pydantic.Field(pattern=r"^\.\./")] | None = None
+
+    @pydantic.model_validator(mode="before")
+    @classmethod
+    def compat(cls, data: Iterable[str]) -> Iterable[str]:
+        if isinstance(data, Sequence) and not isinstance(data, str):
+            return {"platforms": data}
+        return data
+
+    @pydantic.model_validator(mode="after")
+    def base_and_overrides_not_referencing_the_same_channel(self) -> Self:
+        if self.base == self.overrides is not None:
+            message = (
+                "Invalid channel relations: "
+                f"base == overrides == {self.base!r}"
+            )
+            raise ValueError(message)
+        return self
+
+
 class _Uv(pydantic.BaseModel):
     latest: list[_HttpUrl] = _adapter.validate_python([
         "https://mirror.nyist.edu.cn/github-release/astral-sh/uv/LatestRelease/",
@@ -345,7 +369,7 @@ class _Upstream(pydantic.BaseModel, **_model_config):
 class Config(pydantic_settings.BaseSettings, **_model_config):
     server: Server = Server()
     log: _Log = _Log()
-    shard: dict[str, set[rattler.platform.PlatformLiteral]] = {}
+    shard: dict[str, _Shard] = {}
     cors: _CORS = _CORS()
     upstream: _Upstream = _Upstream()
     eager_task_execution: bool = False
@@ -399,7 +423,7 @@ class Config(pydantic_settings.BaseSettings, **_model_config):
         })
         async with distributed.LocalCluster(
             n_workers=min(
-                sum(map(len, self.shard.values())),
+                sum(len(channel.platforms) for channel in self.shard.values()),
                 dask.system.CPU_COUNT or 1,
             ),
             threads_per_worker=1,

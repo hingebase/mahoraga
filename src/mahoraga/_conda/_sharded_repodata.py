@@ -123,9 +123,15 @@ def split_repo(
     futures: set[asyncio.Future[Any] | Future[Any]],
 ) -> None:
     loop.call_later(3600., split_repo, loop, cfg, client, futures)
-    for channel, platforms in cfg.shard.items():
-        for platform in platforms:
-            fut = client.submit(_worker, cfg, channel, platform)  # pyright: ignore[reportUnknownMemberType]
+    for channel, channel_config in cfg.shard.items():
+        channel_relations: _models.ChannelRelations = {}
+        if base := channel_config.base:
+            channel_relations["base"] = base
+        if overrides := channel_config.overrides:
+            channel_relations["overrides"] = overrides
+        for platform in channel_config.platforms:
+            fut = client.submit(  # pyright: ignore[reportUnknownMemberType]
+                _worker, cfg, channel, platform, channel_relations)
             futures.add(fut)
             fut.add_done_callback(futures.discard)  # pyright: ignore[reportUnknownMemberType]
 
@@ -190,6 +196,7 @@ def _split_repo(
     cfg: _core.Config,
     channel: str,
     platform: rattler.platform.PlatformLiteral,
+    channel_relations: _models.ChannelRelations,
 ) -> None:
     root = pathlib.Path("channels", channel, platform)
     root.mkdir(parents=True, exist_ok=True)
@@ -203,6 +210,7 @@ def _split_repo(
                 "base_url": ".",
                 "shards_base_url": "./",
                 "subdir": platform,
+                "channel_relations": channel_relations,
             },
             "shards": {
                 name: _sha256(name, repodata, root)
@@ -221,9 +229,10 @@ def _worker(
     cfg: _core.Config,
     channel: str,
     platform: rattler.platform.PlatformLiteral,
+    channel_relations: _models.ChannelRelations,
 ) -> None:
     try:
-        _split_repo(cfg, channel, platform)
+        _split_repo(cfg, channel, platform, channel_relations)
     except Exception:
         _logger.exception(
             "Failed to update %s/%s/repodata_shards.msgpack.zst",
