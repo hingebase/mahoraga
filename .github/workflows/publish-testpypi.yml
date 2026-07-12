@@ -17,8 +17,8 @@ jobs:
       name: testpypi
       url: https://test.pypi.org/project/mahoraga
     steps:
-      - uses: actions/checkout@v6
-      - uses: astral-sh/setup-uv@v8.2.0
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v8.3.2
         with:
           enable-cache: false
       - run: uv build
