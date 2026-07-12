@@ -64,7 +64,7 @@ dev = [
     "pooch-rattler >=0.3.2",
     "pydantic-settings >=2.7.0",
     "pygit2 >=1.19.0",
-    "zensical >=0.0.45",
+    "zensical >=0.0.50",
     "ziafont >=0.11.0",
 ]
 # Used by Zensical macros exclusively, no need to install
