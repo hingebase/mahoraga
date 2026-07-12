@@ -49,19 +49,37 @@ level = "{{ log.level }}"
 access = {{ log.access | lower }}
 
 # Conda sharded repodata configuration.
-# Keys should be channel names, and values should be lists of platform names.
 # Sharded repodata are generated every hour for all channel/platform pairs.
 # For details, see https://hingebase.github.io/mahoraga/advanced/shards.html
-[shard]
+{%- if shard %}
 {%- for key, value in shard | dictsort %}
 {%- if key != "conda-forge" %}
-{{ key }} = [
-    {%- for platform in value %}
+[shard.{{ key }}]
+platforms = [
+    {%- for platform in value.platforms | sort %}
     "{{ platform }}",
     {%- endfor %}
 ]
+{%- if value.base %}
+base = "{{ value.base }}"
+{%- endif %}
+{%- if value.overrides %}
+overrides = "{{ value.overrides }}"
+{%- endif %}
 {%- endif %}
 {%- endfor %}
+{%- else %}
+# [shard.bioconda]
+# platforms = [
+#     "linux-64",
+#     "linux-aarch64",
+#     "noarch",
+#     "osx-64",
+#     "osx-arm64",
+#     "win-64",
+# ]
+# base = "../conda-forge"
+{%- endif %}
 
 # Cross-origin resource sharing (CORS) configuration.
 # For details, see https://fastapi.tiangolo.com/tutorial/cors/

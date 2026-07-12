@@ -24,8 +24,8 @@ To enable this feature, add the channels and platforms you need to the `[shard]`
 section. Remember that you don't need this for conda-forge or prefix.dev:
 
 ```toml title="mahoraga.toml"
-[shard]
-my-awesome-channel = [
+[shard.my-awesome-channel]
+platforms = [
     "linux-64",
     "linux-aarch64",
     "noarch",
@@ -33,6 +33,9 @@ my-awesome-channel = [
     "osx-arm64",
     "win-64",
 ]
+# See https://conda.org/learn/ceps/cep-0042/
+# base = "../my-base-channel"
+# overrides = "../my-overrided-channel"
 ```
 
 Restart Mahoraga and it will start preparing the sharded repodata for you. The

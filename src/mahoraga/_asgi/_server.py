@@ -265,7 +265,7 @@ def _root_handlers() -> list[str]:
 def _split_repo(lifespan: _Lifespan) -> None:
     state = lifespan.state
     cfg = state["config"]
-    if any(cfg.shard.values()):
+    if any(channel.platforms for channel in cfg.shard.values()):
         loop = asyncio.get_running_loop()
         loop.call_soon(
             _conda.split_repo,
