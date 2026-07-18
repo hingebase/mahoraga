@@ -238,9 +238,11 @@ async def _entered(
             media_type,
         )
     if response:
+        headers = response.headers
+        headers.pop("Content-Length", None)
         return Response(
             status_code=response.status_code,
-            headers=response.headers,
+            headers=headers,
         )
     return fastapi.Response(status_code=http.HTTPStatus.GATEWAY_TIMEOUT)
 
