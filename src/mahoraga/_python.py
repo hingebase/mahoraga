@@ -30,7 +30,7 @@ from typing import Annotated
 import fastapi.responses
 import packaging.version
 import pydantic
-import pydantic_extra_types.semantic_version  # noqa: TC002
+import pydantic_extra_types.semantic_version  # ruff: ignore[typing-only-third-party-import]
 import requests
 
 from . import _core

@@ -27,7 +27,7 @@ import kiss_headers
 
 from mahoraga import _core
 
-from . import _models  # noqa: TC001
+from . import _models  # ruff: ignore[typing-only-first-party-import]
 
 router: fastapi.APIRouter = fastapi.APIRouter(route_class=_core.APIRoute)
 

@@ -49,7 +49,7 @@ import httpx
 import httpx_aiohttp
 import pydantic_settings
 import yarl
-from httpx._config import DEFAULT_LIMITS  # noqa: PLC2701
+from httpx._config import DEFAULT_LIMITS  # ruff: ignore[import-private-name]
 
 from mahoraga import _core
 
@@ -108,7 +108,7 @@ class AsyncClient(hishel.httpx.AsyncCacheClient):
                     return hishel.httpx.AsyncCacheTransport(
                         _not_implemented,
                         t.storage,
-                        t._cache_proxy.policy,  # noqa: SLF001  # pyright: ignore[reportPrivateUsage]
+                        t._cache_proxy.policy,  # ruff: ignore[private-member-access]  # pyright: ignore[reportPrivateUsage]
                     )
                 case "cache-or-fetch":
                     pass
@@ -278,7 +278,7 @@ class _ClientSession(aiohttp.ClientSession):
         return super().request(method, url, **kwargs)
 
 
-async def _on_signal(verb: str) -> None:  # noqa: RUF029
+async def _on_signal(verb: str) -> None:  # ruff: ignore[unused-async]
     for info in inspect.stack(0):
         match info.frame.f_locals:
             case {"req": aiohttp.ClientRequest(url=url)}:

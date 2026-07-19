@@ -168,7 +168,7 @@ def dask_setup(_: Worker, log_level: str) -> None:
 
 
 class _LogRecord(pydantic.BaseModel, logging.LogRecord):
-    # ruff: disable[N815]
+    # ruff: disable[mixed-case-variable-in-class-scope]
     args: Any
     asctime: str = ""
     created: float
@@ -192,7 +192,7 @@ class _LogRecord(pydantic.BaseModel, logging.LogRecord):
     thread: int | None
     threadName: str | None
     taskName: str | None
-    # ruff: enable[N815]
+    # ruff: enable[mixed-case-variable-in-class-scope]
 
     @pydantic.field_validator(
         "args",

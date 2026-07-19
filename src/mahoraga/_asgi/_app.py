@@ -115,5 +115,5 @@ class _JSONResponse(fastapi.responses.JSONResponse):
     media_type = None
 
 
-async def _context(request: fastapi.Request) -> None:  # noqa: RUF029
+async def _context(request: fastapi.Request) -> None:  # ruff: ignore[unused-async]
     _core.context.set(cast("_core.Context", request.scope["state"]))

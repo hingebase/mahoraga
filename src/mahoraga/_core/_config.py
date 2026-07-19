@@ -68,7 +68,7 @@ _DASK_DASHBOARD = 8787
 
 def predicate(func: str) -> at.Predicate:
     def wrapper(input_value: object, /) -> bool:
-        return eval(func, {"input_value": input_value})  # noqa: S307
+        return eval(func, {"input_value": input_value})  # ruff: ignore[suspicious-eval-usage]
     wrapper.__qualname__ = func
     return at.Predicate(wrapper)
 

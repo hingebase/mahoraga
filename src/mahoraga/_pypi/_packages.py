@@ -226,7 +226,7 @@ def _sha256_from_html(raw: bytes, filename: str) -> bytes:
     except ValueError:
         return b""
     i += len(pattern)
-    return bytes.fromhex(raw[i : i+64])  # noqa: E226
+    return bytes.fromhex(raw[i : i+64])  # ruff: ignore[missing-whitespace-around-arithmetic-operator]
 
 
 def _sha256_and_size_from_json(
@@ -248,6 +248,6 @@ async def _stream(
     stack: contextlib.AsyncExitStack,
 ) -> AsyncIterator[bytes]:
     async with stack:
-        yield b""  # noqa: ASYNC119
+        yield b""  # ruff: ignore[yield-in-context-manager-in-async-generator]
         async for chunk in response.aiter_bytes():
-            yield chunk  # noqa: ASYNC119
+            yield chunk  # ruff: ignore[yield-in-context-manager-in-async-generator]

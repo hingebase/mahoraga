@@ -104,8 +104,8 @@ preview = true
 select = ["ALL"]
 
 [tool.ruff.lint.per-file-ignores]
-"src/**/__init__.py" = ["RUF067"]
-"scripts/**/*.py" = ["INP001"]
+"src/**/__init__.py" = ["non-empty-init-module"]
+"scripts/**/*.py" = ["implicit-namespace-package"]
 
 [tool.ruff.lint.pycodestyle]
 max-doc-length = 72

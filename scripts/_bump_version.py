@@ -15,7 +15,7 @@
 import argparse
 import os
 import shutil
-import subprocess  # noqa: S404
+import subprocess  # ruff: ignore[suspicious-subprocess-import]
 import sys
 from typing import Annotated, Literal
 
@@ -55,7 +55,7 @@ class _Main(
     ]
 
     def cli_cmd(self) -> None:
-        # ruff: disable[S603]
+        # ruff: disable[subprocess-without-shell-equals-true]
         version = subprocess.check_output(
             [
                 os.getenv("UV", "uv"),
@@ -82,7 +82,7 @@ class _Main(
             subprocess.run([git, "tag", "-s", tag, "-m", tag], check=True)
             subprocess.run([git, "log", "--show-signature", "-1"], check=True)
             subprocess.run([git, "tag", "-v", tag], check=True)
-        # ruff: enable[S603]
+        # ruff: enable[subprocess-without-shell-equals-true]
 
 
 if __name__ == "__main__":

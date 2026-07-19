@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, Annotated
 
 import fastapi
 import httpx
-import rattler.platform  # noqa: TC002
+import rattler.platform  # ruff: ignore[typing-only-third-party-import]
 
 from mahoraga import _core
 

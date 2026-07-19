@@ -21,7 +21,7 @@ import posixpath
 from typing import Annotated
 
 import fastapi.responses
-import rattler.platform  # noqa: TC002
+import rattler.platform  # ruff: ignore[typing-only-third-party-import]
 
 from mahoraga import _core
 

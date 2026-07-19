@@ -28,7 +28,7 @@ import ctypes.wintypes
 import json
 import os
 import shutil
-import subprocess  # noqa: S404
+import subprocess  # ruff: ignore[suspicious-subprocess-import]
 import sys
 import tempfile
 import warnings
@@ -188,7 +188,7 @@ async def _install_pixi(
         show_progress=False,
         client=client,
         requested_specs=[
-            spec._match_spec  # noqa: SLF001  # pyright: ignore[reportPrivateUsage, reportUnknownMemberType]
+            spec._match_spec  # ruff: ignore[private-member-access]  # pyright: ignore[reportPrivateUsage, reportUnknownMemberType]
             for spec in specs
         ],
     )
@@ -233,7 +233,7 @@ def _main() -> None:
         if cache_dir:
             os.environ["PIXI_CACHE_DIR"] = str(cache_dir.resolve(strict=True))
         mirrors = _pixi_config_global_mirrors(pixi) | mirrors
-        subprocess.run(  # noqa: S603
+        subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
             [
                 pixi, "config", "set", "-g",
                 "mirrors", json.dumps(mirrors, separators=(",", ":")),
@@ -242,11 +242,11 @@ def _main() -> None:
         )
         # Hide workspace information
         with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
-            subprocess.run([pixi, "info"], cwd=tmp, check=True)  # noqa: S603
+            subprocess.run([pixi, "info"], cwd=tmp, check=True)  # ruff: ignore[subprocess-without-shell-equals-true]
         if not os.getenv("PIXI_NO_PATH_UPDATE") and _update_path(pixi_bin_dir):
             message = "Please restart your shell to use Pixi"
             sep = "=" * len(message)
-            print(sep, message, sep, sep="\n")  # noqa: T201
+            print(sep, message, sep, sep="\n")  # ruff: ignore[print]
         return
     # Most likely a permisson error if reaching here
     # For conciseness, error handling is omitted
@@ -269,7 +269,7 @@ def _pixi_cache_dir() -> Path | None:
 
 def _pixi_config_global_mirrors(pixi: str) -> dict[str, list[str]]:
     try:
-        cfg = subprocess.check_output(  # noqa: S603
+        cfg = subprocess.check_output(  # ruff: ignore[subprocess-without-shell-equals-true]
             [pixi, "config", "list", "-g", "--json", "mirrors"],
             stdin=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,

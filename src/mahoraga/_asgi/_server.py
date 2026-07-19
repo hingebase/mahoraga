@@ -276,4 +276,6 @@ def _split_repo(lifespan: _Lifespan) -> None:
         )
 
 
-hishel._core._spec.get_heuristic_freshness = lambda response: 600  # noqa: ARG005, SLF001
+hishel._core._spec.get_heuristic_freshness = (  # ruff: ignore[private-member-access]
+    lambda response: 600  # ruff: ignore[unused-lambda-argument]
+)

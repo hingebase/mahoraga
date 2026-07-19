@@ -20,7 +20,7 @@ import datetime
 import os
 import pathlib
 import re
-import subprocess  # noqa: S404
+import subprocess  # ruff: ignore[suspicious-subprocess-import]
 import time
 from typing import TYPE_CHECKING, ClassVar, override
 
@@ -185,7 +185,7 @@ async def _dependencies() -> bytes:
     return stdout
 
 
-async def _macros_data(images: pathlib.Path, path: pathlib.Path):  # noqa: ANN202
+async def _macros_data(images: pathlib.Path, path: pathlib.Path):  # ruff: ignore[missing-return-type-private-function]
     class PyManager(_Settings, json_file_encoding="utf-8"):
         github_repo: ClassVar[str] = "python/pymanager"
         tag_name: str = ""
