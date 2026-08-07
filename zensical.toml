@@ -15,6 +15,7 @@ repo_name = "hingebase/mahoraga"
 repo_url = "https://github.com/hingebase/mahoraga"
 site_name = "Mahoraga"
 site_url = "https://hingebase.github.io/mahoraga/"
+strict = true
 
 [[project.extra.social]]
 icon = "fontawesome/brands/github"

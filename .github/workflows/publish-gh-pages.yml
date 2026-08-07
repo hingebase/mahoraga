@@ -27,7 +27,7 @@ jobs:
       - uses: astral-sh/setup-uv@v9.0.0
         with:
           enable-cache: false
-      - run: uv run --only-dev zensical build -s
+      - run: uv run --only-dev zensical build
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: rm -rf site/assets/images/favicon.png site/assets/stylesheets/classic
