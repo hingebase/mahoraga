@@ -181,22 +181,18 @@ class _Conda(pydantic.BaseModel, **_model_config):
     without_label: dict[str, str | list[_HttpUrl]] = {
         "auto": _adapter.validate_python([
             "https://mirror.nju.edu.cn/anaconda/cloud/",
-            "https://mirrors.cqupt.edu.cn/anaconda/cloud/",
             "https://mirrors.hit.edu.cn/anaconda/cloud/",
             "https://mirrors.lzu.edu.cn/anaconda/cloud/",
             "https://mirrors.pku.edu.cn/anaconda/cloud/",
             "https://mirrors.sustech.edu.cn/anaconda/cloud/",
-            "https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/",
         ]),
         "biobakery": "auto",
         "bioconda": _adapter.validate_python([
             "https://mirror.nju.edu.cn/anaconda/cloud/",
-            "https://mirrors.cqupt.edu.cn/anaconda/cloud/",
             "https://mirrors.hit.edu.cn/anaconda/cloud/",
             "https://mirrors.lzu.edu.cn/anaconda/cloud/",
             "https://mirrors.pku.edu.cn/anaconda/cloud/",
             "https://mirrors.sustech.edu.cn/anaconda/cloud/",
-            "https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/",
             "https://prefix.dev/",
         ]),
         "c4aarch64": "auto",
