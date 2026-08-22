@@ -185,6 +185,7 @@ class _Conda(pydantic.BaseModel, **_model_config):
             "https://mirrors.lzu.edu.cn/anaconda/cloud/",
             "https://mirrors.pku.edu.cn/anaconda/cloud/",
             "https://mirrors.sustech.edu.cn/anaconda/cloud/",
+            "https://mirrors.zju.edu.cn/anaconda/cloud/",
         ]),
         "biobakery": "auto",
         "bioconda": _adapter.validate_python([
@@ -193,6 +194,7 @@ class _Conda(pydantic.BaseModel, **_model_config):
             "https://mirrors.lzu.edu.cn/anaconda/cloud/",
             "https://mirrors.pku.edu.cn/anaconda/cloud/",
             "https://mirrors.sustech.edu.cn/anaconda/cloud/",
+            "https://mirrors.zju.edu.cn/anaconda/cloud/",
             "https://prefix.dev/",
         ]),
         "c4aarch64": "auto",
@@ -248,7 +250,6 @@ class _Conda(pydantic.BaseModel, **_model_config):
 class _PyPI(pydantic.BaseModel):
     html: list[_HttpUrl] = _adapter.validate_python([
         "https://mirror.nju.edu.cn/pypi/web/",
-        "https://mirror.sjtu.edu.cn/pypi/web/",
         "https://mirrors.aliyun.com/pypi/web/",
         "https://mirrors.cloud.tencent.com/pypi/",
         "https://mirrors.huaweicloud.com/repository/pypi/",
