@@ -263,9 +263,8 @@ def load_balance(urls: Iterable[str]) -> Generator[str]:
 
 
 def _get_stack(request: fastapi.Request) -> contextlib.AsyncExitStack:
-    stack: contextlib.AsyncExitStack
     match request.scope:
-        case {"fastapi_inner_astack": contextlib.AsyncExitStack() as stack}:  # pyright: ignore[reportUnknownVariableType]
+        case {"fastapi_inner_astack": contextlib.AsyncExitStack() as stack}:
             return stack
         case _:
             return _core.unreachable()
