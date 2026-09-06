@@ -46,6 +46,19 @@ module_name = "scripts/_mkdocs_macros"
 on_error_fail = true
 on_undefined = "strict"
 
+[project.plugins.minify]
+cache_safe = true
+css_files = ["assets/stylesheets/extra.css"]
+minify_css = true
+minify_html = true
+minify_inline_css = true
+minify_inline_js = true
+minify_js = true
+
+[project.plugins.minify.htmlmin_opts]
+reduce_boolean_attributes = true
+remove_comments = true
+
 [project.plugins.offline]
 
 [project.theme]
