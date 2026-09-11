@@ -14,6 +14,9 @@
 
 __all__ = ["router"]
 
+import asyncio
+import contextlib
+import contextvars
 import mimetypes
 import posixpath
 from typing import TYPE_CHECKING, Annotated
@@ -104,6 +107,22 @@ async def get_differential_repodata_with_label(
 ) -> fastapi.Response:
     del channel, platform, label
     return fastapi.Response(status_code=404)
+
+
+@router.get("/{channel}/notices.json")
+async def get_notices(channel: str) -> fastapi.Response:
+    ctx = contextvars.copy_context()
+    lock = ctx[_core.context]["locks"][f"channels/{channel}/notices.json"]
+    ctx.run(_core.cache_action.set, "cache-or-fetch")
+    async with contextlib.AsyncExitStack() as stack:
+        await stack.enter_async_context(lock)
+        return await asyncio.create_task(
+            _core.stream(
+                f"{_utils.prefix(channel)}/notices.json",
+                stack=stack,
+            ),
+            context=ctx,
+        )
 
 
 async def _check_repodata_availability(
