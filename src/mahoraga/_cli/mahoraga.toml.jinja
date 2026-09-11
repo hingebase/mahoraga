@@ -152,6 +152,22 @@ python-build-standalone = [
 "{{ key }}" = {{ value }}
 {%- endfor %}
 
+# Timeout when communicating with upstream servers.
+[upstream.timeout]
+
+# https://docs.rs/reqwest/latest/reqwest/struct.ClientBuilder.html#method.connect_timeout
+connect = {{ upstream.timeout.connect }}
+
+# Max wait time for a free connection from a pool if pool connection limits are
+# exceeded.
+pool = {{ upstream.timeout.pool }}
+
+# https://docs.rs/reqwest/latest/reqwest/struct.ClientBuilder.html#method.read_timeout
+# You may want to set the environment variable `UV_HTTP_TIMEOUT` on your clients
+# to match this value. The default timeout of uv is 30 seconds.
+# Pixi hard-coded its timeout to 5 minutes.
+read = {{ upstream.timeout.read }}
+
 # Upstream conda mirror servers.
 # The default mirrors are assumed to have all channels and support labels.
 # Other mirrors should be configured per channel. If a channel in a mirror

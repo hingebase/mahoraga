@@ -293,6 +293,19 @@ class _Shard(pydantic.BaseModel):
         return self
 
 
+class _Timeout(pydantic.BaseModel):
+    connect: Annotated[pydantic.PositiveInt, at.Le(30)] = 15
+    pool: Annotated[pydantic.PositiveInt, at.Le(30)] = 15
+    read: Annotated[int, at.Ge(30), at.Le(300)] = 30
+
+    def to_httpx(self) -> httpx.Timeout:
+        return httpx.Timeout(
+            connect=self.connect,
+            pool=self.pool,
+            read=self.read,
+        )
+
+
 class _Uv(pydantic.BaseModel):
     latest: list[_HttpUrl] = _adapter.validate_python([
         "https://mirror.nyist.edu.cn/github-release/astral-sh/uv/LatestRelease/",
@@ -354,6 +367,7 @@ class _Upstream(pydantic.BaseModel, **_model_config):
         "mirrors.tuna.tsinghua.edu.cn": 0,
         "mirrors.zju.edu.cn": 0,
     }
+    timeout: _Timeout = _Timeout()
 
     @pydantic.field_validator("backup", mode="before")
     @classmethod
@@ -433,7 +447,7 @@ class Config(pydantic_settings.BaseSettings, **_model_config):
             asynchronous=True,
         ) as dask_client, _core.AsyncClient(
             headers={"User-Agent": f"mahoraga/{__version__}"},
-            timeout=httpx.Timeout(15, read=60),
+            timeout=self.upstream.timeout.to_httpx(),
             follow_redirects=False,
             limits=httpx.Limits(
                 max_connections=self.server.limit_concurrency,
