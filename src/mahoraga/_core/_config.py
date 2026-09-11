@@ -350,7 +350,9 @@ class _Upstream(pydantic.BaseModel, **_model_config):
         "releases.astral.sh": 0,
         "www.python.org": 0,
         "mirrors.bfsu.edu.cn": 0,
+        "mirrors.hust.edu.cn": 0,
         "mirrors.tuna.tsinghua.edu.cn": 0,
+        "mirrors.zju.edu.cn": 0,
     }
 
     @pydantic.field_validator("backup", mode="before")
