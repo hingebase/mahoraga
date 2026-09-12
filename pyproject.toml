@@ -73,11 +73,10 @@ dev = [
 docs = [
     "blinker >=1.5.0,<2.0.0",
     "bokeh >=3.7.0,<3.10.0",
-    "itsdangerous >=2.1.2",
+    "itsdangerous >=2.1.2,<3.0.0",
     "panel >=1.8.10,<2.0.0",
     "pyodide-py ==0.29.4",
-    "python-multipart >=0.0.10",
-    "tenacity >=8.1.0,<10.0.0",
+    "python-multipart >=0.0.10,<1.0.0",
 ]
 
 [[project.authors]]
