@@ -303,6 +303,9 @@ class _Timeout(pydantic.BaseModel):
             connect=self.connect,
             pool=self.pool,
             read=self.read,
+            # Disable the write timeout since there would be no
+            # equivalent in #73
+            write=None,
         )
 
 
