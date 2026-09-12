@@ -104,68 +104,26 @@ got it elsewhere:
 
 When upgrading uv installed in this way, run the same command again. We don't
 support `uv self update` at this moment.  
-uv can be configured to grab PyPI packages and Python itself from Mahoraga,
-via either environment variables or a [config file][15]:
-=== ".profile"
+Run the following script to let Mahoraga take over the requests from uv, Pixi
+and other [Rattler][7]-based tools. You can also download, view and edit the
+script before executing it.
+=== "Linux/macOS"
 
-    ``` sh
-    export UV_PYTHON_DOWNLOADS_JSON_URL={{ mahoraga_base_url }}/uv/python-downloads.json
-    export UV_PYTHON_INSTALL_MIRROR={{ mahoraga_base_url }}/python-build-standalone
-    export UV_DEFAULT_INDEX={{ mahoraga_base_url }}/pypi/simple
-    export UV_HTTP_TIMEOUT=60
+    ```sh
+    UV_PYTHON_INSTALL_MIRROR={{ mahoraga_base_url }}/python-build-standalone \
+        uv run --default-index {{ mahoraga_base_url }}/pypi/simple \
+        {{ mahoraga_base_url }}/static/client_config.py \
+        {{ mahoraga_base_url }}
     ```
-    !!! info "Note"
 
-        Cache-Control override can only be set via config file.
+=== "Windows"
 
-=== "profile.ps1"
-
-    ``` powershell
-    $Env:UV_PYTHON_DOWNLOADS_JSON_URL = "{{ mahoraga_base_url }}/uv/python-downloads.json"
+    ``` powershell title="PowerShell"
     $Env:UV_PYTHON_INSTALL_MIRROR = "{{ mahoraga_base_url }}/python-build-standalone"
-    $Env:UV_DEFAULT_INDEX = "{{ mahoraga_base_url }}/pypi/simple"
-    $Env:UV_HTTP_TIMEOUT = "60"
+    uv run --default-index {{ mahoraga_base_url }}/pypi/simple `
+        {{ mahoraga_base_url }}/static/client_config.py `
+        {{ mahoraga_base_url }}
     ```
-    !!! info "Note"
-
-        Cache-Control override can only be set via config file.
-
-=== "uv.toml"
-
-    ``` toml
-    python-downloads-json-url = "{{ mahoraga_base_url }}/uv/python-downloads.json"
-    python-install-mirror = "{{ mahoraga_base_url }}/python-build-standalone"
-
-    [[index]]
-    url = "{{ mahoraga_base_url }}/pypi/simple"
-    default = true
-
-    # Mahoraga inherits upstream response headers.
-    # Override them in case an upstream mirror doesn't implement cache control.
-    cache-control = { api = "max-age=600", files = "max-age=365000000, immutable" }
-    ```
-    !!! info "Note"
-
-        Timeout can only be set via environment variable.
-
-=== "pyproject.toml"
-
-    ``` toml
-    [tool.uv]
-    python-downloads-json-url = "{{ mahoraga_base_url }}/uv/python-downloads.json"
-    python-install-mirror = "{{ mahoraga_base_url }}/python-build-standalone"
-
-    [[tool.uv.index]]
-    url = "{{ mahoraga_base_url }}/pypi/simple"
-    default = true
-
-    # Mahoraga inherits upstream response headers.
-    # Override them in case an upstream mirror doesn't implement cache control.
-    cache-control = { api = "max-age=600", files = "max-age=365000000, immutable" }
-    ```
-    !!! info "Note"
-
-        Timeout can only be set via environment variable.
 
 Upgrading or downgrading uv to a specific version is not directly supported,
 however a small shell trick can work:
@@ -184,62 +142,28 @@ however a small shell trick can work:
     ```
 
 ### Pixi
-There is no mirror for the standalone installer of [Pixi][5] as of now.
-Instead, we provide a Python script which can be executed by uv:
+!!! info "Note"
+
+    This section is about [Pixi][5] installation. If you already have
+    Pixi >=0.43.1 installed, you can skip it since Pixi configuration was done
+    in the previous section.
+There is no mirror for the standalone installer of Pixi as of now.
+Instead, run the following script to install Pixi when you have uv installed
+and configured:
 ``` sh
-uv run {{ mahoraga_base_url }}/static/get_pixi.py {{ mahoraga_base_url }}
+uv run {{ mahoraga_base_url }}/static/get_pixi.py
 ```
 By default, the script installs the latest version of Pixi to `PIXI_HOME`
-^[:octicons-link-external-16:][14]^, replacing any existed version, and prepend
-`$PIXI_HOME/bin` to your `PATH`. To specify a version, pass it via CLI
-arguments:
+^[:octicons-link-external-16:][8]^, replacing any existed version, and prepend
+`$PIXI_HOME/bin` to your `PATH`. To specify a version, pass it as CLI
+argument:
 ``` sh
--v '0.43.1'  # Exact version
--v '0.43.*'  # Latest revision of a specific minor version
--v '>=0.43.1,<1'  # Version range
+get_pixi.py '0.43.1'  # Exact version
+get_pixi.py '0.43.*'  # Latest revision of a specific minor version
+get_pixi.py '>=0.43.1,<1'  # Version range
 ```
-!!! info "Note"
-
-    Mirror configuration requires Pixi version 0.43.1 or later.
-The script respects environment variables `PIXI_HOME`, `PIXI_NO_PATH_UPDATE`
-^[:octicons-link-external-16:][16]^ and `PIXI_CACHE_DIR`
-^[:octicons-link-external-16:][14]^ if present.
-
-For convenience, the script modifies Pixi global configuration automatically,
-using Mahoraga as the sole mirror of [anaconda.org][7], PyPI and
-`conda-mapping.prefix.dev`. You can also configure the mirrors as you wish:
-``` sh
-pixi config set -g mirrors '{
-    "https://conda.anaconda.org/": ["{{ mahoraga_base_url }}/conda/"],
-    "https://pypi.org/simple/": ["{{ mahoraga_base_url }}/pypi/simple/"],
-    "https://raw.githubusercontent.com/prefix-dev/parselmouth/main/files/": ["{{ mahoraga_base_url }}/parselmouth/compressed-v0/"],
-    "https://conda-mapping.prefix.dev/": ["{{ mahoraga_base_url }}/parselmouth/"]
-}'
-```
-After that, you can install Conda packages like [Rattler-Build][8] with Pixi.
-### Rattler-Build
-!!! info "Note"
-
-    Mirror configuration requires Rattler-Build version 0.41.0 or later.
-Rattler-Build accepts the same config file format as Pixi. Pass the Pixi config
-file [modified above][9] to Rattler-Build, unless there are options you would
-not like to share between Pixi and Rattler-Build.
-=== "Linux/macOS"
-
-    ``` sh
-    rattler-build build \
-        --config-file "${PIXI_HOME:-"$HOME/.pixi"}/config.toml" \
-        ...
-    ```
-
-=== "Windows"
-
-    ``` powershell title="PowerShell 7"
-    rattler-build build `
-        --config-file "$($Env:PIXI_HOME ?? "$HOME/.pixi")/config.toml" `
-        ...
-    ```
-
+The script respects the environment variable `PIXI_NO_PATH_UPDATE`
+^[:octicons-link-external-16:][9]^ if present.  
 ### Pyodide
 !!! info "Note"
 
@@ -388,13 +312,10 @@ The next generation of the official Python installer for Windows,
 [4]: https://docs.python.org/dev/using/windows.html#python-install-manager
 [5]: https://pixi.prefix.dev/latest/
 [6]: https://caddyserver.com/
-[7]: https://anaconda.org/
-[8]: https://rattler-build.prefix.dev/latest/
-[9]: #pixi
+[7]: https://github.com/conda/rattler
+[8]: https://pixi.prefix.dev/latest/reference/environment_variables/#configurable-environment-variables
+[9]: https://pixi.prefix.dev/latest/installation/#installer-script-options
 [10]: https://pyodide.org/en/stable/
 [11]: https://nginx.org/
 [12]: https://nginx.org/en/docs/http/ngx_http_core_module.html#http
 [13]: https://caddyserver.com/docs/caddyfile/concepts#global-options
-[14]: https://pixi.prefix.dev/latest/reference/environment_variables/#configurable-environment-variables
-[15]: https://docs.astral.sh/uv/reference/storage/#configuration-directories
-[16]: https://pixi.prefix.dev/latest/installation/#installer-script-options
