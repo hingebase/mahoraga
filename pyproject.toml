@@ -55,6 +55,8 @@ granian = [
 typing = [
     "granian >=2.7.0",
     "msgpack-types ==0.3.0",
+    "platformdirs >=4.10.1",
+    "tomlkit >=0.15.0",
     "types-requests >=2.32.4",
 ]
 
