@@ -13,7 +13,7 @@
 # permissions and limitations under the License.
 
 # /// script
-# dependencies = ["py-rattler >=0.24.0"]
+# dependencies = ["py-rattler >=0.26.0"]
 # requires-python = ">=3.14"
 # ///
 
@@ -25,7 +25,6 @@ For details, see https://hingebase.github.io/mahoraga/tutorial.html#pixi
 import argparse
 import asyncio
 import ctypes.wintypes
-import json
 import os
 import shutil
 import subprocess  # ruff: ignore[suspicious-subprocess-import]
@@ -33,13 +32,8 @@ import sys
 import tempfile
 import warnings
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import rattler.exceptions
-import rattler.networking
-
-if TYPE_CHECKING:
-    from collections.abc import Sequence
 
 if sys.platform == "win32":
     import winreg
@@ -135,16 +129,15 @@ else:
 
 
 async def _find_pixi(
-    cache_dir: os.PathLike[str] | None,
-    specs: Sequence[rattler.MatchSpec],
-    client: rattler.Client,
+    specs: list[rattler.MatchSpec],
+    gateway: rattler.Gateway,
 ) -> list[rattler.RepoDataRecord]:
     virtual_packages = rattler.VirtualPackage.detect()
     try:
         return await rattler.solve(
             sources=["conda-forge"],
             specs=specs,
-            gateway=rattler.Gateway(cache_dir, client=client),
+            gateway=gateway,
             virtual_packages=virtual_packages,
         )
     except rattler.exceptions.SolverError:
@@ -153,10 +146,13 @@ async def _find_pixi(
                 gvp = vp.into_generic()
                 if gvp.name.normalized == "__osx":
                     if gvp.version < rattler.Version("11.0"):
+                        # Pixi >=0.74 are broken on macOS <11 due to
+                        # https://github.com/conda/rattler/pull/2591
+                        specs.append(rattler.MatchSpec("pixi <=0.73.0"))
                         return await rattler.solve(
                             sources=["https://prefix.dev/github-releases"],
                             specs=specs,
-                            gateway=rattler.Gateway(cache_dir),
+                            gateway=gateway,
                             virtual_packages=virtual_packages,
                         )
                     break
@@ -165,26 +161,12 @@ async def _find_pixi(
 
 async def _install_pixi(
     target_prefix: os.PathLike[str],
-    cache_dir: os.PathLike[str] | None,
-    mahoraga_base_url: str,
-    version: rattler.VersionSpec,
-) -> dict[str, list[str]]:
-    specs = [rattler.MatchSpec(f"pixi {version}", strict=True)]
-    mahoraga_base_url = mahoraga_base_url.rstrip("/")
-    mirrors = {
-        "https://conda.anaconda.org/": [f"{mahoraga_base_url}/conda/"],
-        "https://pypi.org/simple/": [f"{mahoraga_base_url}/pypi/simple/"],
-        "https://raw.githubusercontent.com/prefix-dev/parselmouth/main/files/":
-            [f"{mahoraga_base_url}/parselmouth/compressed-v0/"],
-        "https://conda-mapping.prefix.dev/": [
-            f"{mahoraga_base_url}/parselmouth/",
-        ],
-    }
-    client = rattler.Client([rattler.networking.MirrorMiddleware(mirrors)])
+    client: rattler.Client,
+    specs: list[rattler.MatchSpec],
+) -> None:
     await rattler.install(
-        await _find_pixi(cache_dir, specs, client),
+        await _find_pixi(specs, rattler.Gateway(client=client)),
         target_prefix,
-        cache_dir,
         show_progress=False,
         client=client,
         requested_specs=[
@@ -192,7 +174,6 @@ async def _install_pixi(
             for spec in specs
         ],
     )
-    return mirrors
 
 
 def _main() -> None:
@@ -201,45 +182,30 @@ def _main() -> None:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
-        "mahoraga_base_url",
+        "version",
         nargs="?",
-        default="http://127.0.0.1:3450/",
-        help="\b",
-    )
-    parser.add_argument(
-        "-v", "--version",
         default="*",
         type=rattler.VersionSpec,
         help="Pixi version",
     )
-    args = parser.parse_args()
+    version = parser.parse_args().version
 
-    # https://pixi.prefix.dev/latest/reference/environment_variables/#configurable-environment-variables
-    pixi_home = _pixi_home()
-    cache_dir = _pixi_cache_dir()
-
-    mirrors = asyncio.run(
-        _install_pixi(
-            pixi_home,
-            cache_dir,
-            args.mahoraga_base_url,
-            args.version,
-        ),
+    paths = rattler.Config.config_search_paths("pixi")
+    config = rattler.Config.load_from_locations(
+        [p for p in paths if p[0].is_file()],
     )
-    pixi_home = pixi_home.resolve(strict=True)
+    if not config.mirrors:
+        message = (
+            "Mirrors not configured. Please follow the instructions at "
+            "https://hingebase.github.io/mahoraga/tutorial.html#uv"
+        )
+        raise RuntimeError(message)
+    client = rattler.Client.from_config(config)
+    specs = [rattler.MatchSpec(f"pixi {version}", strict=True)]
+    pixi_home = paths[-1][0].parent
+    asyncio.run(_install_pixi(pixi_home, client, specs))
     pixi_bin_dir = pixi_home / "bin"
     if pixi := shutil.which("pixi", path=pixi_bin_dir):
-        os.environ["PIXI_HOME"] = str(pixi_home)
-        if cache_dir:
-            os.environ["PIXI_CACHE_DIR"] = str(cache_dir.resolve(strict=True))
-        mirrors = _pixi_config_global_mirrors(pixi) | mirrors
-        subprocess.run(  # ruff: ignore[subprocess-without-shell-equals-true]
-            [
-                pixi, "config", "set", "-g",
-                "mirrors", json.dumps(mirrors, separators=(",", ":")),
-            ],
-            check=True,
-        )
         # Hide workspace information
         with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
             subprocess.run([pixi, "info"], cwd=tmp, check=True)  # ruff: ignore[subprocess-without-shell-equals-true]
@@ -251,42 +217,6 @@ def _main() -> None:
     # Most likely a permisson error if reaching here
     # For conciseness, error handling is omitted
     raise OSError
-
-
-def _pixi_cache_dir() -> Path | None:
-    env = os.environ
-    if cache_dir := env.get("PIXI_CACHE_DIR") or env.get("RATTLER_CACHE_DIR"):
-        return Path(cache_dir)
-    if cache_dir := env.get("XDG_CACHE_HOME"):
-        try:
-            last_resort = Path(cache_dir, "pixi").resolve(strict=True)
-            if last_resort.is_dir():
-                return last_resort
-        except OSError:
-            pass
-    return None
-
-
-def _pixi_config_global_mirrors(pixi: str) -> dict[str, list[str]]:
-    try:
-        cfg = subprocess.check_output(  # ruff: ignore[subprocess-without-shell-equals-true]
-            [pixi, "config", "list", "-g", "--json", "mirrors"],
-            stdin=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            encoding="utf-8",
-        )
-    except subprocess.CalledProcessError:
-        return {}
-    try:
-        return json.loads(cfg)["mirrors"]
-    except (KeyError, ValueError):
-        return {}
-
-
-def _pixi_home() -> Path:
-    if pixi_home := os.getenv("PIXI_HOME"):
-        return Path(pixi_home)
-    return Path.home() / ".pixi"
 
 
 if __name__ == "__main__":
