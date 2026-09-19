@@ -43,7 +43,7 @@ import anyio
 import fastapi.responses
 import fastapi.routing
 import hishel.fastapi
-import httpx
+import httpx2
 import pooch.utils  # pyright: ignore[reportMissingTypeStubs]
 
 from mahoraga import _core
@@ -86,7 +86,7 @@ class APIRoute(fastapi.routing.APIRoute):
 class Response(fastapi.Response):
     @override
     def init_headers(self, headers: Mapping[str, str] | None = None) -> None:
-        headers = httpx.Headers(headers)
+        headers = httpx2.Headers(headers)
         for key in "Content-Encoding", "Date", "Server", "Transfer-Encoding":
             headers.pop(key, None)
         if self.media_type != type(self).media_type:
@@ -108,16 +108,16 @@ async def get(urls: Iterable[str], **kwargs: object) -> bytes:
                 response = await stack.enter_async_context(
                     client.stream("GET", url, **kwargs),
                 )
-            except httpx.HTTPError:
+            except httpx2.HTTPError:
                 continue
             try:
                 response.raise_for_status()
-            except httpx.HTTPStatusError:
+            except httpx2.HTTPStatusError:
                 _core.schedule_exit(stack)
                 continue
             try:
                 return await response.aread()
-            except httpx.StreamError:
+            except httpx2.StreamError:
                 _core.schedule_exit(stack)
     if not response:
         raise fastapi.HTTPException(http.HTTPStatus.GATEWAY_TIMEOUT)
@@ -206,13 +206,13 @@ async def _entered(
             response = await inner_stack.enter_async_context(
                 client.stream("GET", url, headers=headers),
             )
-        except httpx.HTTPError:
+        except httpx2.HTTPError:
             continue
         if response.status_code == http.HTTPStatus.NOT_MODIFIED:
             break
         try:
             response.raise_for_status()
-        except httpx.HTTPStatusError:
+        except httpx2.HTTPStatusError:
             _core.schedule_exit(inner_stack)
             continue
         try:
@@ -226,7 +226,7 @@ async def _entered(
         try:
             if await anext(content):
                 _core.unreachable()
-        except httpx.TransportError:
+        except httpx2.TransportError:
             _core.schedule_exit(inner_stack)
             response = None
             continue
@@ -271,7 +271,7 @@ def _get_stack(request: fastapi.Request) -> contextlib.AsyncExitStack:
 
 
 async def _stream(
-    response: httpx.Response,
+    response: httpx2.Response,
     wrapped: contextlib.AsyncExitStack,
     *,
     cache_location: StrPath | None = None,
@@ -320,7 +320,7 @@ async def _stream(
 
 @contextlib.contextmanager
 def _tempfile(
-    response: httpx.Response,
+    response: httpx2.Response,
     cache_location: StrPath,
     sha256: bytes,
     size: int | None,
@@ -349,9 +349,9 @@ def _tempfile(
 
 
 def _unify_content_length(
-    headers: httpx.Headers,
+    headers: httpx2.Headers,
     kwargs: _CacheOptions,
-) -> httpx.Headers:
+) -> httpx2.Headers:
     if "Content-Encoding" in headers:
         # Content-Length refer to the encoded data, see
         # https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Encoding
