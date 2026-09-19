@@ -304,15 +304,14 @@ class _AsyncCacheProxy(hishel.AsyncCacheProxy):
         self,
         state: hishel.IdleClient,
         request: hishel.Request,
+        cache_key: str,
     ) -> hishel.AnyState:
         stored_entries = [
             dataclasses.replace(
                 pair,
                 request=dataclasses.replace(pair.request, url=request.url),
             )
-            for pair in await self.storage.get_entries(
-                await self._get_key_for_request(request),
-            )
+            for pair in await self.storage.get_entries(cache_key)
         ]
         return state.next(request, stored_entries)
 
