@@ -15,7 +15,6 @@
 __all__ = ["router"]
 
 import asyncio
-import collections
 import contextlib
 import contextvars
 import http
@@ -23,7 +22,8 @@ import posixpath
 from typing import Annotated, Literal
 
 import fastapi
-import kiss_headers
+import werkzeug.datastructures as ds
+import werkzeug.http
 
 from mahoraga import _core
 
@@ -85,32 +85,39 @@ def _decide_content_type(accept: str | None) -> Literal[
 ]:
     if not accept:
         return "application/vnd.pypi.simple.v1+html"
-    g: collections.defaultdict[float | None, set[str | None]]
-    g = collections.defaultdict(set)
-    match kiss_headers.get_polymorphic(
-        kiss_headers.parse_it("Accept: " + accept),
-        kiss_headers.Accept,
-    ):
-        case list(headers):
-            for h in headers:
-                g[h.get_qualifier()].add(h.get_mime())
-        case None:
-            _core.unreachable()
-        case h:
-            g[h.get_qualifier()].add(h.get_mime())
-    for _, v in sorted(g.items(), reverse=True):
-        if (
-            "application/vnd.pypi.simple.v1+json" in v
-            or "application/vnd.pypi.simple.latest+json" in v
-        ):
-            return "application/vnd.pypi.simple.v1+json"
-        if (
-            "application/vnd.pypi.simple.v1+html" in v
-            or "application/vnd.pypi.simple.latest+html" in v
-            or "application/*" in v
-            or "*/*" in v
-        ):
-            return "application/vnd.pypi.simple.v1+html"
-        if "text/html" in v or "text/*" in v:
-            return "text/html"
-    raise fastapi.HTTPException(http.HTTPStatus.NOT_ACCEPTABLE)
+    mime_accept = werkzeug.http.parse_accept_header(accept, ds.MIMEAccept)
+    while True:
+        match mime_accept.best_match((
+            "application/vnd.pypi.simple.v1+json",
+            "application/vnd.pypi.simple.latest+json",
+            "application/vnd.pypi.simple.v1+html",
+            "application/vnd.pypi.simple.latest+html",
+            "text/html",
+        )):
+            case (
+                "application/vnd.pypi.simple.v1+json"
+                | "application/vnd.pypi.simple.latest+json"
+            ):
+                it = iter(mime_accept)
+                for i, (item, q) in enumerate(it):
+                    if not ("application/*" != item != "*/*"):
+                        vals = mime_accept[:i]
+                        vals.append(("application/vnd.pypi.simple.v1+html", q))
+                        break
+                else:
+                    return "application/vnd.pypi.simple.v1+json"
+                for item, q in it:
+                    if "application/*" != item != "*/*":
+                        vals.append((item, q))
+                    else:
+                        vals.append(("application/vnd.pypi.simple.v1+html", q))
+                mime_accept = ds.MIMEAccept(vals)
+            case (
+                "application/vnd.pypi.simple.v1+html"
+                | "application/vnd.pypi.simple.latest+html"
+            ):
+                return "application/vnd.pypi.simple.v1+html"
+            case "text/html":
+                return "text/html"
+            case _:
+                raise fastapi.HTTPException(http.HTTPStatus.NOT_ACCEPTABLE)
