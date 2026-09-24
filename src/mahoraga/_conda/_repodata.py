@@ -22,7 +22,7 @@ import posixpath
 from typing import TYPE_CHECKING, Annotated
 
 import fastapi
-import httpx
+import httpx2
 import rattler.platform  # ruff: ignore[typing-only-third-party-import]
 
 from mahoraga import _core
@@ -138,7 +138,7 @@ async def _check_repodata_availability(
             f"{_utils.prefix(channel, ctx['config'])}/{platform}/{name}",
             follow_redirects=True,
         )
-    except httpx.HTTPError:
+    except httpx2.HTTPError:
         return fastapi.Response()
     return _core.Response(
         response.content,

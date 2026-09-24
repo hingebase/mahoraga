@@ -39,7 +39,7 @@ import dask.config
 import dask.system
 import distributed
 import hishel
-import httpx
+import httpx2
 import pooch_rattler
 import pydantic
 import pydantic_settings
@@ -298,8 +298,8 @@ class _Timeout(pydantic.BaseModel):
     pool: Annotated[pydantic.PositiveInt, at.Le(30)] = 15
     read: Annotated[int, at.Ge(30), at.Le(300)] = 30
 
-    def to_httpx(self) -> httpx.Timeout:
-        return httpx.Timeout(
+    def to_httpx(self) -> httpx2.Timeout:
+        return httpx2.Timeout(
             connect=self.connect,
             pool=self.pool,
             read=self.read,
@@ -452,7 +452,7 @@ class Config(pydantic_settings.BaseSettings, **_model_config):
             headers={"User-Agent": f"mahoraga/{__version__}"},
             timeout=self.upstream.timeout.to_httpx(),
             follow_redirects=False,
-            limits=httpx.Limits(
+            limits=httpx2.Limits(
                 max_connections=self.server.limit_concurrency,
                 keepalive_expiry=self.server.keep_alive,
             ),

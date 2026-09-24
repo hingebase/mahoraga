@@ -26,7 +26,7 @@ from typing import TYPE_CHECKING, Any
 
 import anyio
 import fastapi.responses
-import httpx
+import httpx2
 import msgpack
 import pooch.utils  # pyright: ignore[reportMissingTypeStubs]
 import rattler.platform
@@ -57,7 +57,7 @@ async def check_sharded_repodata_availability(
             f"{prefix}/{platform}/repodata_shards.msgpack.zst",
             follow_redirects=True,
         )
-    except httpx.HTTPError:
+    except httpx2.HTTPError:
         return fastapi.Response()
     return _core.Response(
         response.content,
