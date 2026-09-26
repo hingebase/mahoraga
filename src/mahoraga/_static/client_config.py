@@ -142,18 +142,15 @@ def _update_rattler_mirrors(
     mirrors: tomlkit.items.Table,
     mahoraga_base_url: str,
 ) -> None:
-    while True:
-        for k in mirrors:
-            if k.startswith((
-                "https://conda.anaconda.org",
-                "https://pypi.org",
-                "https://raw.githubusercontent.com/prefix-dev/parselmouth/main/files",
-                "https://conda-mapping.prefix.dev",
-            )):
-                del mirrors[k]
-                break
-        else:
-            break
+    # basedpyright fails to infer the type of `list(mirrors)`
+    for k in list(iter(mirrors)):
+        if k.startswith((
+            "https://conda.anaconda.org",
+            "https://pypi.org",
+            "https://raw.githubusercontent.com/prefix-dev/parselmouth/main/files",
+            "https://conda-mapping.prefix.dev",
+        )):
+            del mirrors[k]
     mirrors["https://conda.anaconda.org/"] = [f"{mahoraga_base_url}/conda/"]
     mirrors["https://pypi.org/simple/"] = [f"{mahoraga_base_url}/pypi/simple/"]
     mirrors[
@@ -222,13 +219,9 @@ def _update_uv_index(
     mahoraga_base_url: str,
 ) -> None:
     prefix = f"{mahoraga_base_url}/"
-    while True:
-        for i, index in enumerate(indexes):  # pyright: ignore[reportUnknownVariableType]
-            if cast("str", index["url"]).startswith(prefix):
-                indexes.pop(i)
-                break
-        else:
-            break
+    for i, index in reversed(list(enumerate(indexes))):  # pyright: ignore[reportUnknownArgumentType, reportUnknownVariableType]
+        if cast("str", index["url"]).startswith(prefix):
+            indexes.pop(i)
     for index in indexes:  # pyright: ignore[reportUnknownVariableType]
         if cast("dict[str, object]", index).get("default", False):
             del index["default"]
