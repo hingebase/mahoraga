@@ -185,6 +185,7 @@ class _Conda(pydantic.BaseModel, **_model_config):
             "https://mirrors.lzu.edu.cn/anaconda/cloud/",
             "https://mirrors.pku.edu.cn/anaconda/cloud/",
             "https://mirrors.sustech.edu.cn/anaconda/cloud/",
+            "https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/",
             "https://mirrors.zju.edu.cn/anaconda/cloud/",
         ]),
         "biobakery": "auto",
@@ -194,6 +195,7 @@ class _Conda(pydantic.BaseModel, **_model_config):
             "https://mirrors.lzu.edu.cn/anaconda/cloud/",
             "https://mirrors.pku.edu.cn/anaconda/cloud/",
             "https://mirrors.sustech.edu.cn/anaconda/cloud/",
+            "https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/",
             "https://mirrors.zju.edu.cn/anaconda/cloud/",
             "https://prefix.dev/",
         ]),
@@ -256,10 +258,13 @@ class _PyPI(pydantic.BaseModel):
         "https://mirrors.hust.edu.cn/pypi/web/",
         "https://mirrors.pku.edu.cn/pypi/web/",
         "https://mirrors.sustech.edu.cn/pypi/web/",
+        "https://mirrors.zju.edu.cn/pypi/web/",
     ])
     json_: Annotated[list[_HttpUrl], pydantic.Field(alias="json")] = (
         _adapter.validate_python([
+            "https://mirror.nyist.edu.cn/pypi/",
             "https://mirrors.bfsu.edu.cn/pypi/web/",
+            "https://mirrors.ha.edu.cn/pypi/",
             "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/",
             "https://mirrors.ustc.edu.cn/pypi/",
             "https://pypi.org/",
@@ -340,8 +345,10 @@ class _Upstream(pydantic.BaseModel, **_model_config):
     python: list[_HttpUrl] = _adapter.validate_python([
         "https://cdn.npmmirror.com/binaries/python/{version}/{name}",
         "https://mirror.nju.edu.cn/python/{version}/{name}",
+        "https://mirror.nyist.edu.cn/python/{version}/{name}",
         "https://mirrors.aliyun.com/python-release/windows/{name}",
         "https://mirrors.bfsu.edu.cn/python/{version}/{name}",
+        "https://mirrors.ha.edu.cn/python/{version}/{name}",
         "https://mirrors.huaweicloud.com/python/{version}/{name}",
         "https://mirrors.jcut.edu.cn/python/{version}/{name}",
         "https://mirrors.tuna.tsinghua.edu.cn/python/{version}/{name}",
