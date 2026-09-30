@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING, Any, TypedDict
 import pydantic
 
 if TYPE_CHECKING:
-    from rattler.platform import PlatformLiteral
+    from rattler.platform import SubdirLiteral
 
 
 class ChannelRelations(TypedDict, total=False):
@@ -54,7 +54,7 @@ class Shard(
 class _ShardedSubdirInfo(TypedDict):
     base_url: str
     shards_base_url: str
-    subdir: PlatformLiteral
+    subdir: SubdirLiteral
     channel_relations: ChannelRelations
 
 

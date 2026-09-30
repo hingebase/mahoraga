@@ -271,7 +271,7 @@ class _PyPI(pydantic.BaseModel):
 
 
 class _Shard(pydantic.BaseModel):
-    platforms: set[rattler.platform.PlatformLiteral]
+    platforms: set[rattler.platform.SubdirLiteral]
     base: Annotated[str, pydantic.Field(pattern=r"^\.\./")] | None = None
     overrides: Annotated[str, pydantic.Field(pattern=r"^\.\./")] | None = None
 

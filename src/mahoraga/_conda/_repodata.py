@@ -39,7 +39,7 @@ router: fastapi.APIRouter = fastapi.APIRouter(route_class=_core.APIRoute)
 @router.head("/{channel}/{platform}/repodata.json.zst")
 async def check_repodata_availability(
     channel: str,
-    platform: rattler.platform.PlatformLiteral,
+    platform: rattler.platform.SubdirLiteral,
     request: fastapi.Request,
 ) -> fastapi.Response:
     return await _check_repodata_availability(channel, platform, request)
@@ -50,7 +50,7 @@ async def check_repodata_availability(
 async def check_repodata_availability_with_label(
     channel: str,
     label: str,
-    platform: rattler.platform.PlatformLiteral,
+    platform: rattler.platform.SubdirLiteral,
     request: fastapi.Request,
 ) -> fastapi.Response:
     channel = f"{channel}/label/{label}"
@@ -62,7 +62,7 @@ async def check_repodata_availability_with_label(
 @router.get("/{channel}/{platform}/repodata.json.zst")
 async def get_repodata(
     channel: str,
-    platform: rattler.platform.PlatformLiteral,
+    platform: rattler.platform.SubdirLiteral,
     request: fastapi.Request,
     headers: Annotated[_models.RepodataHeaders, fastapi.Header()],
 ) -> fastapi.Response:
@@ -75,7 +75,7 @@ async def get_repodata(
 async def get_repodata_with_label(
     channel: str,
     label: str,
-    platform: rattler.platform.PlatformLiteral,
+    platform: rattler.platform.SubdirLiteral,
     request: fastapi.Request,
     headers: Annotated[_models.RepodataHeaders, fastapi.Header()],
 ) -> fastapi.Response:
@@ -86,7 +86,7 @@ async def get_repodata_with_label(
 @router.head("/{channel}/{platform}/repodata.jlap", deprecated=True)
 async def get_differential_repodata(
     channel: str,
-    platform: rattler.platform.PlatformLiteral,
+    platform: rattler.platform.SubdirLiteral,
 ) -> fastapi.Response:
     del channel, platform
     return fastapi.Response(status_code=404)
@@ -103,7 +103,7 @@ async def get_differential_repodata(
 async def get_differential_repodata_with_label(
     channel: str,
     label: str,
-    platform: rattler.platform.PlatformLiteral,
+    platform: rattler.platform.SubdirLiteral,
 ) -> fastapi.Response:
     del channel, platform, label
     return fastapi.Response(status_code=404)
@@ -127,7 +127,7 @@ async def get_notices(channel: str) -> fastapi.Response:
 
 async def _check_repodata_availability(
     channel: str,
-    platform: rattler.platform.PlatformLiteral,
+    platform: rattler.platform.SubdirLiteral,
     request: fastapi.Request,
 ) -> fastapi.Response:
     ctx = _core.context.get()
@@ -149,7 +149,7 @@ async def _check_repodata_availability(
 
 async def _get_repodata(
     channel: str,
-    platform: rattler.platform.PlatformLiteral,
+    platform: rattler.platform.SubdirLiteral,
     request: fastapi.Request,
     headers: _models.RepodataHeaders,
     label: str | None = None,

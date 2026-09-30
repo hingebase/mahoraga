@@ -39,7 +39,7 @@ if TYPE_CHECKING:
 
 async def fetch_repo_data(
     channel: str,
-    platform: rattler.platform.PlatformLiteral,
+    platform: rattler.platform.SubdirLiteral,
     cfg: _core.Config | None = None,
     *,
     label: str | None = None,
@@ -48,7 +48,7 @@ async def fetch_repo_data(
         ctx = _core.context.get()
         cfg = ctx["config"]
     channels = _channels(channel, label, cfg)
-    platforms = [rattler.Platform(platform)]
+    platforms = [rattler.Subdir(platform)]
     try:
         [repodata] = await rattler.fetch_repo_data(
             channels=channels,
@@ -71,12 +71,12 @@ async def fetch_repo_data(
 async def load_matching_record(
     channel: str,
     label: str | None,
-    platform: rattler.platform.PlatformLiteral,
+    platform: rattler.platform.SubdirLiteral,
     spec: str,
     file_name: str,
 ) -> rattler.RepoDataRecord:
     channels = _channels(channel, label)
-    platforms = [rattler.Platform(platform)]
+    platforms = [rattler.Subdir(platform)]
     specs = [rattler.MatchSpec(spec, strict=True)]
     for cache_action in "force-cache-only", "cache-or-fetch":
         gateway = _gateway(cache_action)
@@ -106,7 +106,7 @@ def prefix(channel: str, cfg: _core.Config | None = None) -> str:
 
 def urls(
     channel: str,
-    platform: rattler.platform.PlatformLiteral,
+    platform: rattler.platform.SubdirLiteral,
     name: str,
     label: str | None = None,
 ) -> list[str]:
