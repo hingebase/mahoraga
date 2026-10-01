@@ -44,12 +44,12 @@ from typing import (
 import aiohttp.typedefs
 import anyio
 import cyares.aiohttp
-import hishel.httpx
-import httpx
-import httpx_aiohttp
+import hishel.httpx2
+import httpx2
+import httpx_aiohttp.httpx2
 import pydantic_settings
 import yarl
-from httpx._config import DEFAULT_LIMITS  # ruff: ignore[import-private-name]
+from httpx2._config import DEFAULT_LIMITS  # ruff: ignore[import-private-name]
 
 from mahoraga import _core
 
@@ -63,14 +63,14 @@ if TYPE_CHECKING:
         _RequestOptions,  # pyright: ignore[reportPrivateUsage]
     )
     from distributed import Client, Future
-    from httpx._types import CertTypes
+    from httpx2._types import CertTypes
     from pooch_rattler import Downloader
     from rattler.networking.fetch_repo_data import CacheAction
 
 _SUFFIXES = ("anaconda.org", "github.com", "prefix.dev", "pypi.org")
 
 
-class AsyncClient(hishel.httpx.AsyncCacheClient):
+class AsyncClient(hishel.httpx2.AsyncCacheClient):
     @override
     def _init_transport(
         self,
@@ -79,10 +79,10 @@ class AsyncClient(hishel.httpx.AsyncCacheClient):
         trust_env: bool = True,
         http1: bool = True,
         http2: bool = False,
-        limits: httpx.Limits = DEFAULT_LIMITS,
-        transport: httpx.AsyncBaseTransport | None = None,
+        limits: httpx2.Limits = DEFAULT_LIMITS,
+        transport: httpx2.AsyncBaseTransport | None = None,
         **kwargs: Unused,
-    ) -> httpx.AsyncBaseTransport:
+    ) -> httpx2.AsyncBaseTransport:
         next_transport = transport or _AiohttpTransport(
             verify=verify,
             cert=cert,
@@ -98,14 +98,14 @@ class AsyncClient(hishel.httpx.AsyncCacheClient):
         )
 
     @override
-    def _transport_for_url(self, url: httpx.URL) -> httpx.AsyncBaseTransport:
+    def _transport_for_url(self, url: httpx2.URL) -> httpx2.AsyncBaseTransport:
         t = super()._transport_for_url(url)
-        if isinstance(t, hishel.httpx.AsyncCacheTransport):
+        if isinstance(t, hishel.httpx2.AsyncCacheTransport):
             match cache_action.get():
                 case "no-cache":
                     return t.next_transport
                 case "force-cache-only" | "use-cache-only":
-                    return hishel.httpx.AsyncCacheTransport(
+                    return hishel.httpx2.AsyncCacheTransport(
                         _not_implemented,
                         t.storage,
                         t._cache_proxy.policy,  # ruff: ignore[private-member-access]  # pyright: ignore[reportPrivateUsage]
@@ -119,10 +119,10 @@ class AsyncClient(hishel.httpx.AsyncCacheClient):
     async def stream(
         self,
         method: str,
-        url: httpx.URL | str,
+        url: httpx2.URL | str,
         **kwargs: Any,
-    ) -> AsyncGenerator[httpx.Response]:
-        url = httpx.URL(url)
+    ) -> AsyncGenerator[httpx2.Response]:
+        url = httpx2.URL(url)
         h = url.host
         if h.endswith(_SUFFIXES):
             kwargs["follow_redirects"] = True
@@ -159,7 +159,7 @@ class Statistics(pydantic_settings.BaseSettings, json_file_encoding="utf-8"):
     total_seconds: collections.Counter[str] = collections.Counter()
 
     def key(self, url: str) -> tuple[bool, int, int]:
-        h = httpx.URL(url).host
+        h = httpx2.URL(url).host
         concurrency = self.concurrent_requests[h]
         try:
             limit = self.backup_servers[h]
@@ -225,7 +225,7 @@ async def _cached_or_locked(cache_location: StrPath) -> AsyncGenerator[bool]:
     yield True
 
 
-class _AiohttpTransport(httpx_aiohttp.AiohttpTransport):
+class _AiohttpTransport(httpx_aiohttp.httpx2.AiohttpTransport):
     @override
     def get_client(self) -> aiohttp.ClientSession:
         if (
@@ -272,8 +272,8 @@ class _ClientSession(aiohttp.ClientSession):
         if cache_action.get() == "cache-or-fetch":
             url = yarl.URL(url)
             if (h := url.host) and h.endswith(_SUFFIXES):
-                headers = cast("httpx.Headers", kwargs.get("headers")).copy()
-                del headers["Host"]  # Added by httpx, bad for redirection
+                headers = cast("httpx2.Headers", kwargs.get("headers")).copy()
+                del headers["Host"]  # Added by httpx2, bad for redirection
                 kwargs.update(allow_redirects=True, headers=headers)
         return super().request(method, url, **kwargs)
 
@@ -304,28 +304,27 @@ class _AsyncCacheProxy(hishel.AsyncCacheProxy):
         self,
         state: hishel.IdleClient,
         request: hishel.Request,
+        cache_key: str,
     ) -> hishel.AnyState:
         stored_entries = [
             dataclasses.replace(
                 pair,
                 request=dataclasses.replace(pair.request, url=request.url),
             )
-            for pair in await self.storage.get_entries(
-                await self._get_key_for_request(request),
-            )
+            for pair in await self.storage.get_entries(cache_key)
         ]
         return state.next(request, stored_entries)
 
 
-class _AsyncCacheTransport(hishel.httpx.AsyncCacheTransport):
+class _AsyncCacheTransport(hishel.httpx2.AsyncCacheTransport):
     @override
     def __init__(
         self,
-        next_transport: httpx.AsyncBaseTransport,
+        next_transport: httpx2.AsyncBaseTransport,
         storage: hishel.AsyncBaseStorage | None = None,
         policy: hishel.CachePolicy | None = None,
     ) -> None:
-        self.next_transport: httpx.AsyncBaseTransport = next_transport
+        self.next_transport: httpx2.AsyncBaseTransport = next_transport
         self._cache_proxy = _AsyncCacheProxy(
             request_sender=self.request_sender,
             storage=storage,
@@ -351,4 +350,4 @@ cache_action: contextvars.ContextVar[CacheAction] = contextvars.ContextVar(
 _exclude = {"backup_servers", "concurrent_requests"}
 _json = anyio.Path("statistics.json")
 _logger = logging.getLogger("mahoraga")
-_not_implemented = httpx.AsyncBaseTransport()
+_not_implemented = httpx2.AsyncBaseTransport()

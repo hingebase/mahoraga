@@ -33,7 +33,7 @@ router: fastapi.APIRouter = fastapi.APIRouter(route_class=_core.APIRoute)
 @router.get("/{channel}/{platform}/{name}", dependencies=_core.immutable)
 async def get_conda_package(
     channel: str,
-    platform: rattler.platform.PlatformLiteral,
+    platform: rattler.platform.SubdirLiteral,
     name: Annotated[
         str,
         fastapi.Path(pattern=r"^(?:.+\.conda|.+\.tar\.bz2|[a-f\d]{64}\.msgpack\.zst)$"),
@@ -49,7 +49,7 @@ async def get_conda_package(
 async def get_conda_package_with_label(
     channel: str,
     label: str,
-    platform: rattler.platform.PlatformLiteral,
+    platform: rattler.platform.SubdirLiteral,
     name: Annotated[
         str,
         fastapi.Path(pattern=r"^(?:.+\.conda|.+\.tar\.bz2|[a-f\d]{64}\.msgpack\.zst)$"),
@@ -60,7 +60,7 @@ async def get_conda_package_with_label(
 
 async def _proxy_cache(
     channel: str,
-    platform: rattler.platform.PlatformLiteral,
+    platform: rattler.platform.SubdirLiteral,
     name: str,
     label: str | None = None,
 ) -> fastapi.Response:

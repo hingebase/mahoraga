@@ -26,7 +26,7 @@ from typing import TYPE_CHECKING, Any
 
 import anyio
 import fastapi.responses
-import httpx
+import httpx2
 import msgpack
 import pooch.utils  # pyright: ignore[reportMissingTypeStubs]
 import rattler.platform
@@ -44,7 +44,7 @@ router: fastapi.APIRouter = fastapi.APIRouter(route_class=_core.APIRoute)
 @router.head("/{channel}/{platform}/repodata_shards.msgpack.zst")
 async def check_sharded_repodata_availability(
     channel: str,
-    platform: rattler.platform.PlatformLiteral,
+    platform: rattler.platform.SubdirLiteral,
 ) -> fastapi.Response:
     cache_location = _cache_location(channel, platform)
     if await cache_location.is_file():
@@ -57,7 +57,7 @@ async def check_sharded_repodata_availability(
             f"{prefix}/{platform}/repodata_shards.msgpack.zst",
             follow_redirects=True,
         )
-    except httpx.HTTPError:
+    except httpx2.HTTPError:
         return fastapi.Response()
     return _core.Response(
         response.content,
@@ -70,7 +70,7 @@ async def check_sharded_repodata_availability(
 async def check_sharded_repodata_availability_with_label(
     channel: str,
     label: str,
-    platform: rattler.platform.PlatformLiteral,
+    platform: rattler.platform.SubdirLiteral,
 ) -> fastapi.Response:
     cache_location = _cache_location(channel, "label", label, platform)
     status_code = 200 if await cache_location.is_file() else 404
@@ -83,7 +83,7 @@ async def check_sharded_repodata_availability_with_label(
 )
 async def get_sharded_repodata_index(
     channel: str,
-    platform: rattler.platform.PlatformLiteral,
+    platform: rattler.platform.SubdirLiteral,
 ) -> fastapi.Response:
     cache_location = _cache_location(channel, platform)
     if await cache_location.is_file():
@@ -109,7 +109,7 @@ async def get_sharded_repodata_index(
 async def get_sharded_repodata_index_with_label(
     channel: str,
     label: str,
-    platform: rattler.platform.PlatformLiteral,
+    platform: rattler.platform.SubdirLiteral,
 ) -> fastapi.Response:
     return fastapi.responses.FileResponse(
         f"channels/{channel}/label/{label}/{platform}/repodata_shards.msgpack.zst",
@@ -195,7 +195,7 @@ def _sha256(
 def _split_repo(
     cfg: _core.Config,
     channel: str,
-    platform: rattler.platform.PlatformLiteral,
+    platform: rattler.platform.SubdirLiteral,
     channel_relations: _models.ChannelRelations,
 ) -> None:
     root = pathlib.Path("channels", channel, platform)
@@ -228,7 +228,7 @@ def _split_repo(
 def _worker(
     cfg: _core.Config,
     channel: str,
-    platform: rattler.platform.PlatformLiteral,
+    platform: rattler.platform.SubdirLiteral,
     channel_relations: _models.ChannelRelations,
 ) -> None:
     try:

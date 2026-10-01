@@ -24,7 +24,7 @@ import posixpath
 from typing import TYPE_CHECKING, Annotated
 
 import fastapi.responses
-import httpx
+import httpx2
 import packaging.utils
 
 from mahoraga import _core
@@ -50,7 +50,7 @@ async def check_pypi_package_availability(
         response = await client.head(
             f"https://files.pythonhosted.org/packages/{tag}/{prefix}/{project}/{filename}",
         )
-    except httpx.HTTPError:
+    except httpx2.HTTPError:
         return fastapi.Response()
     if response.has_redirect_location:
         return fastapi.Response()
@@ -105,7 +105,7 @@ async def get_pypi_package(
                             f"https://files.pythonhosted.org/packages/{tag}/{prefix}/{project}/{filename}",
                         ),
                     )
-                except httpx.HTTPError as e:
+                except httpx2.HTTPError as e:
                     raise fastapi.HTTPException(
                         http.HTTPStatus.GATEWAY_TIMEOUT,
                     ) from e
@@ -123,7 +123,7 @@ async def get_pypi_package(
                         response.headers,
                     )
                 _core.schedule_exit(stack)
-                p = httpx.URL(response.headers["Location"]).path.lstrip("/")
+                p = httpx2.URL(response.headers["Location"]).path.lstrip("/")
                 urls = [
                     posixpath.join(str(url), p)
                     for url in ctx["config"].upstream.pypi.all()
@@ -244,7 +244,7 @@ def _sha256_and_size_from_json(
 
 
 async def _stream(
-    response: httpx.Response,
+    response: httpx2.Response,
     stack: contextlib.AsyncExitStack,
 ) -> AsyncIterator[bytes]:
     async with stack:

@@ -23,7 +23,7 @@ import pathlib
 import posixpath
 
 import fastapi
-import httpx
+import httpx2
 import pydantic
 
 from mahoraga import _core
@@ -59,7 +59,7 @@ async def get_uv_github_release(name: str) -> fastapi.Response:
                 sha256=sha256,
                 size=size,
             )
-            if not httpx.codes.is_error(response.status_code):
+            if not httpx2.codes.is_error(response.status_code):
                 return response
     urls = [
         posixpath.join(str(url), name)

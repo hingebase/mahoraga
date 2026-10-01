@@ -32,9 +32,9 @@ dependencies = [
     "cyares[aiohttp,anyio,idna] >=0.5.1",
     "distributed >=2026.1.1",
     "filelock >=3.24.0",
-    "hishel[fastapi,httpx,requests] >=1.2.0",
+    "hishel[fastapi,httpx2,requests] >=1.4.0",
     "httptools >=0.7.1",
-    "httpx-aiohttp >=0.1.9",
+    "httpx-aiohttp[httpx2] >=0.2.0",
     "jinja2 >=3.1.5",
     "packaging >=26.0.0",
     "pooch-rattler >=0.3.2",
@@ -42,7 +42,7 @@ dependencies = [
     "pydantic-extra-types[semver] >=2.10.2",
     "pydantic-settings >=2.7.0",
     "pyodide-lock >=0.1.0",
-    "py-rattler >=0.26.0",
+    "py-rattler >=0.27.0",
     "rich >=14.2.0",
     "uvicorn >=0.41.0",
     "werkzeug >=2.3.7,<3.2.0",
@@ -66,18 +66,17 @@ dev = [
     "pooch-rattler >=0.3.2",
     "pydantic-settings >=2.7.0",
     "pygit2 >=1.19.0",
-    "zensical >=0.0.61",
+    "zensical >=0.0.67",
     "ziafont >=0.11.0",
 ]
 # Used by Zensical macros exclusively, no need to install
 docs = [
     "blinker >=1.5.0,<2.0.0",
     "bokeh >=3.7.0,<3.10.0",
-    "itsdangerous >=2.1.2",
+    "itsdangerous >=2.1.2,<3.0.0",
     "panel >=1.8.10,<2.0.0",
-    "pyodide-py ==0.29.4",
-    "python-multipart >=0.0.10",
-    "tenacity >=8.1.0,<10.0.0",
+    "pyodide-py ~=0.29.5",
+    "python-multipart >=0.0.10,<1.0.0",
 ]
 
 [[project.authors]]
