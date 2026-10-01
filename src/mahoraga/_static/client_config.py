@@ -86,7 +86,7 @@ def _rattler_config_file() -> Path:
     else:
         backup = None
     try:
-        return user_config_path("rattler", roaming=True) / "config.toml"
+        return _user_config_path("rattler") / "config.toml"
     finally:
         if backup:
             os.environ["XDG_CONFIG_HOME"] = backup
@@ -235,6 +235,10 @@ def _update_uv_index(
     })
 
 
+def _user_config_path(appname: str) -> Path:
+    return user_config_path(appname, appauthor=False, roaming=True)
+
+
 def _uv_config_file() -> Path:
     # Ignore default locations if UV_CONFIG_FILE is present
     # https://docs.rs/uv/0.12.13/src/uv/lib.rs.html#312-321
@@ -256,7 +260,7 @@ def _uv_config_file() -> Path:
         case _:
             pass
 
-    return user_config_path("uv", roaming=True) / "uv.toml"
+    return _user_config_path("uv") / "uv.toml"
 
 
 if __name__ == "__main__":
