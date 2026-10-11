@@ -292,7 +292,6 @@ The frontend configuration depends on the library you directly use:
             {
               pyodideUrl: "{{ mahoraga_base_url }}/pyodide/v{{ pyodide_py_version }}/full/pyodide.js",
               requirements: [
-                "{{ mahoraga_base_url }}/pypi/packages/py3/b/blinker/blinker-{{ blinker_version }}-py3-none-any.whl",
                 "{{ mahoraga_base_url }}/pypi/packages/py3/i/itsdangerous/itsdangerous-{{ itsdangerous_version }}-py3-none-any.whl",
                 "{{ mahoraga_base_url }}/pypi/packages/py3/p/python-multipart/python_multipart-{{ python_multipart_version }}-py3-none-any.whl",
               ],

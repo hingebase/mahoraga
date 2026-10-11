@@ -71,7 +71,6 @@ dev = [
 ]
 # Used by Zensical macros exclusively, no need to install
 docs = [
-    "blinker >=1.5.0,<2.0.0",
     "bokeh >=3.7.0,<3.10.0",
     "itsdangerous >=2.1.2,<3.0.0",
     "panel >=1.8.10,<2.0.0",
