@@ -130,7 +130,7 @@ async def get_uv_python_downloads_json() -> fastapi.Response:
         await stack.enter_async_context(lock)
         return await asyncio.create_task(
             _core.stream(
-                "https://api.github.com/repos/astral-sh/uv/contents/crates/uv-python/download-metadata.json",
+                "https://api.github.com/repos/astral-sh/uv/contents/crates/uv-python-managed/download-metadata.json",
                 headers={
                     "Accept": "application/vnd.github.raw+json",
                     "X-GitHub-Api-Version": "2026-03-10",
