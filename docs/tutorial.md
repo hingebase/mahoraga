@@ -165,11 +165,34 @@ get_pixi.py '>=0.43.1,<1'  # Version range
 The script respects the environment variable `PIXI_NO_PATH_UPDATE`
 ^[:octicons-link-external-16:][9]^ if present.  
 ### Pyodide
+#### Local development
+!!! info "Note"
+
+    Mirror configuration requires uv version 0.12.24 or later.
+For local development, we recommend installing [Pyodide][10] with uv. Make sure
+you have run the configuration script [above][3] with uv >=0.12.24. If in doubt,
+you may rerun it at any time.
+Create a new virtual environment with Pyodide installed:
+``` sh
+uv venv -p pyodide@3.13
+```
+It's recommended to create a project-level `uv.toml` with the following
+settings so that `uv pip install` works as expected:
+``` toml title="uv.toml"
+[[index]]
+# Keep this in sync with the exact Pyodide version installed
+url = "https://index.pyodide.org/{{ pyodide_py_version }}/"
+
+[pip]
+index-strategy = "unsafe-best-match"
+no-build = true
+```
+Delete this file when switching to native Python.
+#### Deployment
 !!! info "Note"
 
     Mirror configuration requires Pyodide version 0.28.0 or later.
-[Pyodide][10] Python distribution, wheels and JavaScript/WebAssembly runtime are
-all available in Mahoraga. To enable them, add the following line to your
+To access Mahoraga from a browser, add the following line to your
 `mahoraga.toml`:
 ``` toml title="mahoraga.toml" hl_lines="3"
 [cors]

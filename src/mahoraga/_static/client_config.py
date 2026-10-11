@@ -14,6 +14,7 @@
 
 # /// script
 # dependencies = [
+#     "packaging >=26.0.0",
 #     "platformdirs >=4.10.1,<5.0.0",
 #     "tomlkit >=0.15.0,<0.16.0",
 # ]
@@ -27,16 +28,21 @@ For details, see https://hingebase.github.io/mahoraga/tutorial.html#uv
 
 import argparse
 import os
+import subprocess  # ruff: ignore[suspicious-subprocess-import]
 import sys
 from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, Any, cast
 
+import packaging.version
 import tomlkit.items
 from platformdirs import user_config_path
 from platformdirs.windows import (
     _KNOWN_FOLDER_GUIDS,  # pyright: ignore[reportPrivateUsage]  # ruff: ignore[import-private-name]
     get_win_folder_via_ctypes,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import MutableMapping
 
 _KNOWN_FOLDER_GUIDS["CSIDL_PROFILE"] = "{5E6C858F-0E22-4760-9AFE-EA3317B67173}"
 
@@ -182,6 +188,7 @@ def _update_uv_config(mahoraga_base_url: str) -> None:
                 },
             ],
         }
+        _uv_pyodide_install_mirror(data, mahoraga_base_url)
         uv_config.parent.mkdir(parents=True, exist_ok=True)
         with uv_config.open("w", encoding="utf-8") as f:
             tomlkit.dump(data, f)
@@ -209,6 +216,7 @@ def _update_uv_config(mahoraga_base_url: str) -> None:
                 ]
             else:
                 _update_uv_index(indexes, mahoraga_base_url)
+            _uv_pyodide_install_mirror(doc, mahoraga_base_url)
             f.seek(0)
             tomlkit.dump(doc, f)
             f.truncate()
@@ -261,6 +269,18 @@ def _uv_config_file() -> Path:
             pass
 
     return _user_config_path("uv") / "uv.toml"
+
+
+def _uv_pyodide_install_mirror(
+    doc: MutableMapping[str, Any],
+    mahoraga_base_url: str,
+) -> None:
+    version = subprocess.check_output(  # ruff: ignore[subprocess-without-shell-equals-true]
+        [os.getenv("UV", "uv"), "self", "version", "--short"],
+        encoding="ascii",
+    ).rstrip()
+    if packaging.version.parse(version) >= packaging.version.parse("0.12.24"):
+        doc["pyodide-install-mirror"] = f"{mahoraga_base_url}/pyodide"
 
 
 if __name__ == "__main__":

@@ -23,33 +23,36 @@ import mimetypes
 import os
 import pathlib
 import posixpath
-from typing import Annotated, Literal
+from typing import TYPE_CHECKING, Annotated, Literal
 
 import fastapi.responses
-import packaging.version
 import pyodide_lock
+from packaging.version import VERSION_PATTERN
 
 from mahoraga import _core, _jsdelivr
 
 from . import _utils
 
+if TYPE_CHECKING:
+    _compile = str
+else:
+    from re import compile as _compile
+
+_NAME_PATTERN = (
+    fr"(?ix)^(pyodide|pyodide-core|static-libraries|xbuildenv|xbuildenv-debug)-{VERSION_PATTERN}\.tar\.(bz2|gz)$"
+)
+
 router: fastapi.APIRouter = fastapi.APIRouter(route_class=_core.APIRoute)
 
 
-@router.get("/{name}", dependencies=_core.immutable)
+@router.get("/{version}/{name}", dependencies=_core.immutable)
 async def get_pyodide_package(
-    name: Annotated[
+    version: Annotated[
         str,
-        fastapi.Path(
-            pattern=r"^(pyodide|pyodide-core|static-libraries|xbuildenv)-.+\.tar\.bz2$",
-        ),
+        fastapi.Path(pattern=_compile(fr"(?ix)^{VERSION_PATTERN}$")),
     ],
+    name: Annotated[str, fastapi.Path(pattern=_compile(_NAME_PATTERN))],
 ) -> fastapi.Response:
-    version = name[:-8].rsplit("-", 1)[1]
-    try:
-        packaging.version.parse(version)
-    except packaging.version.InvalidVersion:
-        return fastapi.Response(status_code=404)
     cache_location = pathlib.Path("pyodide", name)
     media_type, _ = mimetypes.guess_type(name)
     async with contextlib.AsyncExitStack() as stack:
