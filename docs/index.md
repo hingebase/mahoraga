@@ -18,7 +18,7 @@
     and take full control of your workflow.
     [:octicons-arrow-right-24: Docs](tutorial.md#pixi)
 
-- [![Pyodide](https://cdn.jsdelivr.net/gh/pyodide/pyodide-artwork@main/logo-light.svg#only-light){ .middle width="70" }![Pyodide](https://cdn.jsdelivr.net/gh/pyodide/pyodide-artwork@main/logo-dark.svg#only-dark){ .middle width="70" }][4]　__Pyodide__
+- [![Pyodide](https://pyodide.org/en/stable/_static/pyodide-logo-light.svg#only-light){ .middle width="70" }![Pyodide](https://pyodide.org/en/stable/_static/pyodide-logo-dark.svg#only-dark){ .middle width="70" }][4]　__Pyodide__
 
     ---
 
