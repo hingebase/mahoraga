@@ -51,9 +51,7 @@ from mahoraga import __version__, _core
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Iterator
-    from logging.config import (
-        _DictConfigArgs,  # pyright: ignore[reportPrivateUsage]
-    )
+    from logging.config import _DictConfigArgs  # pyright: ignore[reportPrivateUsage]
 
     from fastapi import FastAPI
     from rattler.networking.fetch_repo_data import CacheAction

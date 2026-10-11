@@ -36,9 +36,7 @@ if TYPE_CHECKING:
     from io import TextIOWrapper
 
     from distributed import Worker
-    from tornado.routing import (
-        _RuleList,  # pyright: ignore[reportPrivateUsage]
-    )
+    from tornado.routing import _RuleList  # pyright: ignore[reportPrivateUsage]
 
 
 # https://github.com/dask/distributed/issues/8136

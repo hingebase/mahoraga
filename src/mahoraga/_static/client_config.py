@@ -36,10 +36,7 @@ from typing import TYPE_CHECKING, Any, cast
 import packaging.version
 import tomlkit.items
 from platformdirs import user_config_path
-from platformdirs.windows import (
-    _KNOWN_FOLDER_GUIDS,  # pyright: ignore[reportPrivateUsage]  # ruff: ignore[import-private-name]
-    get_win_folder_via_ctypes,
-)
+from platformdirs.windows import _KNOWN_FOLDER_GUIDS, get_win_folder_via_ctypes  # pyright: ignore[reportPrivateUsage]  # ruff: ignore[import-private-name]
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping
