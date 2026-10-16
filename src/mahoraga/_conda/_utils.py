@@ -82,7 +82,12 @@ async def load_matching_record(
         gateway = _gateway(cache_action)
         try:
             [records] = await gateway.query(
-                channels, platforms, specs, recursive=False)
+                channels,
+                platforms,
+                specs,
+                recursive=False,
+                channel_relations="disabled",
+            )
         except rattler.exceptions.GatewayError:
             pass
         else:
