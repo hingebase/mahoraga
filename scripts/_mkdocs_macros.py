@@ -16,7 +16,7 @@ import abc
 import asyncio
 import collections
 import dataclasses
-import datetime
+import datetime as dt
 import os
 import pathlib
 import re
@@ -155,9 +155,9 @@ def _changelog() -> list[tuple[str, collections.defaultdict[str, list[str]]]]:
             )
             section[group].append(message)
         else:
-            commit_time = datetime.datetime.fromtimestamp(
+            commit_time = dt.datetime.fromtimestamp(
                 commit.commit_time,
-                datetime.UTC,
+                dt.UTC,
             )
             title = f"{tag} ({commit_time:%Y-%m-%d}) {{#{tag}}}"
             section = collections.defaultdict(list)
