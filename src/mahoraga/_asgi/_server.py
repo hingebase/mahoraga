@@ -35,9 +35,7 @@ from . import _app
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from logging.config import (
-        _DictConfigArgs,  # pyright: ignore[reportPrivateUsage]
-    )
+    from logging.config import _DictConfigArgs  # pyright: ignore[reportPrivateUsage]
 
     from starlette.types import ASGIApp
 

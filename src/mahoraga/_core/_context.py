@@ -58,10 +58,7 @@ if TYPE_CHECKING:
     from ssl import SSLContext
 
     from _typeshed import StrPath, Unused
-    from aiohttp.client import (
-        _RequestContextManager,  # pyright: ignore[reportPrivateUsage]
-        _RequestOptions,  # pyright: ignore[reportPrivateUsage]
-    )
+    from aiohttp.client import _RequestContextManager, _RequestOptions  # pyright: ignore[reportPrivateUsage]
     from distributed import Client, Future
     from httpx2._types import CertTypes
     from pooch_rattler import Downloader

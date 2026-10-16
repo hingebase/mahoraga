@@ -1,5 +1,5 @@
 [build-system]
-requires = ["uv-build >=0.12.0,<0.13.0"]
+requires = ["uv-build >=0.13.0,<0.14.0"]
 build-backend = "uv_build"
 
 [project]
@@ -66,12 +66,11 @@ dev = [
     "pooch-rattler >=0.3.2",
     "pydantic-settings >=2.7.0",
     "pygit2 >=1.19.0",
-    "zensical >=0.0.67",
+    "zensical >=0.0.71",
     "ziafont >=0.11.0",
 ]
 # Used by Zensical macros exclusively, no need to install
 docs = [
-    "blinker >=1.5.0,<2.0.0",
     "bokeh >=3.7.0,<3.10.0",
     "itsdangerous >=2.1.2,<3.0.0",
     "panel >=1.8.10,<2.0.0",

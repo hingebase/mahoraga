@@ -16,7 +16,7 @@ import abc
 import asyncio
 import collections
 import dataclasses
-import datetime
+import datetime as dt
 import os
 import pathlib
 import re
@@ -155,9 +155,9 @@ def _changelog() -> list[tuple[str, collections.defaultdict[str, list[str]]]]:
             )
             section[group].append(message)
         else:
-            commit_time = datetime.datetime.fromtimestamp(
+            commit_time = dt.datetime.fromtimestamp(
                 commit.commit_time,
-                datetime.UTC,
+                dt.UTC,
             )
             title = f"{tag} ({commit_time:%Y-%m-%d}) {{#{tag}}}"
             section = collections.defaultdict(list)
@@ -226,7 +226,7 @@ async def _macros_data(images: pathlib.Path, path: pathlib.Path):  # ruff: ignor
             None,
             github_io.retrieve,
             "https://notofonts.github.io/devanagari/fonts/NotoSansDevanagariUI/hinted/ttf/NotoSansDevanagariUI-ExtraCondensed.ttf",
-            "2c0dcfb1c6732c8b5f049abcf34d09b587d077f7637a1129936a9800f58791b7",
+            "ec6d7e56fcedba9342d771cdc265c33638dd689043bc1f286508efdc999c85e6",
             None,
             None,
             _Renderer(images / "favicon.svg", size=8, color="#6b8e7b"),
@@ -235,7 +235,7 @@ async def _macros_data(images: pathlib.Path, path: pathlib.Path):  # ruff: ignor
             None,
             github_io.retrieve,
             "https://notofonts.github.io/devanagari/fonts/NotoSansDevanagariUI/hinted/ttf/NotoSansDevanagariUI-ExtraCondensedLight.ttf",
-            "aa83fc2a4484f5399fea02e51c80305674089a2a665ab01e27119d44c2a87359",
+            "4457badb9278d16f567ec3ed01121e1c258bc1981c05599307ea8ba945667b4c",
             None,
             None,
             _Renderer(images / "logo.svg", size=24, color="#6b8e7b"),
