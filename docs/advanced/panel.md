@@ -48,7 +48,7 @@ tutorials.
             `);
             const micropip = pyodide.pyimport("micropip");
             micropip.set_index_urls("{{ mahoraga_base_url }}/pypi/simple/{package_name}/?micropip=1");
-            await micropip.install(["bokeh =={{ bokeh_version }}", "panel =={{ panel_version }}"]);
+            await micropip.install(["panel =={{ panel_version }}"]);
             pyodide.runPython(`
                 import os
                 os.environ["PANEL_CDN_ROOT"] = "{{ mahoraga_base_url }}/npm/@holoviz/panel@"
@@ -85,7 +85,7 @@ tutorials.
         <div id="simple_app"></div>
         <script type="py" config='{
           "interpreter": "{{ mahoraga_base_url }}/pyodide/v{{ pyodide_py_version }}/full/pyodide.mjs",
-          "packages": ["micropip"]
+          "packages": ["bokeh", "micropip"]
         }'>
             import micropip
             class _Transaction(micropip.transaction.Transaction):
@@ -94,7 +94,7 @@ tutorials.
                     self.search_pyodide_lock_first = True
             micropip.package_manager.Transaction = _Transaction
             micropip.set_index_urls("{{ mahoraga_base_url }}/pypi/simple/{package_name}/?micropip=1")
-            await micropip.install(["bokeh =={{ bokeh_version }}", "panel =={{ panel_version }}"])
+            await micropip.install(["panel =={{ panel_version }}"])
 
             import os
             os.environ["PANEL_CDN_ROOT"] = "{{ mahoraga_base_url }}/npm/@holoviz/panel@"

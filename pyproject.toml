@@ -66,15 +66,15 @@ dev = [
     "pooch-rattler >=0.3.2",
     "pydantic-settings >=2.7.0",
     "pygit2 >=1.19.0",
+    "pyodide-lock >=0.1.0",
     "zensical >=0.0.71",
     "ziafont >=0.11.0",
 ]
 # Used by Zensical macros exclusively, no need to install
 docs = [
-    "bokeh >=3.7.0,<3.10.0",
     "itsdangerous >=2.1.2,<3.0.0",
-    "panel >=1.8.10,<2.0.0",
-    "pyodide-py ~=0.29.5",
+    "panel ~=1.9.4",
+    "pyodide-py >=314.0.3,<315.0.0a1",
     "python-multipart >=0.0.10,<1.0.0",
 ]
 
