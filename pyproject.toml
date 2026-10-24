@@ -31,6 +31,7 @@ dependencies = [
     "aiohttp >=3.13.0",
     "cyares[aiohttp,anyio,idna] >=0.5.1",
     "distributed >=2026.1.1",
+    "fastapi >=0.154.0",
     "filelock >=3.24.0",
     "hishel[fastapi,httpx2,requests] >=1.4.0",
     "httptools >=0.7.1",
