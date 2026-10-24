@@ -1,5 +1,5 @@
 [build-system]
-requires = ["uv-build >=0.13.0,<0.14.0"]
+requires = ["uv-build >=0.13.4,<0.14.0"]
 build-backend = "uv_build"
 
 [project]
@@ -113,6 +113,9 @@ max-doc-length = 72
 
 [tool.tombi.lint.rules]
 tables-out-of-order = "off"
+
+[tool.uv]
+required-version = ">=0.13.4"
 
 [[tool.uv.index]]
 name = "testpypi"
