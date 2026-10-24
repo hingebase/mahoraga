@@ -102,7 +102,7 @@ async def get_pyodide_dev_file(
 
 
 @router.get("/{version}/full/package.json", dependencies=_core.immutable)
-@router.get("/{version}/full/pyodide.asm.js", dependencies=_core.immutable)
+@router.get("/{version}/full/pyodide.asm.mjs", dependencies=_core.immutable)
 @router.get("/{version}/full/pyodide.asm.wasm", dependencies=_core.immutable)
 @router.get("/{version}/full/pyodide.js", dependencies=_core.immutable)
 @router.get("/{version}/full/pyodide.js.map", dependencies=_core.immutable)
@@ -148,21 +148,27 @@ async def get_pyodide_core_file(
 async def get_python_cli_entry(
     version: Annotated[str, fastapi.Path(pattern=r"^v")],
 ) -> fastapi.Response:
-    member = "python_cli_entry.mjs"
-    cache_location = pathlib.Path("pyodide", version, "full", member)
-    async with _core.cached_or_locked(cache_location) as cached:
-        if cached:
-            return fastapi.responses.FileResponse(cache_location)
-        for name in "pyodide-core", "xbuildenv", "pyodide":
-            tarball = pathlib.Path("pyodide", f"{name}-{version[1:]}.tar.bz2")
-            if response := await _utils.extract_from_tarball(
-                tarball,
-                member,
-                cache_location,
-            ):
-                return response
-    urls = _utils.urls("pyodide", version, "full", member)
-    return await _core.stream(urls, media_type="text/javascript")
+    return await _not_on_npm(
+        version,
+        "full",
+        "python_cli_entry.mjs",
+        "pyodide-core", "xbuildenv", "xbuildenv-debug", "pyodide",
+    )
+
+
+@router.get("/{version}/debug/pyodide.asm.mjs", dependencies=_core.immutable)
+@router.get("/{version}/debug/pyodide.asm.wasm", dependencies=_core.immutable)
+@router.get("/{version}/debug/pyodide.js", dependencies=_core.immutable)
+async def get_pyodide_debug_file(
+    version: Annotated[str, fastapi.Path(pattern=r"^v")],
+    request: fastapi.Request,
+) -> fastapi.Response:
+    return await _not_on_npm(
+        version,
+        "debug",
+        posixpath.basename(request.url.path),
+        "xbuildenv-debug",
+    )
 
 
 @router.get("/{version}/{build}/{path:path}", dependencies=_core.immutable)
@@ -219,17 +225,14 @@ async def _get_pyodide_lock(
 ) -> None:
     async with _core.cached_or_locked(cache_location) as cached:
         if not cached:
-            for name in "pyodide-core", "xbuildenv":
-                tarball = pathlib.Path(
-                    "pyodide",
-                    f"{name}-{package[8:]}.tar.bz2",
-                )
-                if await _utils.extract_from_tarball(
-                    tarball,
-                    "pyodide-lock.json",
-                    cache_location,
-                ):
-                    return
+            for name in "pyodide-core", "xbuildenv", "xbuildenv-debug":
+                for tarball in _utils.tarballs(name, package[8:]):
+                    if await _utils.extract_from_tarball(
+                        tarball,
+                        "pyodide-lock.json",
+                        cache_location,
+                    ):
+                        return
             metadata = await _jsdelivr.Metadata.fetch(
                 f"npm/{package}.json",
                 url=f"https://data.jsdelivr.com/v1/packages/npm/{package}",
@@ -258,6 +261,28 @@ async def _get_pyodide_lock(
             else:
                 status_code = http.HTTPStatus.GATEWAY_TIMEOUT
                 raise fastapi.HTTPException(status_code)
+
+
+async def _not_on_npm(
+    version: str,
+    build: Literal["full", "debug"],
+    name: str,
+    *packages: _utils.PyodideGitHubReleasePackage,
+) -> fastapi.Response:
+    cache_location = pathlib.Path("pyodide", version, build, name)
+    async with _core.cached_or_locked(cache_location) as cached:
+        if cached:
+            return fastapi.responses.FileResponse(cache_location)
+        for package in packages:
+            for tarball in _utils.tarballs(package, version[1:]):
+                if response := await _utils.extract_from_tarball(
+                    tarball,
+                    name,
+                    cache_location,
+                ):
+                    return response
+    urls = _utils.urls("pyodide", version, build, name)
+    return await _core.stream(urls, media_type="text/javascript")
 
 
 _logger = logging.getLogger("mahoraga")
