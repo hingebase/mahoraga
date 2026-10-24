@@ -12,7 +12,13 @@
 # implied. See the License for the specific language governing
 # permissions and limitations under the License.
 
-__all__ = ["extract_from_tarball", "get_npm_file", "urls"]
+__all__ = [
+    "PyodideGitHubReleasePackage",
+    "extract_from_tarball",
+    "get_npm_file",
+    "tarballs",
+    "urls",
+]
 
 import asyncio
 import base64
@@ -30,6 +36,13 @@ from mahoraga import _core, _jsdelivr
 
 if TYPE_CHECKING:
     from contextlib import AsyncExitStack
+
+PyodideGitHubReleasePackage = Literal[
+    "pyodide",
+    "pyodide-core",
+    "xbuildenv",
+    "xbuildenv-debug",
+]
 
 
 async def extract_from_tarball(
@@ -75,13 +88,13 @@ async def get_npm_file(
 ) -> fastapi.Response:
     if package.startswith("pyodide@"):
         for name in _pyodide_packages(path):
-            tarball = pathlib.Path("pyodide", f"{name}-{package[8:]}.tar.bz2")
-            if response := await extract_from_tarball(
-                tarball,
-                path,
-                cache_location,
-            ):
-                return response
+            for tarball in tarballs(name, package[8:]):
+                if response := await extract_from_tarball(
+                    tarball,
+                    path,
+                    cache_location,
+                ):
+                    return response
     metadata = await _jsdelivr.Metadata.fetch(f"npm/{package}.json", url=url)
     for file in metadata.files:
         if file["name"].lstrip("/") == path:
@@ -97,6 +110,16 @@ async def get_npm_file(
         sha256=base64.b64decode(file["hash"]),
         size=file["size"],
     )
+
+
+def tarballs(
+    package: PyodideGitHubReleasePackage,
+    version: str,
+) -> list[pathlib.Path]:
+    tarballs = [pathlib.Path("pyodide", f"{package}-{version}.tar.bz2")]
+    if package.startswith("xbuildenv"):
+        tarballs.append(pathlib.Path("pyodide", f"{package}-{version}.tar.gz"))
+    return tarballs
 
 
 def urls(*paths: str) -> list[str]:
@@ -128,25 +151,23 @@ def _extract_from_tarball(
     return None
 
 
-def _pyodide_packages(
-    path: str,
-) -> tuple[Literal["pyodide", "pyodide-core", "xbuildenv"], ...]:
+def _pyodide_packages(path: str) -> tuple[PyodideGitHubReleasePackage, ...]:
     match path:
         case (
-            "pyodide.asm.js"
-            | "pyodide.asm.wasm"
-            | "pyodide.d.ts"
-            | "pyodide.js"
+            "pyodide.d.ts"
             | "pyodide.mjs"
             | "pyodide-lock.json"
             | "python_stdlib.zip"
         ):
+            return ("pyodide-core", "xbuildenv", "xbuildenv-debug", "pyodide")
+        case "pyodide.asm.mjs" | "pyodide.asm.wasm" | "pyodide.js":
             return ("pyodide-core", "xbuildenv", "pyodide")
         case "ffi.d.ts" | "package.json":
             return ("pyodide-core", "pyodide")
         case "pyodide.js.map" | "pyodide.mjs.map":
-            return ("xbuildenv", "pyodide")
-        case "console.html":
+            return ("xbuildenv", "xbuildenv-debug", "pyodide")
+        # These two files are on NPM but not https://cdn.jsdelivr.net/pyodide/
+        case "console.html" | "console-v2.html":
             return ("pyodide",)
         case _:
             return ()

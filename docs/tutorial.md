@@ -276,7 +276,7 @@ The frontend configuration depends on the library you directly use:
 
 === "Stlite"
 
-    ``` html hl_lines="6 11 14 16-18"
+    ``` html hl_lines="6 11 14 16 17"
     <!doctype html>
     <html>
       <head>
@@ -290,7 +290,7 @@ The frontend configuration depends on the library you directly use:
           import { mount } from "{{ mahoraga_base_url }}/npm/@stlite/browser@1/build/stlite.js";
           mount(
             {
-              pyodideUrl: "{{ mahoraga_base_url }}/pyodide/v{{ pyodide_py_version }}/full/pyodide.js",
+              pyodideUrl: "{{ mahoraga_base_url }}/pyodide/v{{ pyodide_py_version }}/full/pyodide.mjs",
               requirements: [
                 "{{ mahoraga_base_url }}/pypi/packages/py3/i/itsdangerous/itsdangerous-{{ itsdangerous_version }}-py3-none-any.whl",
                 "{{ mahoraga_base_url }}/pypi/packages/py3/p/python-multipart/python_multipart-{{ python_multipart_version }}-py3-none-any.whl",

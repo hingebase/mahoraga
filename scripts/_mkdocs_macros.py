@@ -22,7 +22,7 @@ import pathlib
 import re
 import subprocess  # ruff: ignore[suspicious-subprocess-import]
 import time
-from typing import TYPE_CHECKING, ClassVar, override
+from typing import TYPE_CHECKING, Any, ClassVar, override
 
 import anyio
 import pooch.typing  # pyright: ignore[reportMissingTypeStubs]
@@ -30,6 +30,8 @@ import pooch_rattler
 import pydantic
 import pydantic_settings
 import pygit2
+import pyodide_lock
+import rattler.networking
 import ziafont
 
 if TYPE_CHECKING:
@@ -37,9 +39,9 @@ if TYPE_CHECKING:
 
 
 def define_env(env: MacroEnv) -> None:
-    dependencies, pymanager, python_build_standalone, _, _ = anyio.run(
+    lock_file, pymanager, python_build_standalone, _, _ = anyio.run(
         _macros_data,
-        pathlib.Path(env.conf["site_dir"], "assets", "images"),
+        env,
         pooch.os_cache("pooch") / time.strftime("%Y.%m.%d"),
         backend_options={"use_uvloop": True},
     )
@@ -50,11 +52,10 @@ def define_env(env: MacroEnv) -> None:
             break
     else:
         raise RuntimeError
-    for line in dependencies.decode("ascii").splitlines():
-        k, v = line.split("==")
-        env.variables[f"{k}_version".replace("-", "_")] = v.rstrip()
+    lock_spec = pyodide_lock.PyodideLockSpec.from_json(pathlib.Path(lock_file))
     mahoraga_base_url = os.getenv("MAHORAGA_BASE_URL", "").rstrip("/")
     env.variables.update({
+        "bokeh_version": lock_spec.packages["bokeh"].version,
         "changelog": _changelog(),
         "mahoraga_base_url": mahoraga_base_url or "http://127.0.0.1:3450",
         "mahoraga_version": _Mahoraga().version,
@@ -169,7 +170,11 @@ def _changelog() -> list[tuple[str, collections.defaultdict[str, list[str]]]]:
     return sections
 
 
-async def _dependencies() -> bytes:
+async def _pyodide_lock(
+    variables: dict[str, Any],
+    loop: asyncio.AbstractEventLoop,
+    downloader: pooch_rattler.Downloader,
+) -> str:
     proc = await asyncio.create_subprocess_exec(
         os.getenv("UV", "uv"),
         "pip", "compile",
@@ -182,10 +187,17 @@ async def _dependencies() -> bytes:
     stdout, _ = await proc.communicate()
     if returncode := proc.returncode:
         raise subprocess.CalledProcessError(returncode, "uv", stdout)
-    return stdout
+    for line in stdout.decode("ascii").splitlines():
+        k, v = line.split("==")
+        variables[f"{k}_version".replace("-", "_")] = v.rstrip()
+    return await loop.run_in_executor(
+        None,
+        downloader.retrieve,
+        "https://cdn.jsdelivr.net/pyodide/v{pyodide_py_version}/full/pyodide-lock.json".format_map(variables),
+    )
 
 
-async def _macros_data(images: pathlib.Path, path: pathlib.Path):  # ruff: ignore[missing-return-type-private-function]
+async def _macros_data(env: MacroEnv, path: pathlib.Path):  # ruff: ignore[missing-return-type-private-function]
     class PyManager(_Settings, json_file_encoding="utf-8"):
         github_repo: ClassVar[str] = "python/pymanager"
         tag_name: str = ""
@@ -215,8 +227,22 @@ async def _macros_data(images: pathlib.Path, path: pathlib.Path):  # ruff: ignor
         # github.io requires a well-known user agent header
         headers={"User-Agent": "curl/8.21.0"},
     )
+    jsdelivr = pooch_rattler.Downloader(
+        rattler.networking.RetryMiddleware(max_retries=5),
+        rattler.networking.MirrorMiddleware({
+            "https://cdn.jsdelivr.net/": [
+                "https://cdn.jsdelivr.net/",
+                "https://fastly.jsdelivr.net/",
+                "https://gcore.jsdelivr.net/",
+                "https://originfastly.jsdelivr.net/",
+                "https://quantil.jsdelivr.net/",
+                "https://testingcf.jsdelivr.net/",
+            ],
+        }),
+    )
+    images = pathlib.Path(env.conf["site_dir"], "assets", "images")
     return await asyncio.gather(
-        _dependencies(),
+        _pyodide_lock(env.variables, loop, jsdelivr),
         loop.run_in_executor(None, PyManager),
         loop.run_in_executor(None, PythonBuildStandalone),
         # These URLs point to the main branch and the hashes will expire
