@@ -184,7 +184,6 @@ class _Conda(pydantic.BaseModel, **_model_config):
             "https://mirrors.pku.edu.cn/anaconda/cloud/",
             "https://mirrors.sustech.edu.cn/anaconda/cloud/",
             "https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/",
-            "https://mirrors.zju.edu.cn/anaconda/cloud/",
         ]),
         "biobakery": "auto",
         "bioconda": _adapter.validate_python([
@@ -194,7 +193,6 @@ class _Conda(pydantic.BaseModel, **_model_config):
             "https://mirrors.pku.edu.cn/anaconda/cloud/",
             "https://mirrors.sustech.edu.cn/anaconda/cloud/",
             "https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/",
-            "https://mirrors.zju.edu.cn/anaconda/cloud/",
             "https://prefix.dev/",
         ]),
         "c4aarch64": "auto",
@@ -253,10 +251,8 @@ class _PyPI(pydantic.BaseModel):
         "https://mirrors.aliyun.com/pypi/web/",
         "https://mirrors.cloud.tencent.com/pypi/",
         "https://mirrors.huaweicloud.com/repository/pypi/",
-        "https://mirrors.hust.edu.cn/pypi/web/",
         "https://mirrors.pku.edu.cn/pypi/web/",
         "https://mirrors.sustech.edu.cn/pypi/web/",
-        "https://mirrors.zju.edu.cn/pypi/web/",
     ])
     json_: Annotated[list[_HttpUrl], pydantic.Field(alias="json")] = (
         _adapter.validate_python([
@@ -348,7 +344,6 @@ class _Upstream(pydantic.BaseModel, **_model_config):
         "https://mirrors.bfsu.edu.cn/python/{version}/{name}",
         "https://mirrors.ha.edu.cn/python/{version}/{name}",
         "https://mirrors.huaweicloud.com/python/{version}/{name}",
-        "https://mirrors.jcut.edu.cn/python/{version}/{name}",
         "https://mirrors.tuna.tsinghua.edu.cn/python/{version}/{name}",
         "https://mirrors.ustc.edu.cn/python/{version}/{name}",
         "https://www.python.org/ftp/python/{version}/{name}",
@@ -371,9 +366,7 @@ class _Upstream(pydantic.BaseModel, **_model_config):
         "releases.astral.sh": 0,
         "www.python.org": 0,
         "mirrors.bfsu.edu.cn": 0,
-        "mirrors.hust.edu.cn": 0,
         "mirrors.tuna.tsinghua.edu.cn": 0,
-        "mirrors.zju.edu.cn": 0,
     }
     timeout: _Timeout = _Timeout()
 
