@@ -67,7 +67,7 @@ dev = [
     "pydantic-settings >=2.7.0",
     "pygit2 >=1.19.0",
     "pyodide-lock >=0.1.0",
-    "zensical >=0.0.72",
+    "zensical >=0.0.74",
     "ziafont >=0.11.0",
 ]
 # Used by Zensical macros exclusively, no need to install
