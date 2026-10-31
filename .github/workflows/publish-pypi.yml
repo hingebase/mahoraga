@@ -18,9 +18,9 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.3.0
+      - uses: astral-sh/setup-uv@v10.3.3
         with:
           enable-cache: false
       - run: uv build
-      - uses: astral-sh/attest-action@v0.0.6
+      - uses: astral-sh/attest-action@v0.0.7
       - run: uv publish --trusted-publishing always
