@@ -1,5 +1,5 @@
 [build-system]
-requires = ["uv-build >=0.13.0,<0.14.0"]
+requires = ["uv-build >=0.13.4,<0.14.0"]
 build-backend = "uv_build"
 
 [project]
@@ -31,18 +31,18 @@ dependencies = [
     "aiohttp >=3.13.0",
     "cyares[aiohttp,anyio,idna] >=0.5.1",
     "distributed >=2026.1.1",
+    "fastapi >=0.154.0",
     "filelock >=3.24.0",
     "hishel[fastapi,httpx2,requests] >=1.4.0",
     "httptools >=0.7.1",
     "httpx-aiohttp[httpx2] >=0.2.0",
     "jinja2 >=3.1.5",
     "packaging >=26.0.0",
-    "pooch-rattler >=0.3.2",
+    "pooch-rattler >=0.4.0",
     "pydantic >=2.12.4",
     "pydantic-extra-types[semver] >=2.10.2",
     "pydantic-settings >=2.7.0",
     "pyodide-lock >=0.1.0",
-    "py-rattler >=0.27.0",
     "rich >=14.2.0",
     "uvicorn >=0.41.0",
     "werkzeug >=2.3.7,<3.2.0",
@@ -63,11 +63,11 @@ typing = [
 [dependency-groups]
 # Requirements for the scripts directory
 dev = [
-    "pooch-rattler >=0.3.2",
+    "pooch-rattler >=0.4.0",
     "pydantic-settings >=2.7.0",
     "pygit2 >=1.19.0",
     "pyodide-lock >=0.1.0",
-    "zensical >=0.0.71",
+    "zensical >=0.0.74",
     "ziafont >=0.11.0",
 ]
 # Used by Zensical macros exclusively, no need to install
@@ -112,6 +112,9 @@ max-doc-length = 72
 
 [tool.tombi.lint.rules]
 tables-out-of-order = "off"
+
+[tool.uv]
+required-version = ">=0.13.4"
 
 [[tool.uv.index]]
 name = "testpypi"

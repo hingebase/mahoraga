@@ -21,6 +21,7 @@ import ipaddress
 import itertools
 import os
 import pathlib
+import ssl
 import sys
 from collections.abc import Iterable, Sequence
 from typing import (
@@ -35,6 +36,7 @@ from typing import (
 
 import annotated_types as at
 import anysqlite
+import certifi
 import dask.config
 import dask.system
 import distributed
@@ -458,6 +460,7 @@ class Config(pydantic_settings.BaseSettings, **_model_config):
                 connection=await anysqlite.connect(":memory:"),
                 default_ttl=600.,
             ),
+            verify=ssl.create_default_context(cafile=certifi.where()),
         ) as httpx_client:
             yield {
                 "config": self,
