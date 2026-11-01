@@ -56,9 +56,8 @@ def run() -> None:
         "version": 1,
         "formatters": {
             "default": {
-                "format": "[{asctime}] {levelname:8} {message}",
+                "format": "[%(asctime)s] %(levelname)-8s %(message)s",
                 "datefmt": "%Y-%m-%d %X",
-                "style": "{",
             },
         },
         "filters": {
