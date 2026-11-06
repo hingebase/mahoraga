@@ -216,7 +216,7 @@ async def _entered(
             _core.schedule_exit(inner_stack)
             continue
         try:
-            headers = _unify_content_length(response.headers, kwargs)
+            response_headers = _unify_content_length(response.headers, kwargs)
         except _ContentLengthError:
             _core.schedule_exit(inner_stack)
             response = None
@@ -234,15 +234,15 @@ async def _entered(
         return StreamingResponse(
             content,
             response.status_code,
-            headers,
+            response_headers,
             media_type,
         )
     if response:
-        headers = response.headers
-        headers.pop("Content-Length", None)
+        response_headers = response.headers
+        response_headers.pop("Content-Length", None)
         return Response(
             status_code=response.status_code,
-            headers=headers,
+            headers=response_headers,
         )
     return fastapi.Response(status_code=http.HTTPStatus.GATEWAY_TIMEOUT)
 
