@@ -257,6 +257,25 @@ class _AiohttpTransport(httpx_aiohttp.httpx2.AiohttpTransport):
             trace_configs=trace_configs,
         )
 
+    @override
+    async def handle_async_request(
+        self,
+        request: httpx2.Request,
+    ) -> httpx2.Response:
+        match request.method:
+            case "GET" | "HEAD" as method:
+                # Hishel attached an empty stream to the request
+                # Removing it
+                request = httpx2.Request(
+                    method,
+                    request.url,
+                    headers=request.headers,
+                    extensions=request.extensions,
+                )
+            case _:
+                pass
+        return await super().handle_async_request(request)
+
 
 class _ClientSession(aiohttp.ClientSession):
     @override
