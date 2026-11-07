@@ -133,6 +133,19 @@ async def _find_pixi(
     gateway: rattler.Gateway,
 ) -> list[rattler.RepoDataRecord]:
     virtual_packages = rattler.VirtualPackage.detect()
+    fallback = False
+    if sys.platform.startswith("darwin"):
+        for vp in virtual_packages:
+            gvp = vp.into_generic()
+            if gvp.name.normalized == "__osx":
+                macos_version = gvp.version
+                if macos_version < rattler.Version("12.3"):
+                    fallback = macos_version < rattler.Version("11.0")
+                    # https://github.com/conda/rattler/pull/2866
+                    for minor in range(74, 84):
+                        spec = rattler.MatchSpec(f"pixi !=0.{minor}.*")
+                        specs.append(spec)
+                break
     try:
         return await rattler.solve(
             sources=["conda-forge"],
@@ -141,21 +154,13 @@ async def _find_pixi(
             virtual_packages=virtual_packages,
         )
     except rattler.exceptions.SolverError:
-        if sys.platform.startswith("darwin"):
-            for vp in virtual_packages:
-                gvp = vp.into_generic()
-                if gvp.name.normalized == "__osx":
-                    if gvp.version < rattler.Version("11.0"):
-                        # Pixi >=0.74 are broken on macOS <11 due to
-                        # https://github.com/conda/rattler/pull/2591
-                        specs.append(rattler.MatchSpec("pixi <=0.73.0"))
-                        return await rattler.solve(
-                            sources=["https://prefix.dev/github-releases"],
-                            specs=specs,
-                            gateway=gateway,
-                            virtual_packages=virtual_packages,
-                        )
-                    break
+        if fallback:
+            return await rattler.solve(
+                sources=["https://prefix.dev/github-releases"],
+                specs=specs,
+                gateway=gateway,
+                virtual_packages=virtual_packages,
+            )
         raise
 
 
