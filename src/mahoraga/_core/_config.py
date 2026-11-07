@@ -367,7 +367,9 @@ class _Upstream(pydantic.BaseModel, **_model_config):
         "pypi.org": 0,
         "releases.astral.sh": 0,
         "www.python.org": 0,
+        "mirror.nyist.edu.cn": 0,
         "mirrors.bfsu.edu.cn": 0,
+        "mirrors.ha.edu.cn": 0,
         "mirrors.tuna.tsinghua.edu.cn": 0,
     }
     timeout: _Timeout = _Timeout()
