@@ -21,8 +21,9 @@ import contextvars
 import hashlib
 import logging
 import pathlib
+import posixpath
 import shutil
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 import anyio
 import fastapi.responses
@@ -46,24 +47,7 @@ async def check_sharded_repodata_availability(
     channel: str,
     platform: rattler.platform.SubdirLiteral,
 ) -> fastapi.Response:
-    cache_location = _cache_location(channel, platform)
-    if await cache_location.is_file():
-        return fastapi.Response()
-    ctx = _core.context.get()
-    client = ctx["httpx_client"]
-    prefix = _utils.prefix(channel, ctx["config"])
-    try:
-        response = await client.head(
-            f"{prefix}/{platform}/repodata_shards.msgpack.zst",
-            follow_redirects=True,
-        )
-    except httpx2.HTTPError:
-        return fastapi.Response()
-    return _core.Response(
-        response.content,
-        response.status_code,
-        response.headers,
-    )
+    return await _check_sharded_repodata_availability(channel, platform)
 
 
 @router.head("/{channel}/label/{label}/{platform}/repodata_shards.msgpack.zst")
@@ -72,9 +56,8 @@ async def check_sharded_repodata_availability_with_label(
     label: str,
     platform: rattler.platform.SubdirLiteral,
 ) -> fastapi.Response:
-    cache_location = _cache_location(channel, "label", label, platform)
-    status_code = 200 if await cache_location.is_file() else 404
-    return fastapi.Response(status_code=status_code)
+    return await _check_sharded_repodata_availability(
+        channel, "label", label, platform)
 
 
 @router.get(
@@ -85,21 +68,7 @@ async def get_sharded_repodata_index(
     channel: str,
     platform: rattler.platform.SubdirLiteral,
 ) -> fastapi.Response:
-    cache_location = _cache_location(channel, platform)
-    if await cache_location.is_file():
-        return fastapi.responses.FileResponse(cache_location)
-    ctx = contextvars.copy_context()
-    lock = ctx[_core.context]["locks"][str(cache_location)]
-    ctx.run(_core.cache_action.set, "cache-or-fetch")
-    async with contextlib.AsyncExitStack() as stack:
-        await stack.enter_async_context(lock)
-        return await asyncio.create_task(
-            _core.stream(
-                f"{_utils.prefix(channel)}/{platform}/repodata_shards.msgpack.zst",
-                stack=stack,
-            ),
-            context=ctx,
-        )
+    return await _get_sharded_repodata_index(channel, platform)
 
 
 @router.get(
@@ -111,9 +80,33 @@ async def get_sharded_repodata_index_with_label(
     label: str,
     platform: rattler.platform.SubdirLiteral,
 ) -> fastapi.Response:
-    return fastapi.responses.FileResponse(
-        f"channels/{channel}/label/{label}/{platform}/repodata_shards.msgpack.zst",
-    )
+    return await _get_sharded_repodata_index(channel, "label", label, platform)
+
+
+@router.get(
+    "/{channel}/{platform}/shards/{name}",
+    dependencies=_core.immutable,
+)
+async def get_individual_shard(
+    channel: str,
+    platform: rattler.platform.SubdirLiteral,
+    name: Annotated[str, fastapi.Path(pattern=r"^[a-f\d]{64}\.msgpack\.zst$")],
+) -> fastapi.Response:
+    return await _get_individual_shard(channel, platform, "shards", name=name)
+
+
+@router.get(
+    "/{channel}/label/{label}/{platform}/shards/{name}",
+    dependencies=_core.immutable,
+)
+async def get_individual_shard_with_label(
+    channel: str,
+    label: str,
+    platform: rattler.platform.SubdirLiteral,
+    name: Annotated[str, fastapi.Path(pattern=r"^[a-f\d]{64}\.msgpack\.zst$")],
+) -> fastapi.Response:
+    return await _get_individual_shard(
+        channel, "label", label, platform, "shards", name=name)
 
 
 def split_repo(
@@ -136,8 +129,85 @@ def split_repo(
             fut.add_done_callback(futures.discard)  # pyright: ignore[reportUnknownMemberType]
 
 
-def _cache_location(*segments: str) -> anyio.Path:
-    return anyio.Path("channels", *segments, "repodata_shards.msgpack.zst")
+def _cache_location(
+    *segments: str,
+    name: str = "repodata_shards.msgpack.zst",
+) -> anyio.Path:
+    return anyio.Path("channels", *segments, name)
+
+
+async def _check_sharded_repodata_availability(
+    channel: str,
+    *segments: str,
+) -> fastapi.Response:
+    cache_location = _cache_location(channel, *segments)
+    if await cache_location.is_file():
+        return fastapi.Response()
+    ctx = _core.context.get()
+    client = ctx["httpx_client"]
+    url = posixpath.join(
+        _utils.prefix(channel, ctx["config"]),
+        *segments,
+        "repodata_shards.msgpack.zst",
+    )
+    try:
+        response = await client.head(url, follow_redirects=True)
+    except httpx2.HTTPError:
+        return fastapi.Response()
+    return _core.Response(
+        response.content,
+        response.status_code,
+        response.headers,
+    )
+
+
+async def _get_individual_shard(
+    channel: str,
+    *segments: str,
+    name: str,
+) -> fastapi.Response:
+    cache_location = _cache_location(channel, *segments, name=name)
+    async with contextlib.AsyncExitStack() as stack:
+        if await _core.cached_or_locked(cache_location, stack):
+            return fastapi.responses.FileResponse(
+                cache_location,
+                media_type="binary/octet-stream",
+            )
+        url = posixpath.join(_utils.prefix(channel), *segments, name)
+        return await _core.stream(
+            url,
+            stack=stack,
+            cache_location=cache_location,
+            sha256=bytes.fromhex(name[:-12]),
+        )
+
+
+async def _get_sharded_repodata_index(
+    channel: str,
+    *segments: str,
+) -> fastapi.Response:
+    cache_location = _cache_location(channel, *segments)
+    if await cache_location.is_file():
+        return fastapi.responses.FileResponse(
+            cache_location,
+            media_type="binary/octet-stream",
+        )
+    ctx = contextvars.copy_context()
+    # Don't acquire the lock too early
+    # A fetched shard index is never cached on disk
+    lock = ctx[_core.context]["locks"][str(cache_location)]
+    ctx.run(_core.cache_action.set, "cache-or-fetch")
+    async with contextlib.AsyncExitStack() as stack:
+        await stack.enter_async_context(lock)
+        url = posixpath.join(
+            _utils.prefix(channel),
+            *segments,
+            "repodata_shards.msgpack.zst",
+        )
+        return await asyncio.create_task(
+            _core.stream(url, stack=stack),
+            context=ctx,
+        )
 
 
 def _packages(

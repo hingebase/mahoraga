@@ -105,6 +105,9 @@ def _update_rattler_config(config_file: Path, mahoraga_base_url: str) -> None:
                 "https://pypi.org/simple/": [
                     f"{mahoraga_base_url}/pypi/simple/",
                 ],
+                "https://files.pythonhosted.org/": [
+                    f"{mahoraga_base_url}/pypi/",
+                ],
                 "https://raw.githubusercontent.com/prefix-dev/parselmouth/main/files/":
                     [f"{mahoraga_base_url}/parselmouth/compressed-v0/"],
                 "https://conda-mapping.prefix.dev/": [
@@ -127,6 +130,9 @@ def _update_rattler_config(config_file: Path, mahoraga_base_url: str) -> None:
                     ],
                     "https://pypi.org/simple/": [
                         f"{mahoraga_base_url}/pypi/simple/",
+                    ],
+                    "https://files.pythonhosted.org/": [
+                        f"{mahoraga_base_url}/pypi/",
                     ],
                     "https://raw.githubusercontent.com/prefix-dev/parselmouth/main/files/":
                         [f"{mahoraga_base_url}/parselmouth/compressed-v0/"],
@@ -156,6 +162,7 @@ def _update_rattler_mirrors(
             del mirrors[k]
     mirrors["https://conda.anaconda.org/"] = [f"{mahoraga_base_url}/conda/"]
     mirrors["https://pypi.org/simple/"] = [f"{mahoraga_base_url}/pypi/simple/"]
+    mirrors["https://files.pythonhosted.org/"] = [f"{mahoraga_base_url}/pypi/"]
     mirrors[
         "https://raw.githubusercontent.com/prefix-dev/parselmouth/main/files/"
     ] = [f"{mahoraga_base_url}/parselmouth/compressed-v0/"]

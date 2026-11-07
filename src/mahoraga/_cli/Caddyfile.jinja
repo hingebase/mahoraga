@@ -50,17 +50,6 @@
 	import mahoraga-cache-or-fetch
 }
 
-(mahoraga-sharded-repodata) {
-	root {{ server.root }}/channels
-	{{ "" if "*" in cors.allow_origins else "# " }}header @mahoraga-has-origin Access-Control-Allow-Origin *
-	uri strip_prefix /conda
-	route {
-		respond @mahoraga-not-get 403
-		header Content-Type application/zstd
-	}
-	file_server
-}
-
 {{ "" if server.host.is_unspecified else server.host }}:{{ server.port }} {
 	@mahoraga-gz path *.gz
 	@mahoraga-json path *.json
@@ -112,17 +101,17 @@
 	handle /conda/*/label/*/*/*.tar.bz2 {
 		import mahoraga-conda-package
 	}
-	handle /conda/*/*/repodata_shards.msgpack.zst {
-		import mahoraga-conda-package
-	}
-	handle /conda/*/label/*/*/repodata_shards.msgpack.zst {
-		import mahoraga-sharded-repodata
-	}
 	handle /conda/*/*/*.msgpack.zst {
 		import mahoraga-conda-package
 	}
+	handle /conda/*/*/shards/*.msgpack.zst {
+		import mahoraga-conda-package
+	}
 	handle /conda/*/label/*/*/*.msgpack.zst {
-		import mahoraga-sharded-repodata
+		import mahoraga-conda-package
+	}
+	handle /conda/*/label/*/*/shards/*.msgpack.zst {
+		import mahoraga-conda-package
 	}
 
 	handle /log {
