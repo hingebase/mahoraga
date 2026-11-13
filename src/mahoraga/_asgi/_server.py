@@ -70,9 +70,6 @@ def run() -> None:
             "hishel_core_spec": {
                 "()": "mahoraga._preload.HishelCoreSpec",
             },
-            "hishel_integrations_clients": {
-                "()": "mahoraga._preload.HishelIntegrationsClients",
-            },
             "uvicorn_error": {
                 "()": "mahoraga._preload.UvicornError",
                 "level": log_level,
@@ -109,9 +106,6 @@ def run() -> None:
             },
             "hishel.core.spec": {
                 "filters": ["hishel_core_spec"],
-            },
-            "hishel.integrations.clients": {
-                "filters": ["hishel_integrations_clients"],
             },
             "tornado.access": {
                 "level": "CRITICAL",
@@ -242,10 +236,11 @@ class _Lifespan(Protocol):
 
 
 def _granian_lifespan() -> None:
-    for info in inspect.stack(0):
-        if lifespan := info.frame.f_locals.get("lifespan_handler"):
-            _split_repo(lifespan)
-            return
+    if frame := inspect.currentframe():
+        while frame := frame.f_back:
+            if lifespan := frame.f_locals.get("lifespan_handler"):
+                _split_repo(lifespan)
+                return
     _core.unreachable()
 
 

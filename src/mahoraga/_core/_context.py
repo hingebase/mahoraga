@@ -56,6 +56,7 @@ from mahoraga import _core
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Awaitable
     from ssl import SSLContext
+    from uuid import UUID
 
     from _typeshed import StrPath, Unused
     from aiohttp.client import _RequestContextManager, _RequestOptions  # pyright: ignore[reportPrivateUsage]
@@ -80,18 +81,19 @@ class AsyncClient(hishel.httpx2.AsyncCacheClient):
         transport: httpx2.AsyncBaseTransport | None = None,
         **kwargs: Unused,
     ) -> httpx2.AsyncBaseTransport:
-        next_transport = transport or _AiohttpTransport(
-            verify=verify,
-            cert=cert,
-            trust_env=trust_env,
-            http1=http1,
-            http2=http2,
-            limits=limits,
-        )
+        if transport is not None:
+            return transport
         return _AsyncCacheTransport(
-            next_transport=next_transport,
+            next_transport=_AiohttpTransport(
+                verify=verify,
+                cert=cert,
+                trust_env=trust_env,
+                http1=http1,
+                http2=http2,
+                limits=limits,
+            ),
             storage=self.storage,
-            policy=self.policy,
+            rfc=self.rfc,
         )
 
     @override
@@ -102,10 +104,11 @@ class AsyncClient(hishel.httpx2.AsyncCacheClient):
                 case "no-cache":
                     return t.next_transport
                 case "force-cache-only" | "use-cache-only":
-                    return hishel.httpx2.AsyncCacheTransport(
+                    config = t.config
+                    return _AsyncCacheTransport(
                         _not_implemented,
-                        t.storage,
-                        t._cache_proxy.policy,  # ruff: ignore[private-member-access]  # pyright: ignore[reportPrivateUsage]
+                        config.get("storage"),
+                        config.get("rfc", False),
                     )
                 case "cache-or-fetch":
                     pass
@@ -257,25 +260,6 @@ class _AiohttpTransport(httpx_aiohttp.httpx2.AiohttpTransport):
             trace_configs=trace_configs,
         )
 
-    @override
-    async def handle_async_request(
-        self,
-        request: httpx2.Request,
-    ) -> httpx2.Response:
-        match request.method:
-            case "GET" | "HEAD" as method:
-                # Hishel attached an empty stream to the request
-                # Removing it
-                request = httpx2.Request(
-                    method,
-                    request.url,
-                    headers=request.headers,
-                    extensions=request.extensions,
-                )
-            case _:
-                pass
-        return await super().handle_async_request(request)
-
 
 class _ClientSession(aiohttp.ClientSession):
     @override
@@ -295,58 +279,78 @@ class _ClientSession(aiohttp.ClientSession):
 
 
 async def _on_signal(verb: str) -> None:  # ruff: ignore[unused-async]
-    for info in inspect.stack(0):
-        match info.frame.f_locals:
-            case {"req": aiohttp.ClientRequest(url=url)}:
-                _logger.info("%s TCP connection: %s", verb, url)
-                return
-            case _:
-                pass
+    if frame := inspect.currentframe():
+        while frame := frame.f_back:
+            match frame.f_locals:
+                case {"req": aiohttp.ClientRequest(url=url)}:
+                    _logger.info("%s TCP connection: %s", verb, url)
+                    return
+                case _:
+                    pass
     _core.unreachable()
 
 
-class _AsyncCacheProxy(hishel.AsyncCacheProxy):
-    @override
-    async def _get_key_for_request(self, request: hishel.Request) -> str:
-        if headers := request.headers.get_list("accept"):
-            for header in headers:
-                if header.startswith("application/vnd.pypi.simple.v1+"):
-                    project = request.url.rsplit("/", 2)[1]
-                    return f"{project}|{header}"
-        return await super()._get_key_for_request(request)
+class _AsyncStorageProxy(hishel.AsyncBaseStorage):
+    def __init__(
+        self,
+        storage: hishel.AsyncBaseStorage,
+        url: httpx2.URL,
+    ) -> None:
+        super().__init__(
+            default_ttl=storage.default_ttl,
+            default_tti=storage.default_tti,
+            max_stream_size=storage.max_stream_size,
+        )
+        self.storage = storage
+        self.url = url
 
     @override
-    async def _handle_idle_state(
+    async def create_entry(
         self,
-        state: hishel.IdleClient,
         request: hishel.Request,
-        cache_key: str,
-    ) -> hishel.AnyState:
-        stored_entries = [
+        response: hishel.Response,
+        key: str,
+        *,
+        ttl: float | None = None,
+        tti: float | None = None,
+    ) -> hishel.Entry:
+        return await self.storage.create_entry(
+            request,
+            response,
+            key,
+            ttl=ttl,
+            tti=tti,
+        )
+
+    @override
+    async def get_entries(self, key: str) -> list[hishel.Entry]:
+        return [
             dataclasses.replace(
                 pair,
-                request=dataclasses.replace(pair.request, url=request.url),
+                request=dataclasses.replace(pair.request, url=self.url),
             )
-            for pair in await self.storage.get_entries(cache_key)
+            for pair in await self.storage.get_entries(key)
         ]
-        return state.next(request, stored_entries)
+
+    @override
+    async def update_headers(self, id: UUID, headers: hishel.Headers) -> None:
+        return await self.storage.update_headers(id, headers)
+
+    @override
+    async def remove_entry(self, id: UUID) -> None:
+        return await self.storage.remove_entry(id)
 
 
 class _AsyncCacheTransport(hishel.httpx2.AsyncCacheTransport):
     @override
-    def __init__(
+    async def handle_async_request(
         self,
-        next_transport: httpx2.AsyncBaseTransport,
-        storage: hishel.AsyncBaseStorage | None = None,
-        policy: hishel.CachePolicy | None = None,
-    ) -> None:
-        self.next_transport: httpx2.AsyncBaseTransport = next_transport
-        self._cache_proxy = _AsyncCacheProxy(
-            request_sender=self.request_sender,
-            storage=storage,
-            policy=policy,
-        )
-        self.storage: hishel.AsyncBaseStorage = self._cache_proxy.storage
+        request: httpx2.Request,
+    ) -> httpx2.Response:
+        if storage := self.config.get("storage"):
+            caching = request.extensions.setdefault("caching", {})
+            caching["storage"] = _AsyncStorageProxy(storage, request.url)
+        return await super().handle_async_request(request)
 
 
 class Context(TypedDict):

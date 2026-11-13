@@ -19,7 +19,6 @@ import dataclasses
 import inspect
 import logging.handlers
 import pathlib
-import types
 import warnings
 from typing import TYPE_CHECKING, Any, cast, override
 
@@ -87,42 +86,20 @@ class HTTPHandler(logging.handlers.HTTPHandler):
 
 class HishelCoreSpec:
     @staticmethod
-    def filter(record: logging.LogRecord) -> bool:
-        return record.msg != "Storing response in cache"
-
-
-class HishelIntegrationsClients:
-    @staticmethod
     def filter(record: logging.LogRecord) -> bool | logging.LogRecord:
-        message: str = record.msg
-        if not message.startswith("Handling state: "):
+        if record.msg != "Storing response in cache":
             return True
-        if (
-            message == "Handling state: IdleClient"
-            or (
-                message != "Handling state: FromCache"
-                and _core.cache_action.get() != "cache-or-fetch"
-            )
-        ):
-            return False
-        for frame in inspect.stack(0):
-            match frame:
-                case [
-                    types.FrameType(
-                        f_locals={"request": hishel.Request(url=url)},
-                    ),
-                    record.pathname,
-                    record.lineno,
-                    record.funcName,
-                    *_,
-                ]:
-                    record = copy.copy(record)
-                    record.msg = "%s: %s"
-                    record.args = message[16:], url
-                    return record
-                case _:
-                    pass
-        return _core.unreachable()
+        if frame := inspect.currentframe():
+            while frame := frame.f_back:
+                match frame.f_locals:
+                    case {"request": hishel.Request(url=url)}:
+                        record = copy.copy(record)
+                        record.msg = "Storing response in cache: %s"
+                        record.args = (url,)
+                        return record
+                    case _:
+                        pass
+        return True
 
 
 class RotatingFileHandler(logging.handlers.RotatingFileHandler):

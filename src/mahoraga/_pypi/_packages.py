@@ -161,13 +161,16 @@ async def _sha256(filename: str, project: str) -> tuple[bytes, int | None]:
         for url in config.upstream.pypi.json_
     ]
     ctx.run(_core.cache_action.set, "force-cache-only")
-    lock = locks[f"{project}|application/vnd.pypi.simple.v1+html"]
+    caching_key_html = f"{project} application/vnd.pypi.simple.v1+html"
+    extensions = {"caching": {"key": caching_key_html}}
+    lock = locks[caching_key_html]
     try:
         async with lock:
             raw = await loop.create_task(
                 _core.get(
                     urls,
                     headers={"Accept": "application/vnd.pypi.simple.v1+html"},
+                    extensions=extensions,
                 ),
                 context=ctx,
             )
@@ -179,12 +182,14 @@ async def _sha256(filename: str, project: str) -> tuple[bytes, int | None]:
             None,
         )
     ctx.run(_core.cache_action.set, "cache-or-fetch")
+    caching_key_json = f"{project} application/vnd.pypi.simple.v1+json"
     try:
-        async with locks[f"{project}|application/vnd.pypi.simple.v1+json"]:
+        async with locks[caching_key_json]:
             raw = await loop.create_task(
                 _core.get(
                     urls,
                     headers={"Accept": "application/vnd.pypi.simple.v1+json"},
+                    extensions={"caching": {"key": caching_key_json}},
                 ),
                 context=ctx,
             )
@@ -208,6 +213,7 @@ async def _sha256(filename: str, project: str) -> tuple[bytes, int | None]:
                 _core.get(
                     urls,
                     headers={"Accept": "application/vnd.pypi.simple.v1+html"},
+                    extensions=extensions,
                 ),
                 context=ctx,
             )

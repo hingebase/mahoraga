@@ -65,12 +65,14 @@ async def get_pypi_project(
             for url in config.upstream.pypi.all()
         ]
     ctx.run(_core.cache_action.set, "cache-or-fetch")
+    caching_key = f"{project} {media_type}"
     async with contextlib.AsyncExitStack() as stack:
-        await stack.enter_async_context(locks[f"{project}|{media_type}"])
+        await stack.enter_async_context(locks[caching_key])
         return await asyncio.create_task(
             _core.stream(
                 urls,
                 headers={"Accept": media_type},
+                extensions={"caching": {"key": caching_key}},
                 media_type=media_type,
                 stack=stack,
             ),

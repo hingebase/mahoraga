@@ -458,6 +458,7 @@ class Config(pydantic_settings.BaseSettings, **_model_config):
                 max_connections=self.server.limit_concurrency,
                 keepalive_expiry=self.server.keep_alive,
             ),
+            rfc=True,
             storage=hishel.AsyncSqliteStorage(
                 connection=await anysqlite.connect(":memory:"),
                 default_ttl=600.,

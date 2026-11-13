@@ -138,6 +138,7 @@ async def stream(
     urls: Iterable[str],
     *,
     headers: Mapping[str, str] | None = ...,
+    extensions: Mapping[str, Any] | None = ...,
     media_type: str | None = ...,
     stack: contextlib.AsyncExitStack | None = None,
     cache_location: None = ...,
@@ -150,6 +151,7 @@ async def stream(
     urls: Iterable[str],
     *,
     headers: Mapping[str, str] | None = ...,
+    extensions: Mapping[str, Any] | None = ...,
     media_type: str | None = ...,
     stack: contextlib.AsyncExitStack | None = None,
     cache_location: StrPath,
@@ -162,6 +164,7 @@ async def stream(
     urls: Iterable[str],
     *,
     headers: Mapping[str, str] | None = None,
+    extensions: Mapping[str, Any] | None = None,
     media_type: str | None = None,
     stack: contextlib.AsyncExitStack | None = None,
     **kwargs: Unpack[_CacheOptions],
@@ -171,6 +174,7 @@ async def stream(
             stack,
             urls,
             headers=headers,
+            extensions=extensions,
             media_type=media_type,
             **kwargs,
         )
@@ -179,6 +183,7 @@ async def stream(
             new_stack,
             urls,
             headers=headers,
+            extensions=extensions,
             media_type=media_type,
             **kwargs,
         )
@@ -194,6 +199,7 @@ async def _entered(
     urls: Iterable[str],
     *,
     headers: Mapping[str, str] | None = None,
+    extensions: Mapping[str, Any] | None = None,
     media_type: str | None = None,
     **kwargs: Unpack[_CacheOptions],
 ) -> fastapi.Response:
@@ -204,7 +210,12 @@ async def _entered(
     for url in load_balance(urls):
         try:
             response = await inner_stack.enter_async_context(
-                client.stream("GET", url, headers=headers),
+                client.stream(
+                    "GET",
+                    url,
+                    headers=headers,
+                    extensions=extensions,
+                ),
             )
         except httpx2.HTTPError:
             continue
