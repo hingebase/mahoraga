@@ -29,9 +29,7 @@ from typing import Annotated
 
 import fastapi.responses
 import packaging.version
-import pydantic
 import pydantic_extra_types.semantic_version  # ruff: ignore[typing-only-third-party-import]
-import requests
 
 from . import _core
 
@@ -152,9 +150,7 @@ async def _get_standalone_python_sha256_and_size(
             repo="python-build-standalone",
             tag_name=tag,
         )
-    except requests.RequestException:
-        pass
-    except OSError, pydantic.ValidationError:
+    except Exception:
         _logger.exception("Failed to get GitHub release metadata")
     else:
         for asset in release.assets:
