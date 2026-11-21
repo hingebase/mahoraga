@@ -15,7 +15,7 @@
 # /// script
 # dependencies = [
 #     "packaging >=26.0.0",
-#     "platformdirs >=4.10.1,<5.0.0",
+#     "platformdirs >=4.10.1,<=4.14.5",
 #     "tomlkit >=0.15.0,<0.16.0",
 # ]
 # requires-python = ">=3.14"

@@ -39,6 +39,7 @@ dependencies = [
     "jinja2 >=3.1.5",
     "packaging >=26.0.0",
     "pooch-rattler >=0.4.0",
+    "py-rattler >=0.29.0",
     "pydantic >=2.12.4",
     "pydantic-extra-types[semver] >=2.10.2",
     "pydantic-settings >=2.7.0",
@@ -55,7 +56,7 @@ granian = [
 typing = [
     "granian >=2.7.0",
     "msgpack-types ==0.3.0",
-    "platformdirs >=4.10.1",
+    "platformdirs >=4.10.1,<=4.14.5",
     "tomlkit >=0.15.0",
     "types-requests >=2.32.4",
 ]
@@ -67,7 +68,7 @@ dev = [
     "pydantic-settings >=2.7.0",
     "pygit2 >=1.19.0",
     "pyodide-lock >=0.1.0",
-    "zensical >=0.0.74",
+    "zensical >=0.1.1",
     "ziafont >=0.11.0",
 ]
 # Used by Zensical macros exclusively, no need to install
