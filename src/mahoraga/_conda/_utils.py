@@ -78,6 +78,10 @@ async def load_matching_record(
     channels = _channels(channel, label)
     platforms = [rattler.Subdir(platform)]
     specs = [rattler.MatchSpec(spec, strict=True)]
+    if file_name.endswith(".conda"):
+        package_format_selection = rattler.PackageFormatSelection.ONLY_CONDA
+    else:
+        package_format_selection = rattler.PackageFormatSelection.ONLY_TAR_BZ2
     for cache_action in "force-cache-only", "cache-or-fetch":
         gateway = _gateway(cache_action)
         try:
@@ -87,6 +91,7 @@ async def load_matching_record(
                 specs,
                 recursive=False,
                 channel_relations="disabled",
+                package_format_selection=package_format_selection,
             )
         except rattler.exceptions.GatewayError:
             pass
